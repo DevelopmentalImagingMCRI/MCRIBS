@@ -17,16 +17,17 @@ fi
 
 SUBJID=$1
 
-OUTDIR=TissueSegDrawEM/$SUBJID
+DRAWEMOUTDIR=TissueSegDrawEM/$SUBJID
+OUTDIR=TissueSeg
+
 if [ ! -f "$INDIR/${SUBJID}.nii.gz" ]
 then
 	echo "Input file not found"
 else
-	mkdir -p $OUTDIR
-	$HOME/dev/MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $OUTDIR -t `nproc` -c 0 -p 1 -v 1
-fi
+	mkdir -p $DRAWEMOUTDIR
+	echo `dirname $0`/../lib/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $DRAWEMOUTDIR -t `nproc` -c 0 -p 1 -v 1
 
-#echo "/exports/addo/dev/MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh RawData/P${NUM}_t2.nii.gz 40 -d DrawEM2/P$NUM -c 0 -p 1 -t 1 -v 1" >> $T
-#if [ -f "DrawEM/$B/segmentations/${B}_all_labels.nii.gz" ]
-#then
-#fi
+# copy the brain mask and label files to the global tissue seg directory
+	cp $DRAWEMOUTDIR/segmentations/${SUBJID}_brain_mask.nii.gz $OUTDIR
+	cp $DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz $OUTDIR
+fi

@@ -1,120 +1,35 @@
-#!/bin/bash -x
+#!/bin/bash
 
 if [ -z "$1" ]
 then
-        echo "Usage: $0 <subject id>"
-        exit
+	echo "Usage: $0 <subject id>"
+	exit
 fi
 
 SUBJID=$1
 
 if [ -z "$2" ]
 then
-        J=1
+	J=1
 else
-        J=$2
+	J=$2
 fi
 
+
+#P=/isilon/local/mirtk-vtk-7.1.1
+
 # home
-P=$HOME/local/mirtk
-export PATH=$P/bin:$P/lib/tools:$PATH
+#P=$HOME/local/mirtk
+#export PATH=$P/bin:$P/lib/tools:$PATH
 #export PYTHONPATH=$PYTHONPATH:/isilon/local/local/mirtk/lib/python/mirtk
 #export LD_LIBRARY_PATH=/isilon/local/VTK/VTK-7.1.1/lib:$P/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$HOME/local/VTK-8.1.1/lib:$P/lib:$LD_LIBRARY_PATH
-export PYTHONPATH=$PYTHONPATH:$HOME/AARNETownCloud/pyconnectivity
+#export PYTHONPATH=$PYTHONPATH:$HOME/AARNETownCloud/pyconnectivity
 
-mkdir -p surf_pialorder
-#recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex-bonnie-seg-fixed.cfg -s $SUBJID -t 8 -v -d -d -d -d -d -f -ensure-pial-is-outside-white-surface
-#recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex-bonnie-seg-fixed.cfg -s $SUBJID -t 8 -v -d -d -d -d -d -f -ensure-pial-is-outside-white-surface
-rm -fr surf_pialorder/$SUBJID
+OUTDIR=SurfExtractDeformable
 
-INDIR=RawT2RadiologicalIsotropic
+mkdir -p $OUTDIR/$SUBJID
 
-cat << EOF > ttt.cfg
-[recon-neonatal-cortex]
-
-orig_dir = %(work_dir)s/$INDIR
-draw_dir = %(work_dir)s/DrawEM/%(subject_id)s
-out_dir = %(work_dir)s/surf_pialorder/%(subject_id)s
-mesh_dir = %(out_dir)s/meshes
-
-# Directory for intermediate files
-#
-# Intermediate files are deleted when no longer needed or
-# when an error occurs, unless the -debug option is given
-temp_dir = %(out_dir)s/temp
-
-# Configuration entries of recon-neonatal-cortex input files
-#
-# The T1-weighted image is optional. When the file is missing
-# for a particular subject session, it is simply not used.
-#input_t1w_image  = %(orig_dir)s/%(subject_id)s_t1.nii.gz
-input_t2w_image  = %(orig_dir)s/%(subject_id)s.nii.gz
-input_brain_mask = %(draw_dir)s/segmentations/%(subject_id)s_brain_mask.nii.gz
-
-# Besides a T2-weighted intensity image and brain extraction mask,
-# either a MIRTK Draw-EM segmentation (recommended) or a custom
-# neonatal brain segmentation is required
-input_labels_image = %(draw_dir)s/segmentations/%(subject_id)s_all_labels.nii.gz
-
-white_matter_labels       = 51..82
-gray_matter_labels        = 5..16,20..39
-deep_gray_matter_labels   = 1..4,40..47,85..87
-lateral_ventricles_labels = 49,50
-corpus_callosum_labels    = 48
-inter_hemisphere_labels   = 40..47,85..87
-brainstem_labels          = 19
-cerebellum_labels         = 17,18
-
-# Parameters for morphological closing done by subdivide-brain-image
-subcortex_closing  = 5
-brainstem_closing  = 5
-cerebellum_closing = 5
-
-# The following two files are the output of subdivide-brain-image,
-# which is run by recon-neonatal-cortex when these files are missing.
-# In particular the regions_mask output of subdivide-brain-image
-# is required which defines moreover the standard RAS image space.
-regions_mask       = %(out_dir)s/recon/regions.nii.gz
-cortical_hull_dmap = %(out_dir)s/recon/cortical-hull-dmap.nii.gz
-
-# The cortical surface reconstruction relies on a resampling of all input
-# and derived binary mask images in the standard RAS space defined by the
-# subdivide-brain-image output regions. The following (temporary) image
-# files are derived from the input images given above label sets if they
-# don't exist. Otherwise, the existing image files which may be generated
-# beforehand are used instead of the input_* images. All binary tissue masks
-# are created using the respective labels from the input_tissues_image if
-# set and present, or the input_labels_image otherwise.
-# The corpus_callosum_mask is always created from the input_labels_image.
-t1w_image             = %(temp_dir)s/t1w-image.nii.gz
-t2w_image             = %(temp_dir)s/t2w-image.nii.gz
-brain_mask            = %(temp_dir)s/brain-mask.nii.gz
-white_matter_mask     = %(temp_dir)s/white-matter-mask.nii.gz
-gray_matter_mask      = %(temp_dir)s/gray-matter-mask.nii.gz
-deep_gray_matter_mask = %(temp_dir)s/deep-gray-matter-mask.nii.gz
-corpus_callosum_mask  = %(temp_dir)s/corpus-callosum-mask.nii.gz
-ventricles_mask       = %(temp_dir)s/ventricles-mask.nii.gz
-
-# A distance transform of the lateral ventricles mask is
-# computed when no ventricles_dmap is provided. Otherwise,
-# the ventricles_mask is neither required nor used.
-ventricles_dmap = %(temp_dir)s/ventricles-dmap.nii.gz
-
-# Configuration entries of recon-neonatal-cortex output surface files
-brain_mesh           = %(mesh_dir)s/brain.vtp
-bs_cb_mesh           = %(mesh_dir)s/brainstem+cerebellum.vtp
-internal_mesh        = %(mesh_dir)s/internal.vtp
-cerebrum_mesh        = %(temp_dir)s/cerebrum.vtp
-right_cerebrum_mesh  = %(temp_dir)s/cerebrum-rh.vtp
-left_cerebrum_mesh   = %(temp_dir)s/cerebrum-lh.vtp
-white_mesh           = %(mesh_dir)s/white.vtp
-right_white_mesh     = %(mesh_dir)s/white-rh.vtp
-left_white_mesh      = %(mesh_dir)s/white-lh.vtp
-pial_mesh            = %(mesh_dir)s/pial.vtp
-right_pial_mesh      = %(mesh_dir)s/pial-rh.vtp
-left_pial_mesh       = %(mesh_dir)s/pial-lh.vtp
-EOF
-recon-neonatal-cortex -r `pwd` -c ttt.cfg -s $SUBJID -t `nproc` -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
+echo recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
+recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex.cfg -s $SUBJID -t 1 -v -d -f
-

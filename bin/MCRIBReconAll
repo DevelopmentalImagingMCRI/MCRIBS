@@ -78,6 +78,7 @@ def main():
 			cmd = ["MCRIBTissueSegDrawEM", options.subjectid]
 			runCommand(cmd)
 		pass	
+	
 	if options.surfrecon == True:
 		cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh)]
 		runCommand(cmd)
