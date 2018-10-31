@@ -1,0 +1,56 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+# 
+
+SUBJID=$1
+
+#export FREESURFER_HOME=/addo/freesurfer-6.0.0-curv/
+#. $FREESURFER_HOME/SetUpFreeSurfer.sh
+CURDIR=`pwd`
+export SUBJECTS_DIR=`pwd`/freesurfer
+
+FSMESHDIR=`pwd`/surf_pialorder/$SUBJID/meshes
+
+#./convert_all_meshes_indir.sh $FSMESHDIR $SUBJID
+GEOMFILE=DrawEM/$SUBJID/T2/${SUBJID}.nii.gz
+
+FSDIR=`pwd`/freesurfer/$SUBJID
+
+HEMIS="lh
+rh"
+
+export OMP_NUM_THREADS=`nproc`
+
+H=`hostname`
+
+for CURHEMI in $HEMIS
+do
+	cd $FSDIR/surf
+
+	mris_inflate ${CURHEMI}.smoothwm ${CURHEMI}.inflated 
+	mris_sphere -remove_negative 1 -seed 1234 ${CURHEMI}.inflated ${CURHEMI}.sphere
+#	
+#	exit
+#mris_write_curvature ${CURHEMI}.smoothwm ${CURHEMI}.curv ${CURHEMI}.area
+# computes the smoothwm curvature, here 
+	mris_curvature -w -a 10 ${CURHEMI}.smoothwm
+	cp ${CURHEMI}.smoothwm.H ${CURHEMI}.curv
+
+# computes the inflated surface curvature
+	mris_curvature -thresh .999 -n -a 5 -w -distances 10 10 $CURHEMI.inflated
+# computes the curvature stats as per recon-all
+	mris_curvature_stats -m --writeCurvatureFiles -G -o ../stats/$CURHEMI.curv.stats -F smoothwm $SUBJID $CURHEMI curv sulc
+# writes out the vertex "area" file
+	FreesurferVertexArea $SUBJID $CURHEMI
+
+#mris_register -curv $CURHEMI.sphere /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/$CURHEMI.template2.tif $CURHEMI.sphere.reg
+#mrisp_paint -a 2 /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/lh.template2.tif $CURHEMI.sphere.reg $CURHEMI.avg_curv
+#mris_ca_label -t $FREESURFER_HOME/FreeSurferColorLUT.txt -aseg ../mri/aseg.presurf.medial.mgz $SUBJID $CURHEMI sphere.reg /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/${CURHEMI}.aparc.gcs ../label/${CURHEMI}.aparc.annot
+	cd $CURDIR
+done
