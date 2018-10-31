@@ -26,10 +26,32 @@ fi
 export LD_LIBRARY_PATH=$HOME/local/VTK-8.1.1/lib:$P/lib:$LD_LIBRARY_PATH
 #export PYTHONPATH=$PYTHONPATH:$HOME/AARNETownCloud/pyconnectivity
 
-OUTDIR=SurfExtractDeformable
+OUTDIR=SurfReconDeformable
 
 mkdir -p $OUTDIR/$SUBJID
 
 echo recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
-recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
+#recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex.cfg -s $SUBJID -t 1 -v -d -f
+
+HEMIS="lh
+rh"
+
+SURFS="white
+pial"
+
+mkdir -p freesurfer/$SUBJID/surf
+mkdir -p freesurfer/$SUBJID/label
+
+for HEMI in $HEMIS
+do
+	for SURF in $SURFS
+	do
+		echo $HEMI $SURF
+		VTPExtractAll --surf-volgeom=TissueSeg/${SUBJID}_all_labels.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+		mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
+		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.curv
+		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.surf
+	done
+done
+
