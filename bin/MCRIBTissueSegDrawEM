@@ -1,0 +1,32 @@
+#!/bin/bash
+
+INDIR=RawT2RadiologicalIsotropic
+
+if [ -z "$1" ]
+then
+	echo "Usage $0 <subjid>"
+	exit
+fi
+
+if [ -z "$2" ]
+then
+	SUBJAGE=40
+else
+	SUBJAGE=$2
+fi
+
+SUBJID=$1
+
+OUTDIR=TissueSegDrawEM/$SUBJID
+if [ ! -f "$INDIR/${SUBJID}.nii.gz" ]
+then
+	echo "Input file not found"
+else
+	mkdir -p $OUTDIR
+	$HOME/dev/MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $OUTDIR -t `nproc` -c 0 -p 1 -v 1
+fi
+
+#echo "/exports/addo/dev/MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh RawData/P${NUM}_t2.nii.gz 40 -d DrawEM2/P$NUM -c 0 -p 1 -t 1 -v 1" >> $T
+#if [ -f "DrawEM/$B/segmentations/${B}_all_labels.nii.gz" ]
+#then
+#fi

@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+
+import nibabel
+import os
+import sys
+import numpy
+import scipy
+
+import NIFTIOrientationTools
+import Utils
+
+if not os.path.isfile(sys.argv[1]):
+	print "Input file not found: " + sys.argv[1]
+	quit()
+
+inputNII = nibabel.load(sys.argv[1])
+outputFileName = sys.argv[3]
+
+(outputDir, Junk) = os.path.split(outputFileName)
+
+Utils.mkdirSafe(outputDir)
+
+# make axis codes for axial slices, radiological
+refAXCodes = ('L', 'A', 'S')
+refOrnt = nibabel.orientations.axcodes2ornt(refAXCodes)
+
+inputAXCodes = nibabel.aff2axcodes(inputNII.affine)
+inputOrnt = nibabel.orientations.axcodes2ornt(inputAXCodes)
+
+inputToRefTransform = nibabel.orientations.ornt_transform(inputOrnt, refOrnt)
+outputIMG = nibabel.orientations.apply_orientation(inputNII.get_data(), inputToRefTransform)
+
+newAffine = NIFTIOrientationTools.applyOrntToNIIAffine(inputNII, inputToRefTransform)
+
+oldPixDims = numpy.ravel(numpy.array(numpy.sqrt(numpy.sum(numpy.multiply(newAffine[0:3, 0:3], newAffine[0:3, 0:3]), axis = 1))))
+
+try:
+	newVoxelSize = float(sys.argv[2])
+except Exception:
+	# it is volume preserving
+	oldVol = numpy.prod(oldPixDims)
+	# numpy.cbrt is cube-root
+	newVoxelSize = numpy.cbrt(oldVol)
+
+	print("Volume preserving " + str(newVoxelSize))
+
+# set the new pixel dimensions
+newAffine[0:3, 0:3] = newAffine[0:3, 0:3] / oldPixDims * newVoxelSize
+
+# resample 
+oldxx = numpy.arange(outputIMG.shape[0]) * oldPixDims[0]
+oldyy = numpy.arange(outputIMG.shape[1]) * oldPixDims[1]
+oldzz = numpy.arange(outputIMG.shape[2]) * oldPixDims[2]
+
+# make 
+newxx = numpy.arange(0, oldxx[-1] + newVoxelSize / 2, newVoxelSize)
+newyy = numpy.arange(0, oldyy[-1] + newVoxelSize / 2, newVoxelSize)
+newzz = numpy.arange(0, oldzz[-1] + newVoxelSize / 2, newVoxelSize)
+
+newX, newY, newZ = numpy.meshgrid(newxx, newyy, newzz, indexing = 'ij')
+
+newIMG = Utils.interp3q(oldyy, oldxx, oldzz, numpy.double(outputIMG), newY, newX, newZ, extrapval = 0)
+newIMG = newIMG.astype(inputNII.get_data_dtype())
+
+newNII = nibabel.Nifti1Image(newIMG, affine = newAffine)
+nibabel.save(newNII, outputFileName)
