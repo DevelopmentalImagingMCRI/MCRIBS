@@ -1,0 +1,14 @@
+#!/bin/bash
+
+SUBJID=$1
+HEMI=$2
+
+cd $SUBJECTS_DIR/$SUBJID/surf
+
+LEVEL=2
+
+echo $0 $1 $2
+
+
+#mris_register -curv ../surf/${HEMI}.sphere $SUBJECTS_DIR/sphere_template/${HEMI}.template${LEVEL}.tif ../surf/${HEMI}.sphere.reg$LEVEL
+#fi

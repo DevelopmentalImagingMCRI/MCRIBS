@@ -1,0 +1,337 @@
+#!/usr/bin/env python
+
+import vtk
+import numpy
+import sys
+import os
+import freesurfer
+import nibabel
+import getopt
+
+import VTPUtils
+import GraphUtils
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
+
+if len(args) != 2:
+	print "The number of arguments must be 1"
+	print sys.argv[0] + " <deformable directory> <output directory>"
+	exit()
+
+#numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
+
+geometryNIIFile = None
+
+verbose = False
+for o, a in opts:
+	if o == '--surf-volgeom':
+		geometryNIIFile = a
+	if o == '-v':
+		verbose = True
+
+
+# for each vertex in V1, finds the equal point in V2
+def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None):
+	T = numpy.concatenate((V1['vertices'], V2['vertices']), axis = 1)
+	I = numpy.lexsort(T)
+	IDX = numpy.concatenate((numpy.arange(V1['vertices'].shape[1]), numpy.arange(V2['vertices'].shape[1])))
+	I = numpy.lexsort(T)
+	SortedT = numpy.take(T, I, axis = 1)
+	SortedIDX = IDX[I]
+	D = numpy.where(numpy.all(numpy.diff(SortedT, axis = 1) == 0, axis = 0))[0]
+	SameIDX = dict()
+	
+	SrcIDX = numpy.zeros(V1['vertices'].shape[1], dtype = numpy.int32)
+	SrcIDX.fill(-1)
+
+	for z in range(D.size):
+		SrcIDX[SortedIDX[D[z]]] = SortedIDX[D[z] + 1]
+	
+	if not V1Mask is None and not V2Mask is None:
+		V1MaskIDX = numpy.where(V1Mask)[0]
+		V2MaskIDX = numpy.where(V2Mask)[0]
+		T = V2['vertices'][:, V2Mask]
+		print str(numpy.sum(numpy.logical_and(SrcIDX == -1, V1Mask == True)))
+		for z in range(SrcIDX.size):
+			if SrcIDX[z] == -1 and V1Mask[z] == True:
+
+				XC = numpy.atleast_2d(V1['vertices'][:, SrcIDX[z]]).T - T
+				D = numpy.sqrt(numpy.sum(XC * XC, axis = 0))
+				SrcIDX[z] = V2MaskIDX[numpy.argmin(D)]
+
+	return SrcIDX
+
+# returns a vertex-face index list
+def vertexFaceIDX(F):
+	numVertices = numpy.max(F) + 1
+
+	vertexFaceIDX = list()
+	for z in range(numVertices):
+		vertexFaceIDX.append(list())
+	
+	for z in range(F.shape[1]):
+		vertexFaceIDX[F[0, z]].append(z)
+		vertexFaceIDX[F[1, z]].append(z)
+		vertexFaceIDX[F[2, z]].append(z)
+	
+	for z in range(numVertices):
+		vertexFaceIDX[z] = numpy.array(vertexFaceIDX[z])
+	return vertexFaceIDX
+
+def vertexRegionId(F, FaceRegionId):
+	numVertices = numpy.max(F) + 1
+	VRegionId = numpy.zeros(numVertices, dtype = numpy.int8)
+	(U, I, J) = numpy.unique(FaceRegionId, return_index = True, return_inverse = True)
+
+	VertexFaceIDX = vertexFaceIDX(F)
+
+	for z in range(VRegionId.size):
+		H = numpy.bincount(J[VertexFaceIDX[z]], minlength = U.size)
+		VRegionId[z] = U[numpy.argmax(H)]
+	return VRegionId
+
+def replaceUnvisitedVertices(S, visitedMask):
+	if numpy.all(visitedMask):
+		return S
+	
+	vertexNeighbours = GraphUtils.getVertexNeighbours(S)
+
+	outVisitedMask = numpy.array(visitedMask)
+	
+	print "replacing unvisited"
+	Iter = 0
+	while True:
+		I = numpy.where(numpy.logical_not(outVisitedMask))[0]
+		print I
+		if I.size == 0:
+			break
+		for z in range(I.size):
+			curNeighbours = vertexNeighbours[I[z]]
+			curNeighbours = curNeighbours[outVisitedMask[curNeighbours] == True]
+			if curNeighbours.size > 0:
+				S['vertices'][:, I[z]] = numpy.mean(numpy.take(S['vertices'], curNeighbours, axis = 1), axis = 1)
+				outVisitedMask[I[z]] = True
+
+		Iter = Iter + 1
+	return S
+
+
+def replaceUnvisitedVerticesSmooth(S, visitedMask):
+	if numpy.all(visitedMask):
+		return S
+	
+	vertexNeighbours = GraphUtils.getVertexNeighbours(S)
+
+	I = numpy.where(numpy.logical_not(visitedMask))[0]
+
+
+	for Iter in range(1000):
+		oldVertices = numpy.array(S['vertices'])
+		for z in range(I.size):
+			curNeighbours = vertexNeighbours[I[z]]
+			if curNeighbours.size > 0:
+				S['vertices'][:, I[z]] = numpy.mean(numpy.take(oldVertices, curNeighbours, axis = 1), axis = 1)
+	return S
+
+
+
+inDir = args[0]
+outDir = args[1]
+
+VTKLoad = True
+if VTKLoad == True:
+	WhiteInternalSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white+internal.vtp'))
+	WhiteSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white.vtp'))
+	WhiteLHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white-lh.vtp'))
+	WhiteRHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white-rh.vtp'))
+	PialInternalSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial+internal.vtp'))
+	PialSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial.vtp'))
+	PialLHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-lh.vtp'))
+	PialRHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-rh.vtp'))
+	Pial3Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-3.vtp'))
+	Pial4Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-4.vtp'))
+	Pial5Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-5.vtp'))
+	Pial6Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-6.vtp'))
+else:
+	WhiteInternalSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white+internal_world.surf'))
+	WhiteSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white_world.surf'))
+	WhiteLHSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white-lh_world.surf'))
+	WhiteRHSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white-rh_world.surf'))
+	PialInternalSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial+internal_world.surf'))
+	PialSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial_world.surf'))
+	PialLHSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial-lh_world.surf'))
+	PialRHSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial-rh_world.surf'))
+	Pial3Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-3_world.surf'))
+	Pial4Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-4_world.surf'))
+	Pial5Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-5_world.surf'))
+	Pial6Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-6_world.surf'))
+
+if WhiteInternalSurf is None:
+    print "WhiteInternalSurf not found"
+    exit()
+    
+if WhiteSurf is None:
+    print "WhiteInternalSurf not found"
+    exit()
+
+if WhiteLHSurf is None:
+    print "WhiteLHSurf not found"
+    exit()
+if WhiteRHSurf is None:
+    print "WhiteRHSurf not found"
+    exit()
+if PialInternalSurf is None:
+    print "PialInternalSurf not found"
+    exit()
+if PialSurf is None:
+    print "PialSurf not found"
+    exit()
+if PialLHSurf is None:
+    print "PialLHSurf not found"
+    exit()
+if PialRHSurf is None:
+    print "PialRHSurf not found"
+    exit()
+if Pial3Surf is None:
+    print "Pial3Surf not found"
+    exit()
+if Pial4Surf is None:
+    print "Pial4Surf not found"
+    exit()
+if Pial5Surf is None:
+    print "Pial5Surf not found"
+    exit()
+if Pial6Surf is None:
+    print "Pial6Surf not found"
+    exit()
+
+#Pial5RegionId = VTPUtils.readVTPCellArray(os.path.join(inDir, 'temp', 'pial-5.vtp'), 'RegionId')
+#Pial6RegionId = VTPUtils.readVTPCellArray(os.path.join(inDir, 'temp', 'pial-6.vtp'), 'RegionId')
+#Pial5VRegionId = vertexRegionId(Pial5Surf['faces'], Pial5RegionId)
+#Pial6VRegionId = vertexRegionId(Pial6Surf['faces'], Pial6RegionId)
+
+WhiteLHWhiteInternalEqual = findEqualPoints(WhiteLHSurf, WhiteInternalSurf)
+WhiteRHWhiteInternalEqual = findEqualPoints(WhiteRHSurf, WhiteInternalSurf)
+
+WhiteLHWhiteEqual = findEqualPoints(WhiteLHSurf, WhiteSurf)
+WhiteRHWhiteEqual = findEqualPoints(WhiteRHSurf, WhiteSurf)
+WhiteWhiteLHEqual = findEqualPoints(WhiteSurf, WhiteLHSurf)
+WhiteWhiteRHEqual = findEqualPoints(WhiteSurf, WhiteRHSurf)
+
+WhiteInternalEqual = findEqualPoints(WhiteInternalSurf, WhiteSurf)
+WhiteWhiteInternalEqual = findEqualPoints(WhiteInternalSurf, WhiteSurf)
+
+#Pial6PialEqual = findEqualPoints(Pial6Surf, PialSurf)
+#print "Doing equal"
+#Pial6Pial5Equal = findEqualPoints(Pial6Surf, Pial5Surf, V1Mask = Pial6VRegionId == 4, V2Mask = Pial5VRegionId == 4)
+Pial6Pial5Equal = findEqualPoints(Pial6Surf, Pial5Surf)
+#raise
+Pial5Pial4Equal = findEqualPoints(Pial5Surf, Pial4Surf)
+Pial4Pial3Equal = findEqualPoints(Pial4Surf, Pial3Surf)
+
+PialPial6Equal = findEqualPoints(PialSurf, Pial6Surf)
+PialPialInternalEqual = findEqualPoints(PialSurf, PialInternalSurf)
+PialLHPialEqual = findEqualPoints(PialLHSurf, PialSurf)
+PialRHPialEqual = findEqualPoints(PialRHSurf, PialSurf)
+PialLHPialInternalEqual = findEqualPoints(PialLHSurf, PialInternalSurf)
+PialRHPialInternalEqual = findEqualPoints(PialRHSurf, PialInternalSurf)
+
+PialLHPialCortexMask = (PialLHPialEqual > -1)
+PialLHPialCortexIDX = numpy.where(PialLHPialCortexMask)[0]
+
+PialRHPialCortexMask = (PialRHPialEqual > -1)
+PialRHPialCortexIDX = numpy.where(PialRHPialCortexMask)[0]
+
+LHUpToPial5 = Pial5Pial4Equal[PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]]
+RHUpToPial5 = Pial5Pial4Equal[PialPial6Equal[PialRHPialEqual[PialRHPialCortexMask]]]
+
+LHI = numpy.where(LHUpToPial5 < 0)[0]
+RHI = numpy.where(RHUpToPial5 < 0)[0]
+
+if LHI.size > 0:
+# find closest vertices in Pial4 from the failed vertices in Pial5
+	T = numpy.take(Pial5Surf['vertices'], PialLHPialCortexIDX[LHI], axis = 1)
+	XC = numpy.atleast_2d(T[0]).T - Pial4Surf['vertices'][0]
+	YC = numpy.atleast_2d(T[1]).T - Pial4Surf['vertices'][1]
+	ZC = numpy.atleast_2d(T[2]).T - Pial4Surf['vertices'][2]
+	MinI = numpy.argmin(numpy.sqrt(XC * XC + YC * YC + ZC * ZC), axis = 1)
+	LHUpToPial5[LHUpToPial5 < 0] = MinI
+
+if RHI.size > 0:
+# find closest vertices in Pial4 from the failed vertices in Pial5
+	T = numpy.take(Pial5Surf['vertices'], PialRHPialCortexIDX[RHI], axis = 1)
+	XC = numpy.atleast_2d(T[0]).T - Pial4Surf['vertices'][0]
+	YC = numpy.atleast_2d(T[1]).T - Pial4Surf['vertices'][1]
+	ZC = numpy.atleast_2d(T[2]).T - Pial4Surf['vertices'][2]
+	MinI = numpy.argmin(numpy.sqrt(XC * XC + YC * YC + ZC * ZC), axis = 1)
+	RHUpToPial5[RHUpToPial5 < 0] = MinI
+
+
+LHIDX = WhiteWhiteLHEqual[Pial4Pial3Equal[LHUpToPial5]]
+RHIDX = WhiteWhiteRHEqual[Pial4Pial3Equal[RHUpToPial5]]
+
+#LHIDXMask = numpy.zeros(PialLHPialEqual.size, dtype = numpy.bool)
+#LHIDXMask[LHIDX] = True
+
+#outS = dict()
+#outS['faces'] = numpy.array(Pial6Surf['faces'])
+#
+#outS['vertices'] = numpy.zeros_like(Pial6Surf['vertices'])
+#outS['vertices'][:, PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]] = PialLHSurf['vertices'][:, PialLHPialCortexMask]
+##outS['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]] = PialLHSurf['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]]
+##outS['vertices'][:, numpy.logical_not(PialLHPialCortexMask)] = WhiteLHSurf['vertices'][:, numpy.logical_not(PialLHPialCortexMask)]
+#freesurfer.writeSurf(outS, 'test_6_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNII)
+#
+#outS = dict()
+#outS['faces'] = numpy.array(Pial4Surf['faces'])
+#
+#outS['vertices'] = numpy.zeros_like(Pial4Surf['vertices'])
+#outS['vertices'][:, UpToPial5] = PialLHSurf['vertices'][:, PialLHPialCortexMask]
+##outS['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]] = PialLHSurf['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]]
+##outS['vertices'][:, numpy.logical_not(PialLHPialCortexMask)] = WhiteLHSurf['vertices'][:, numpy.logical_not(PialLHPialCortexMask)]
+#freesurfer.writeSurf(outS, 'test_4_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNII)
+#
+#
+
+# store the indices that were updated and which ones were not
+outLHMask = numpy.zeros(PialLHSurf['vertices'].shape[1], dtype = numpy.bool)
+outRHMask = numpy.zeros(PialRHSurf['vertices'].shape[1], dtype = numpy.bool)
+
+outS = dict()
+outS['faces'] = numpy.array(WhiteLHSurf['faces'])
+outS['vertices'] = numpy.zeros_like(PialLHSurf['vertices'])
+outS['vertices'][:, LHIDX] = PialLHSurf['vertices'][:, PialLHPialCortexIDX]
+#outS['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]] = PialLHSurf['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]]
+
+
+outS['vertices'][:, numpy.logical_not(PialLHPialCortexMask)] = WhiteLHSurf['vertices'][:, numpy.logical_not(PialLHPialCortexMask)]
+outLHMask[LHIDX] = True
+outLHMask = numpy.logical_or(numpy.logical_not(PialLHPialCortexMask), outLHMask)
+outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
+outC = dict()
+outC['numVertices'] = PialLHSurf['vertices'].shape[1]
+outC['numFaces'] = PialLHSurf['faces'].shape[1]
+outC['values'] = numpy.single(outLHMask)
+freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.pial.visited.curv'))
+
+freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.reordered.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+
+outS = dict()
+outS['faces'] = numpy.array(WhiteRHSurf['faces'])
+outS['vertices'] = numpy.zeros_like(PialRHSurf['vertices'])
+outS['vertices'][:, RHIDX] = PialRHSurf['vertices'][:, PialRHPialCortexIDX]
+#outS['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]] = PialLHSurf['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]]
+
+outS['vertices'][:, numpy.logical_not(PialRHPialCortexMask)] = WhiteRHSurf['vertices'][:, numpy.logical_not(PialRHPialCortexMask)]
+
+outRHMask[RHIDX] = True
+outRHMask = numpy.logical_or(numpy.logical_not(PialRHPialCortexMask), outRHMask)
+
+outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
+freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.reordered.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+
+outC = dict()
+outC['numVertices'] = PialRHSurf['vertices'].shape[1]
+outC['numFaces'] = PialRHSurf['faces'].shape[1]
+outC['values'] = numpy.single(outRHMask)
+freesurfer.writeCurv(outC, os.path.join(outDir, 'rh.pial.visited.curv'))

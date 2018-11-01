@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+export SUBJECTS_DIR=`pwd`/freesurfer
+cd $SUBJECTS_DIR/$SUBJID/mri
+
+if [ -f "aseg.presurf.preunwmfix.mgz" ]
+then
+	ASEGFILE=aseg.presurf.preunwmfix
+else
+	ASEGFILE=aseg.presurf
+fi
+
+mris_volmask --aseg_name $ASEGFILE --label_left_white 2 --label_left_ribbon 3 --label_right_white 41 --label_right_ribbon 42  --save_ribbon $SUBJID
+
+if [ "$ASEGFILE" == "aseg.presurf.preunwmfix" ]
+then
+	echo "Running DrawEM fix"
+	ASEGDilateUnmWMFix $ASEGFILE.mgz ribbon.mgz aseg.presurf.mgz
+fi
