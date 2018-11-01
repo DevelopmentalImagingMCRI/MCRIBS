@@ -46,11 +46,14 @@ def main():
 	surfRegArgGroup = argParser.add_argument_group('surfreg', 'Perform surface registration to the spherical template, depends --surfrecon')
 	surfRegArgGroup.add_argument('--surfreg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 	
+	cortribbonArgGroup = argParser.add_argument_group('cortribbon', 'Perform cortical ribbon volume generation, depends --surfrecon')
+	cortribbonArgGroup.add_argument('--cortribbon', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+	
 	surfParcArgGroup = argParser.add_argument_group('cortparc', 'Perform cortical parcellation, depends on --surfreg')
 	surfParcArgGroup.add_argument('--surfparc', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 	surfParcArgGroup.add_argument('--surfparcatlas', help = "Parcellation scheme to use", required = False, choices = ['aparc', 'aparc+DKTatlas'], default = 'aparc+DKTatlas')
 
-	argParser.add_argument('-openmp', '--openmp', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
+	argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
 	argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
 	
 	argParser.add_argument('subjectid', help = "The subject ID, must have RawT2/<subjectid>.nii.gz")
@@ -59,7 +62,7 @@ def main():
 	
 	#argParser.print_help()
 	print(vars(options))
-	print(type(options.openmp))
+#print(type(options.openmp))
 	#quit()
 	anyProcessingStep = False
 
@@ -71,7 +74,12 @@ def main():
 	#	print("No processing steps specified")
 	#	argParser.print_help()
 	#	quit()
-
+	
+	Hemis = ['lh', 'rh']
+	
+	if not options.hemi is None:
+		Hemis = [options.hemi]
+	
 	if options.conform == True:
 		cmd = ["MCRIBConform", os.path.join('RawT2', options.subjectid + ".nii.gz"), options.voxelsize, os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz")]
 		runCommand(cmd)
@@ -93,174 +101,19 @@ def main():
 		cmd = ["MCRIBInflateSphere", options.subjectid]
 		runCommand(cmd)
 		pass
+	
+	if options.cortribbon == True:
+		cmd = ["MCRIBVolMask", options.subjectid]
+		runCommand(cmd)
+		pass
+	
+	if options.surfreg == True:
+		for curHemi in Hemis:
+			cmd = ["MCRIBSurfReg", options.subjectid, curHemi]
+			runCommand(cmd)
+		pass
 		
 	quit()
-	if doProcessingSteps['struct-neckcrop']:
-		cmd = ["StructNeckCrop", subjectID]
-		runCommand(cmd)
-		pass
-	
-	if doProcessingSteps['struct-biascorrect']:
-		N4Options = structN4DefaultOptions()
-		if structBiasCorrectN4Options != None:
-			N4Options.extend(structBiasCorrectN4Options)
-
-		cmd = ["StructBiasCorrect", subjectID]
-		cmd.extend(N4Options)
-		#print cmd
-		runCommand(cmd)
-		pass
-	
-	if doProcessingSteps['struct-freesurfer']:
-
-		cmd = ["StructFreesurfer", subjectID]
-		if freesurferRun == True:
-			cmd.append("--run")
-		else:
-			cmd.append("--no-run")
-
-		if structFreesurferUseBiasCorrected == True:
-			cmd.append("--biascorrected")
-		else:
-			cmd.append("--raw")
-
-		if extraFreesurferOptions != None:
-			cmd.extend(extraFreesurferOptions)
-
-		runCommand(cmd)
-		pass
-	
-	if doProcessingSteps['struct-skullstrip']:
-		cmd = ["StructSkullStrip", subjectID, structSkullStripMethod]
-		runCommand(cmd)
-		pass
-	
-	if doProcessingSteps['struct-extractfreesurferbaselabels']:
-		cmd = ["StructExtractFreesurferBaseLabels", subjectID, str(MrtrixVersionToUse)]
-		if freesurferLongSubject != None:
-			cmd.extend([freesurferLongSubject])
-		runCommand(cmd)
-		pass
-	
-	if doProcessingSteps['dwi-reorient']:
-		#cmd = ["DWIReorient", subjectID]
-		#runCommand(cmd)
-
-		pass
-
-	if doProcessingSteps['dwi-topup']:
-		pass
-
-	if doProcessingSteps['dwi-eddy']:
-		pass
-
-	if doProcessingSteps['dwi-savebzero']:
-		cmd = ["DWISaveBZero", subjectID]
-		if DWIUseEddy == True:
-			cmd.append('--use-eddy')
-		runCommand(cmd)
-		pass
-
-	if doProcessingSteps['dwi-skullstrip']:
-		cmd = ["DWISkullStrip", subjectID]
-		runCommand(cmd)
-		pass
-	
-	if doProcessingSteps['dwi-distortioncorrect']:
-		cmd = ["DWIDistortionCorrect", subjectID, DWIDistortionCorrectMethod]
-		runCommand(cmd)
-		pass
-	
-	if doProcessingSteps['dwi-regtostruct']:
-		cmd = ["DWIRegToStruct", subjectID, DWIDistortionCorrectMethod]
-		runCommand(cmd)
-		pass
-
-	if doProcessingSteps['dwi-mrtrixpreprocess']:
-		
-		#--mrtrix-no-struct-space: do not create structural space outputs", \
-	#"\t\t\t--mrtrix-no-struct-linear: do not create structural space linear only outputs", \
-	#"\t\t\t--mrtrix-no-nobrotation: do not create outputs that do not have rotated b-vectors", \
-	#"", \
-
-		
-		if DWIUseEddy == True:
-			MrtrixCommand = 'DWIMrtrixPreprocessMrtrixEddy'
-			cmd = [MrtrixCommand, subjectID, 'mrtrixEddy', os.path.join('DWIEddy', subjectID + '.nii.gz'), os.path.join('DWISkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIEddy', subjectID + ".eddy_rotated_bvecs"), os.path.join('RawDWI', subjectID + ".bval")]
-			subprocess.call(cmd)
-		else:
-			MrtrixCommand = 'DWIMrtrixPreprocessMrtrix' + str(MrtrixVersionToUse)
-			if MrtrixDWISpaceNoBRotation == True:
-				cmd = [MrtrixCommand, subjectID, 'mrtrix' + str(MrtrixVersionToUse) + 'DWISpaceNoBReorient', os.path.join('DWIEddyCorrected', subjectID + '.nii.gz'), os.path.join('DWISkullStripped', subjectID + "_mask.nii.gz"), os.path.join('RawDWI', subjectID + ".grad")]
-				if MrtrixCSDLMAX != None:
-					cmd.append(MrtrixCSDLMAX)
-				runCommand(cmd)
-			
-			if MrtrixDWISpaceBRotation == True:
-				cmd = [MrtrixCommand, subjectID, 'mrtrix' + str(MrtrixVersionToUse) + 'DWISpaceBReorient', os.path.join('DWIEddyCorrected', subjectID + '.nii.gz'), os.path.join('DWISkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIEddyCorrected', subjectID + '.grad')]
-				if MrtrixCSDLMAX != None:
-					cmd.append(MrtrixCSDLMAX)
-				runCommand(cmd)
-
-			if MrtrixT1SpaceNoBRotation == True:
-				cmd = [MrtrixCommand, subjectID, 'mrtrix' + str(MrtrixVersionToUse) + 'StructSpaceNoBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('RawDWI', subjectID + ".grad")]
-				if MrtrixCSDLMAX != None:
-					cmd.append(MrtrixCSDLMAX)
-				runCommand(cmd)
-
-#		if MrtrixNoStructSpace == False and MrtrixNoNoBRotation == False:
-			if MrtrixT1SpaceNoBRotation == True:
-				cmd = [MrtrixCommand, subjectID, 'mrtrix' + str(MrtrixVersionToUse) + 'StructSpaceBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.grad')]
-				if MrtrixCSDLMAX != None:
-					cmd.append(MrtrixCSDLMAX)
-				runCommand(cmd)
-#		
-#		#cmd = [MrtrixCommand, subjectID, 'mrtrix' + str(MrtrixVersionToUse) + 'T1SpaceNoEddyBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIRegToStruct', subjectID, 'linear_reg_no_eddy_reorient.grad')]
-#		#runCommand(cmd)
-#		
-#		if MrtrixNoStructSpace == False and MrtrixNoStructLinear == False and MrtrixNoNoBRotation == False:
-#			cmd = [MrtrixCommand, subjectID, 'mrtrix' + str(MrtrixVersionToUse) + 'T1LinearSpaceNoBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_linear_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('RawDWI', subjectID + ".grad")]
-#			if MrtrixCSDLMAX != None:
-#				cmd.append(MrtrixCSDLMAX)
-#			runCommand(cmd)
-#
-#		if MrtrixNoStructSpace == False and MrtrixNoStructLinear == False and MrtrixNoNoBRotation == False:
-#			cmd = [MrtrixCommand, subjectID, 'mrtrix' + str(MrtrixVersionToUse) + 'T1LinearSpaceBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_linear_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.grad')]
-#			if MrtrixCSDLMAX != None:
-#				cmd.append(MrtrixCSDLMAX)
-#			runCommand(cmd)
-#		#if MrtrixNoNoBRotation == False:
-
-	#	cmd = [MrtrixCommand, subjectID, 'mrtrix' + str(MrtrixVersionToUse) + 'DWISpaceBReorient', os.path.join('DWIEddyCorrected', subjectID + '.nii.gz'), os.path.join('DWISkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIRegToStruct', subjectID, 'dwi_eddy_reorient.grad')]
-		
-#		elif MrtrixVersionToUse == 3:
-#			#cmd = ["DWIMrtrixPreprocessMrtrix3", subjectID, 'mrtrix3T1SpaceNoBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('RawDWI', subjectID + ".grad")]
-#			#runCommand(cmd)
-#			cmd = ["DWIMrtrixPreprocessMrtrix3", subjectID, 'mrtrix3T1SpaceBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.grad')]
-#			runCommand(cmd)
-#			#cmd = ["DWIMrtrixPreprocessMrtrix3", subjectID, 'mrtrix3T1SpaceNoEddyBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIRegToStruct', subjectID, 'linear_reg_no_eddy_reorient.grad')]
-#			#runCommand(cmd)
-#			
-#			#cmd = ["DWIMrtrixPreprocessMrtrix3", subjectID, 'mrtrix3T1LinearSpaceNoBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_linear_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('RawDWI', subjectID + ".grad")]
-#			#runCommand(cmd)
-#			#cmd = ["DWIMrtrixPreprocessMrtrix3", subjectID, 'mrtrix3T1LinearSpaceBReorient', os.path.join('DWIRegToStruct', subjectID, 'dwi_linear_raw_reg.nii.gz'), os.path.join('T1SkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIRegToStruct', subjectID, 'dwi_ants_raw_reg.grad')]
-#			#runCommand(cmd)
-#			cmd = ["DWIMrtrixPreprocessMrtrix3", subjectID, 'mrtrix3DWISpaceNoBReorient', os.path.join('DWIEddyCorrected', subjectID + '.nii.gz'), os.path.join('DWISkullStripped', subjectID + "_mask.nii.gz"), os.path.join('RawDWI', subjectID + ".grad")]
-#			runCommand(cmd)
-#			cmd = ["DWIMrtrixPreprocessMrtrix3", subjectID, 'mrtrix3DWISpaceBReorient', os.path.join('DWIEddyCorrected', subjectID + '.nii.gz'), os.path.join('DWISkullStripped', subjectID + "_mask.nii.gz"), os.path.join('DWIRegToStruct', subjectID, 'dwi_eddy_reorient.grad')]
-#			runCommand(cmd)
-#
-#		pass
-#	
-#if doProcessingSteps['struct-regfreesurfertodwi']:
-#		pass
-	
-	if doProcessingSteps['conn-generateseeds']:
-		cmd = ["ConnGenerateSeeds", subjectID]
-		if connSchemes != None:
-			cmd.extend(connSchemes.split(','))
-		runCommand(cmd)
-		pass
 #def main():
 
 if __name__ == "__main__":
