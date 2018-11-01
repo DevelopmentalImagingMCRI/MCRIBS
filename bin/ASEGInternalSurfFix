@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+
+import vtk
+import numpy
+import sys
+import os
+import freesurfer
+import nibabel
+
+import scipy.ndimage.morphology 
+
+if len(sys.argv) < 4:
+	print "Incorrect number of arguments"
+	print
+	print "Usage: " + sys.argv[0] + " <vtp file> <aseg volume> <fixed aseg volume>"
+	quit()
+
+inFileName = sys.argv[1]
+
+if not os.path.isfile(inFileName):
+	print "Input file not found"
+	quit()
+
+Reader = vtk.vtkXMLPolyDataReader()
+Reader.SetFileName(inFileName)
+Reader.Update()
+
+Data = Reader.GetOutput()
+Vrts = Data.GetVerts()
+indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
+
+S = dict()
+S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
+S['vertices'] = numpy.stack(S['vertices']).T
+
+if Data.GetNumberOfPolys() > 0:
+	S['faces'] = [[int(Data.GetPolys().GetData().GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
+	S['faces'] = numpy.stack(S['faces']).T
+	#print(S['faces'][:, 0])
+	#S['faces'] = numpy.array(numpy.take(S['faces'], numpy.array([1, 0, 2]), axis = 0))
+	#print(S['faces'][:, 0])
+
+ASEGMGZ = nibabel.load(sys.argv[2])
+
+I = numpy.linalg.inv(ASEGMGZ.get_affine())
+
+TV = numpy.dot(I[:3, :3], S['vertices']) + numpy.atleast_2d(I[:3, 3]).T
+
+#NewIMG = numpy.array(ASEGMGZ.get_data())
+
+#$ThalamusLabel = 10
+
+#NewIMG[(numpy.int64(numpy.floor(TV[0])), numpy.int64(numpy.floor(TV[1])), numpy.int64(numpy.floor(TV[2])))] = ThalamusLabel 
+#NewIMG[(numpy.int64( numpy.ceil(TV[0])), numpy.int64(numpy.floor(TV[1])), numpy.int64(numpy.floor(TV[2])))] = ThalamusLabel  
+#NewIMG[(numpy.int64(numpy.floor(TV[0])),  numpy.int64(numpy.ceil(TV[1])), numpy.int64(numpy.floor(TV[2])))] = ThalamusLabel 
+#NewIMG[(numpy.int64( numpy.ceil(TV[0])),  numpy.int64(numpy.ceil(TV[1])), numpy.int64(numpy.floor(TV[2])))] = ThalamusLabel 
+#NewIMG[(numpy.int64(numpy.floor(TV[0])), numpy.int64(numpy.floor(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = ThalamusLabel 
+#NewIMG[(numpy.int64( numpy.ceil(TV[0])), numpy.int64(numpy.floor(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = ThalamusLabel 
+#NewIMG[(numpy.int64(numpy.floor(TV[0])),  numpy.int64(numpy.ceil(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = ThalamusLabel 
+#NewIMG[(numpy.int64( numpy.ceil(TV[0])),  numpy.int64(numpy.ceil(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = ThalamusLabel 
+
+NewIMG = numpy.array(ASEGMGZ.get_data())
+NewMask = numpy.zeros(ASEGMGZ.shape, dtype = numpy.bool)
+
+ThalamusLabel = 10
+
+NewMask[(numpy.int64(numpy.floor(TV[0])), numpy.int64(numpy.floor(TV[1])), numpy.int64(numpy.floor(TV[2])))] = True 
+NewMask[(numpy.int64( numpy.ceil(TV[0])), numpy.int64(numpy.floor(TV[1])), numpy.int64(numpy.floor(TV[2])))] = True  
+NewMask[(numpy.int64(numpy.floor(TV[0])),  numpy.int64(numpy.ceil(TV[1])), numpy.int64(numpy.floor(TV[2])))] = True 
+NewMask[(numpy.int64( numpy.ceil(TV[0])),  numpy.int64(numpy.ceil(TV[1])), numpy.int64(numpy.floor(TV[2])))] = True 
+NewMask[(numpy.int64(numpy.floor(TV[0])), numpy.int64(numpy.floor(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = True 
+NewMask[(numpy.int64( numpy.ceil(TV[0])), numpy.int64(numpy.floor(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = True 
+NewMask[(numpy.int64(numpy.floor(TV[0])),  numpy.int64(numpy.ceil(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = True 
+NewMask[(numpy.int64( numpy.ceil(TV[0])),  numpy.int64(numpy.ceil(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = True 
+
+# dilate
+NewMask = scipy.ndimage.morphology.binary_dilation(NewMask)
+
+WMGM = numpy.in1d(NewIMG, numpy.array([2, 3, 41, 42]))
+WMGM = numpy.reshape(WMGM, NewIMG.shape)
+
+NewIMG[numpy.logical_and(NewMask, numpy.logical_not(WMGM))] = ThalamusLabel
+
+CCSEGIMG = numpy.reshape(numpy.in1d(NewIMG, numpy.array([250, 251, 252, 253, 254, 255, 10])), NewIMG.shape)
+CCSEGIMG = scipy.ndimage.morphology.binary_dilation(CCSEGIMG, iterations = 1)
+NewIMG[CCSEGIMG] = 255
+
+#replace brainstem with thalamus
+NewIMG[NewIMG == 16] = ThalamusLabel
+
+#replace CSF with thalamus
+#NewIMG[NewIMG == 24] = ThalamusLabel # cant do this
+
+#replace hippocampus with thalamus
+#NewIMG[NewIMG == 17] = ThalamusLabel
+#NewIMG[NewIMG == 53] = ThalamusLabel
+
+NewMGZ = nibabel.MGHImage(NewIMG, ASEGMGZ.get_affine())
+nibabel.save(NewMGZ, sys.argv[3])
+#numpy.set_printoptions(precision=4, formatter={'float': '{: 0.3f}'.format})
+#try:
+#	freesurfer.writeSurf(S, sys.argv[3], fileFormat = 'binary', geometryNIIFile = sys.argv[2])
+#except Exception:
+#	print inFileName + " does not contain surface data"
+
+#print(sys.argv)
+#freesurfer.writeSurf(S, sys.argv[3] + ".nogeom", fileFormat = 'binary', geometryNIIFile = None)

@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage.morphology
+
+if len(sys.argv) < 5:
+	print "Incorrect number of arguments"
+	print
+	print "Usage: " + sys.argv[0] + " <input mgz> <ribbon mgz> <drawem label nii> <out mgz>"
+        print
+        print "Fixes aseg labels using the ribbon"
+	quit()
+
+ASEGFileName = sys.argv[1]
+RibbonFileName = sys.argv[2]
+DrawEMFileName = sys.argv[3]
+OutFileName = sys.argv[4]
+
+if not os.path.isfile(ASEGFileName):
+	print "ASEG file not found"
+	quit()
+
+if not os.path.isfile(RibbonFileName):
+	print "Ribbon file not found"
+	quit()
+
+if not os.path.isfile(DrawEMFileName):
+	print "DrawEM file not found"
+	quit()
+        
+ASEGNII = nibabel.load(ASEGFileName)
+RibbonNII = nibabel.load(RibbonFileName)
+DrawEMNII = nibabel.load(DrawEMFileName)
+
+ASEGIMG = ASEGNII.get_data()
+RibbonIMG = RibbonNII.get_data()
+DrawEMIMG = DrawEMNII.get_data()
+
+NewASEGIMG = numpy.array(ASEGIMG)
+
+DrawEMCSFLabel = 83
+
+DrawEMGMLabels = numpy.arange(20, 39)
+
+DrawEMExternalLabels = numpy.array([DrawEMGMLabels, DrawEMCSFLabel])
+
+FSCSFLabel = 24
+
+# replace cerebellar labels with values from the ribbon
+WMSEGIMG = numpy.logical_or(RibbonIMG == 2, RibbonIMG == 41)
+
+CerebellumIMG = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([6, 7, 8, 45, 46, 47])), ASEGIMG.shape)
+
+WMToReplace = numpy.logical_and(WMSEGIMG, CerebellumIMG)
+
+if numpy.any(WMToReplace):
+    print 'Replacing WM'
+    NewASEGIMG[WMToReplace] = RibbonIMG[WMToReplace]
+
+# dilate the 85 label into unknown and replace with CSF
+
+CurUnWMIMG = (ASEGIMG == 85)
+
+#print numpy.any(CurUnWMIMG)
+NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 2)] = 159
+NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 41)] = 160
+
+DrawEMExternalIMG = numpy.reshape(numpy.in1d(DrawEMIMG, DrawEMExternalLabels), DrawEMIMG.shape)
+
+NewASEGIMG[numpy.logical_and(NewASEGIMG == 0, DrawEMExternalIMG)] = FSCSFLabel
+
+
+#NumDilations = 10
+
+#for z in range(NumDilations):
+#    CurUnWMIMG = numpy.logical_and(numpy.logical_or(ASEGIMG == 85, ASEGIMG == 0), scipy.ndimage.morphology.binary_dilation(CurUnWMIMG))
+
+#NewASEGIMG[numpy.logical_and(CurUnWMIMG, ASEGIMG == 0)] = 24
+
+#CSFOverlap = numpy.logical_and(ASEGIMG == 24, WMSEGIMG)
+#if numpy.any(CSFOverlap):
+#    print "CSF"
+
+NewASEGNII = nibabel.MGHImage(NewASEGIMG, ASEGNII.affine, ASEGNII.header)
+
+nibabel.save(NewASEGNII, OutFileName)

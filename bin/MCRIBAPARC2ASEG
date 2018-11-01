@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ -z "$1" -o -z "$2" ]
+then
+	echo "Usage: $0 <subject id> <annot prefix>"
+	exit
+fi
+
+SUBJID=$1
+ANNOT=$2
+
+export SUBJECTS_DIR=`pwd`/freesurfer
+
+if [ ! -d "$SUBJECTS_DIR/$SUBJID" ]
+then
+	echo "Subject not found $SUBJID"
+	exit
+fi
+
+cd $SUBJECTS_DIR/$SUBJID
+
+mri_aparc2aseg --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
+#ASEGRibbonFix mri/${ANNOT}+aseg.mgz mri/ribbon.mgz ../../DrawEM/$SUBJID/segmentations/${SUBJID}_all_labels.nii.gz mri/${ANNOT}+aseg.mgz
