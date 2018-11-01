@@ -30,7 +30,7 @@ OUTDIR=SurfReconDeformable
 
 mkdir -p $OUTDIR/$SUBJID
 
-echo recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
+echo recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t $OMP_NUM_THREADS -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex.cfg -s $SUBJID -t 1 -v -d -f
 

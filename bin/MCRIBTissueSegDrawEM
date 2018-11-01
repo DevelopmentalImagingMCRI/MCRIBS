@@ -25,7 +25,7 @@ then
 	echo "Input file not found"
 else
 	mkdir -p $DRAWEMOUTDIR
-	echo `dirname $0`/../lib/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $DRAWEMOUTDIR -t `nproc` -c 0 -p 1 -v 1
+	echo `dirname $0`/../lib/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $DRAWEMOUTDIR -t $OMP_NUM_THREADS -c 0 -p 1 -v 1
 
 # copy the brain mask and label files to the global tissue seg directory
 	cp $DRAWEMOUTDIR/segmentations/${SUBJID}_brain_mask.nii.gz $OUTDIR
