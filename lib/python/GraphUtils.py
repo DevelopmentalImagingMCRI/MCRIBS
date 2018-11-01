@@ -90,7 +90,30 @@ def surfaceAreasNormals(S):
 	vertexNormals = vertexNormals / numpy.atleast_2d(numpy.sqrt(numpy.sum(vertexNormals * vertexNormals, axis = 1))).T
 	return (faceNormals, faceAreas, vertexNormals, vertexAreas)
 
-#def connectedComponents(S, Mask):
+def connectedComponents(S, Mask):
+	Neighbours = getVertexNeighbours(S)
+
+	ConnIDX = numpy.zeros(Mask.size, dtype = numpy.int32)
+	CurConnLabel = 1
+
+	while True:
+		Unvisited = numpy.where(numpy.logical_and(ConnIDX == 0, Mask))[0]
+		if Unvisited.size == 0:
+			break
+		
+		CurVertices = [Unvisited[0]]
+		ConnIDX[Unvisited[0]] = CurConnLabel
+
+		while True:
+			CurNeighbours = [Neighbours[x] for x in CurVertices]
+			CurNeighbours = numpy.unique(numpy.concatenate(CurNeighbours))
+			I = numpy.logical_and(Mask[CurNeighbours], ConnIDX[CurNeighbours] == 0)
+			if numpy.all(I == False):
+				break
+			ConnIDX[CurNeighbours[I]] = CurConnLabel
+			CurVertices = CurNeighbours[I]
+		CurConnLabel = CurConnLabel + 1
+	return ConnIDX
 
 
 

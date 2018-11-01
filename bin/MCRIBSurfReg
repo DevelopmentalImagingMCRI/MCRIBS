@@ -1,15 +1,22 @@
 #!/bin/bash
 
 SUBJID=$1
-HEMI=$2
+HEMIS=$2
 
-#cd $SUBJECTS_DIR/$SUBJID/surf
+if [ "$HEMIS" == "both" ]
+then
+	HEMIS="lh
+	rh"
+fi
+
+export SUBJECTS_DIR=`pwd`/freesurfer
+cd $SUBJECTS_DIR/$SUBJID/surf
 
 LEVEL=2
 
-echo $0 $1 $2
+cd $SUBJECTS_DIR/$SUBJID/surf
 
-echo $OMP_NUM_THREADS
-
-#mris_register -curv ../surf/${HEMI}.sphere $SUBJECTS_DIR/sphere_template/${HEMI}.template${LEVEL}.tif ../surf/${HEMI}.sphere.reg$LEVEL
-#fi
+for HEMI in $HEMIS
+do
+	mris_register -curv ../surf/${HEMI}.sphere `dirname $0`/../lib/sphere_templates/${HEMI}.template${LEVEL}.tif ../surf/${HEMI}.sphere.reg$LEVEL
+done

@@ -67,6 +67,7 @@ TransformedVRound = numpy.int16(numpy.array(numpy.round(TransformedV)))
 
 ASEGV = ASEGIMG[(TransformedVRound[0], TransformedVRound[1], TransformedVRound[2])]
 
+
 ValidASEGV = numpy.logical_not(numpy.in1d(ASEGV, numpy.array([250, 251, 252, 253, 254, 255, 10, 48])))
 #ValidASEGV = numpy.reshape(ValidASEGV, ASEGV.shape)
 
@@ -95,3 +96,5 @@ FID.close()
 #C['values'] = VTPUtils.vertexRegionId(S['faces'], FaceCortexMask)
 
 #freesurfer.writeCurv(C, args[1])
+
+

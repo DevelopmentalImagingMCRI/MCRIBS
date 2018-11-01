@@ -23,6 +23,9 @@ def structN4DefaultOptions():
 
 def main():
 	doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon'])
+	
+	atlases = ['aparc', 'aparc+DKTatlas']
+	defaultAtlas = atlases
 
 	argParser = argparse.ArgumentParser(description = "Performs MCRIB preprocessing and parcellation\n\nFor each <subject id>, input data are to be placed as follows:\n\tRawT2/<subject id>.nii.gz: Whole-brain T2-weighted image", usage = sys.argv[0] + " <processing directives> [processing options] <subject id>", formatter_class = argparse.RawTextHelpFormatter)
 
@@ -46,12 +49,16 @@ def main():
 	surfRegArgGroup = argParser.add_argument_group('surfreg', 'Perform surface registration to the spherical template, depends --surfrecon')
 	surfRegArgGroup.add_argument('--surfreg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 	
-	cortribbonArgGroup = argParser.add_argument_group('cortribbon', 'Perform cortical ribbon volume generation, depends --surfrecon')
-	cortribbonArgGroup.add_argument('--cortribbon', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+	cortRibbonArgGroup = argParser.add_argument_group('cortribbon', 'Perform cortical ribbon volume generation, depends --surfrecon')
+	cortRibbonArgGroup.add_argument('--cortribbon', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 	
 	surfParcArgGroup = argParser.add_argument_group('cortparc', 'Perform cortical parcellation, depends on --surfreg')
-	surfParcArgGroup.add_argument('--surfparc', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
-	surfParcArgGroup.add_argument('--surfparcatlas', help = "Parcellation scheme to use", required = False, choices = ['aparc', 'aparc+DKTatlas'], default = 'aparc+DKTatlas')
+	surfParcArgGroup.add_argument('--cortparc', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+	surfParcArgGroup.add_argument('--cortparcatlases', help = "Parcellation scheme to use", required = False, choices = atlases, default = [defaultAtlas], nargs = "+")
+
+	aparc2asegArgGroup = argParser.add_argument_group('aparc2aseg', 'Perform cortical parcellation, depends on --surfreg')
+	aparc2asegArgGroup.add_argument('--aparc2aseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+	aparc2asegArgGroup.add_argument('--aparc2asegatlases', help = "Parcellation scheme to use", required = False, choices = atlases, nargs = '+', default = [defaultAtlas])
 
 	argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
 	argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -65,6 +72,8 @@ def main():
 #print(type(options.openmp))
 	#quit()
 	anyProcessingStep = False
+	defaultAtlas = ['aparc+DKTatlas']
+	defaultAtlas = ['aparc']
 
 	for curStep in doProcessingSteps.keys():
 		if vars(options)[curStep]:
@@ -75,12 +84,13 @@ def main():
 	#	argParser.print_help()
 	#	quit()
 	
-	Hemis = ['lh', 'rh']
-	
 	# export OMP_NUM_THREADS=options.openmp
 	os.environ['OMP_NUM_THREADS'] = str(options.openmp)
+	
 	if not options.hemi is None:
 		Hemis = [options.hemi]
+	else:
+		Hemis = 'both'
 	
 	if options.conform == True:
 		cmd = ["MCRIBConform", os.path.join('RawT2', options.subjectid + ".nii.gz"), options.voxelsize, os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz")]
@@ -114,7 +124,18 @@ def main():
 			cmd = ["MCRIBSurfReg", options.subjectid, curHemi]
 			runCommand(cmd)
 		pass
-		
+	
+	if options.cortparc == True:
+		cmd = ["MCRIBCortParc", options.subjectid, Hemis]
+		cmd.extend(options.cortparcatlases)
+		runCommand(cmd)
+		pass
+	
+	if options.aparc2aseg == True:
+		cmd = ["MCRIBAPARC2ASEG", options.subjectid]
+		cmd.extend(options.aparc2asegatlases)
+		runCommand(cmd)
+		pass
 	quit()
 #def main():
 

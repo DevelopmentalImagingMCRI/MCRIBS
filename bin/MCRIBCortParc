@@ -1,0 +1,43 @@
+#!/bin/bash
+
+if [ -z "$1" -o -z "$2" ]
+then
+	echo "Usage: $0 <subject> <hemis> [atlases]"
+	exit
+fi
+
+SUBJID=$1
+HEMIS=$2
+shift
+shift
+ATLASES=$@
+
+ATLASES=aparc
+export SUBJECTS_DIR=`pwd`/freesurfer
+FSDIR=$SUBJECTS_DIR/$SUBJID
+
+if [ "$HEMIS" == "both" ]
+then
+	HEMIS="lh
+	rh"
+fi
+
+P=`pwd`
+
+ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
+
+for CURHEMI in $HEMIS
+do
+	VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
+	#cp ../bonnie_mirtk/freesurfer/$SUBJID/label/$CURHEMI.cortex.label $FSDIR/label
+	for ATLAS in $ATLASES
+	do
+		cd $SUBJECTS_DIR/$SUBJID/surf
+	#mrisp_paint -a 2 /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/lh.template2.tif $CURHEMI.sphere.reg $CURHEMI.avg_curv
+	#mris_ca_label -t $FREESURFER_HOME/FreeSurferColorLUT.txt -aseg ../mri/aseg.internal.mgz $SUBJID $CURHEMI sphere.reg $SUBJECTS_DIR/sphere_template/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.annot
+	#mris_ca_label -aseg ../mri/aseg.internal.mgz $SUBJID $CURHEMI sphere.reg2 $SUBJECTS_DIR/sphere_template/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.annot
+			mris_ca_label -t `dirname $0`/../lib/${CURHEMI}.aparcLUT.txt  -aseg ../mri/aseg.internal.mgz -L ../label/${CURHEMI}.cortex.label $SUBJID $CURHEMI sphere.reg2 `dirname $0`/../lib/sphere_templates/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.nomask.annot
+		cd $P
+		FSAnnotMaskCortexLabel $FSDIR/label/${CURHEMI}.${ATLAS}.auto.nomask.annot $FSDIR/label/${CURHEMI}.cortex.label $FSDIR/label/${CURHEMI}.${ATLAS}.annot
+	done
+done
