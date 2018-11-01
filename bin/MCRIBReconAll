@@ -77,6 +77,8 @@ def main():
 	
 	Hemis = ['lh', 'rh']
 	
+	# export OMP_NUM_THREADS=options.openmp
+	os.environ['OMP_NUM_THREADS'] = options.openmp
 	if not options.hemi is None:
 		Hemis = [options.hemi]
 	
