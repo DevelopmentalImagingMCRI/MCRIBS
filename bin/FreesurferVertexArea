@@ -34,6 +34,7 @@ def main():
 	outC['values'] = numpy.single(vertexAreas)
 	#freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.area'))
 	freesurfer.writeCurv(outC, sys.argv[2])
+
 #curArea = freesurfer.readCurv(os.path.join(SurfDir, Hemi + '.area'))
 
 if __name__ == "__main__":
