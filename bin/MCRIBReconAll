@@ -22,7 +22,7 @@ def structN4DefaultOptions():
 	return ['-v', '-c', '[100x100x100x100,0]', '-b', '[200]', '-s', '3']
 
 def main():
-	doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon'])
+	doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon', 'cortparc', 'surfreg'])
 	
 	atlases = ['aparc', 'aparc+DKTatlas']
 	defaultAtlas = atlases
@@ -54,11 +54,11 @@ def main():
 	
 	surfParcArgGroup = argParser.add_argument_group('cortparc', 'Perform cortical parcellation, depends on --surfreg')
 	surfParcArgGroup.add_argument('--cortparc', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
-	surfParcArgGroup.add_argument('--cortparcatlases', help = "Parcellation scheme to use", required = False, choices = atlases, default = [defaultAtlas], nargs = "+")
+	surfParcArgGroup.add_argument('--cortparcatlases', help = "Parcellation scheme to use", required = False, choices = atlases, default = defaultAtlas, nargs = "+")
 
 	aparc2asegArgGroup = argParser.add_argument_group('aparc2aseg', 'Perform cortical parcellation, depends on --surfreg')
 	aparc2asegArgGroup.add_argument('--aparc2aseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
-	aparc2asegArgGroup.add_argument('--aparc2asegatlases', help = "Parcellation scheme to use", required = False, choices = atlases, nargs = '+', default = [defaultAtlas])
+	aparc2asegArgGroup.add_argument('--aparc2asegatlases', help = "Parcellation scheme to use", required = False, choices = atlases, nargs = '+', default = defaultAtlas)
 
 	argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
 	argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -68,12 +68,12 @@ def main():
 	options = argParser.parse_args()
 	
 	#argParser.print_help()
-	print(vars(options))
+	#print(vars(options))
 #print(type(options.openmp))
 	#quit()
 	anyProcessingStep = False
-	defaultAtlas = ['aparc+DKTatlas']
-	defaultAtlas = ['aparc']
+	#defaultAtlas = ['aparc+DKTatlas']
+	#defaultAtlas = ['aparc']
 
 	for curStep in doProcessingSteps.keys():
 		if vars(options)[curStep]:
@@ -110,7 +110,7 @@ def main():
 		pass
 	
 	if options.inflatesphere == True:
-		cmd = ["MCRIBInflateSphere", options.subjectid]
+		cmd = ["MCRIBInflateSphere", options.subjectid, Hemis]
 		runCommand(cmd)
 		pass
 	
