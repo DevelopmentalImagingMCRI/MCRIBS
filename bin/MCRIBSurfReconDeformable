@@ -15,30 +15,18 @@ else
 	J=$2
 fi
 
-
-#P=/isilon/local/mirtk-vtk-7.1.1
-
-# home
-#P=$HOME/local/mirtk
-#export PATH=$P/bin:$P/lib/tools:$PATH
-#export PYTHONPATH=$PYTHONPATH:/isilon/local/local/mirtk/lib/python/mirtk
-#export LD_LIBRARY_PATH=/isilon/local/VTK/VTK-7.1.1/lib:$P/lib:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$HOME/local/VTK-8.1.1/lib:$P/lib:$LD_LIBRARY_PATH
-#export PYTHONPATH=$PYTHONPATH:$HOME/AARNETownCloud/pyconnectivity
-
 OUTDIR=SurfReconDeformable
 
 mkdir -p $OUTDIR/$SUBJID
 
-echo recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t $OMP_NUM_THREADS -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
+recon-neonatal-cortex -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t $OMP_NUM_THREADS -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex.cfg -s $SUBJID -t 1 -v -d -f
 
 HEMIS="lh
 rh"
 
-SURFS="white
-pial"
+SURFS="white"
 
 mkdir -p freesurfer/$SUBJID/surf
 mkdir -p freesurfer/$SUBJID/label
@@ -47,11 +35,14 @@ for HEMI in $HEMIS
 do
 	for SURF in $SURFS
 	do
-		echo $HEMI $SURF
 		VTPExtractAll --surf-volgeom=TissueSeg/${SUBJID}_all_labels.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
 		mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
 		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.curv
 		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.surf
+		
 	done
 done
 
+# make the pial surfaces by reordering the pial vertices in the VTP files
+echo "Making the pial surfaces"
+DeformableReorderVertices --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
