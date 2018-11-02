@@ -29,7 +29,6 @@ for o, a in opts:
 	if o == '-v':
 		verbose = True
 
-
 # for each vertex in V1, finds the equal point in V2
 def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None):
 	T = numpy.concatenate((V1['vertices'], V2['vertices']), axis = 1)
@@ -90,50 +89,20 @@ def vertexRegionId(F, FaceRegionId):
 		VRegionId[z] = U[numpy.argmax(H)]
 	return VRegionId
 
-def replaceUnvisitedVertices(S, visitedMask):
-	if numpy.all(visitedMask):
-		return S
-	
-	vertexNeighbours = GraphUtils.getVertexNeighbours(S)
-
-	outVisitedMask = numpy.array(visitedMask)
-	
-	print "replacing unvisited"
-	Iter = 0
-	while True:
-		I = numpy.where(numpy.logical_not(outVisitedMask))[0]
-		print I
-		if I.size == 0:
-			break
-		for z in range(I.size):
-			curNeighbours = vertexNeighbours[I[z]]
-			curNeighbours = curNeighbours[outVisitedMask[curNeighbours] == True]
-			if curNeighbours.size > 0:
-				S['vertices'][:, I[z]] = numpy.mean(numpy.take(S['vertices'], curNeighbours, axis = 1), axis = 1)
-				outVisitedMask[I[z]] = True
-
-		Iter = Iter + 1
-	return S
-
-
 def replaceUnvisitedVerticesSmooth(S, visitedMask):
 	if numpy.all(visitedMask):
 		return S
 	
 	vertexNeighbours = GraphUtils.getVertexNeighbours(S)
-
 	I = numpy.where(numpy.logical_not(visitedMask))[0]
-
-
-	for Iter in range(1000):
+	
+	for Iter in range(50):
 		oldVertices = numpy.array(S['vertices'])
 		for z in range(I.size):
 			curNeighbours = vertexNeighbours[I[z]]
 			if curNeighbours.size > 0:
 				S['vertices'][:, I[z]] = numpy.mean(numpy.take(oldVertices, curNeighbours, axis = 1), axis = 1)
 	return S
-
-
 
 inDir = args[0]
 outDir = args[1]
@@ -242,6 +211,10 @@ PialLHPialCortexIDX = numpy.where(PialLHPialCortexMask)[0]
 PialRHPialCortexMask = (PialRHPialEqual > -1)
 PialRHPialCortexIDX = numpy.where(PialRHPialCortexMask)[0]
 
+def anyDuplicates(T):
+	N = numpy.bincount(T[T > -1])
+	return numpy.any(N > 1)
+
 LHUpToPial5 = Pial5Pial4Equal[PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]]
 RHUpToPial5 = Pial5Pial4Equal[PialPial6Equal[PialRHPialEqual[PialRHPialCortexMask]]]
 
@@ -254,7 +227,9 @@ if LHI.size > 0:
 	XC = numpy.atleast_2d(T[0]).T - Pial4Surf['vertices'][0]
 	YC = numpy.atleast_2d(T[1]).T - Pial4Surf['vertices'][1]
 	ZC = numpy.atleast_2d(T[2]).T - Pial4Surf['vertices'][2]
-	MinI = numpy.argmin(numpy.sqrt(XC * XC + YC * YC + ZC * ZC), axis = 1)
+	D = numpy.sqrt(XC * XC + YC * YC + ZC * ZC)
+	MinI = numpy.argmin(D, axis = 1)
+	
 	LHUpToPial5[LHUpToPial5 < 0] = MinI
 
 if RHI.size > 0:
@@ -263,12 +238,30 @@ if RHI.size > 0:
 	XC = numpy.atleast_2d(T[0]).T - Pial4Surf['vertices'][0]
 	YC = numpy.atleast_2d(T[1]).T - Pial4Surf['vertices'][1]
 	ZC = numpy.atleast_2d(T[2]).T - Pial4Surf['vertices'][2]
-	MinI = numpy.argmin(numpy.sqrt(XC * XC + YC * YC + ZC * ZC), axis = 1)
+	D = numpy.sqrt(XC * XC + YC * YC + ZC * ZC)
+	MinI = numpy.argmin(D, axis = 1)
+	
 	RHUpToPial5[RHUpToPial5 < 0] = MinI
-
 
 LHIDX = WhiteWhiteLHEqual[Pial4Pial3Equal[LHUpToPial5]]
 RHIDX = WhiteWhiteRHEqual[Pial4Pial3Equal[RHUpToPial5]]
+
+# occasionally we get some duplicates in LHIDX and RHIDX
+# this is where 
+LHDuplicates = numpy.where(numpy.bincount(LHIDX) > 1)[0]
+RHDuplicates = numpy.where(numpy.bincount(RHIDX) > 1)[0]
+
+if LHDuplicates.size > 0:
+	T = numpy.in1d(LHIDX, LHDuplicates)
+	#utLHMask[PialLHPialCortexIDX[T]] = False
+	LHIDX = LHIDX[numpy.logical_not(T)]
+	PialLHPialCortexIDX = PialLHPialCortexIDX[numpy.logical_not(T)]
+
+if RHDuplicates.size > 0:
+	T = numpy.in1d(RHIDX, RHDuplicates)
+	#utLHMask[PialLHPialCortexIDX[T]] = False
+	RHIDX = RHIDX[numpy.logical_not(T)]
+	PialRHPialCortexIDX = PialRHPialCortexIDX[numpy.logical_not(T)]
 
 #LHIDXMask = numpy.zeros(PialLHPialEqual.size, dtype = numpy.bool)
 #LHIDXMask[LHIDX] = True
@@ -303,18 +296,27 @@ outS['vertices'] = numpy.zeros_like(PialLHSurf['vertices'])
 outS['vertices'][:, LHIDX] = PialLHSurf['vertices'][:, PialLHPialCortexIDX]
 #outS['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]] = PialLHSurf['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]]
 
-
 outS['vertices'][:, numpy.logical_not(PialLHPialCortexMask)] = WhiteLHSurf['vertices'][:, numpy.logical_not(PialLHPialCortexMask)]
 outLHMask[LHIDX] = True
 outLHMask = numpy.logical_or(numpy.logical_not(PialLHPialCortexMask), outLHMask)
+	
 outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
-outC = dict()
-outC['numVertices'] = PialLHSurf['vertices'].shape[1]
-outC['numFaces'] = PialLHSurf['faces'].shape[1]
-outC['values'] = numpy.single(outLHMask)
-freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.pial.visited.curv'))
+#outC = dict()
+#outC['numVertices'] = PialLHSurf['vertices'].shape[1]
+#outC['numFaces'] = PialLHSurf['faces'].shape[1]
+#outC['values'] = numpy.single(outLHMask)
+##print(numpy.where(numpy.logical_not(outLHMask)))
+#freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.pial.visited.curv'))
+#
+#outC = dict()
+#outC['numVertices'] = PialLHSurf['vertices'].shape[1]
+#outC['numFaces'] = PialLHSurf['faces'].shape[1]
+#outC['values'] = numpy.single(numpy.logical_not(PialLHPialCortexMask))
+##print(numpy.where(numpy.logical_not(outLHMask)))
+#freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.pial.mask.curv'))
+#
 
-freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.reordered.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
 
 outS = dict()
 outS['faces'] = numpy.array(WhiteRHSurf['faces'])
@@ -327,11 +329,21 @@ outS['vertices'][:, numpy.logical_not(PialRHPialCortexMask)] = WhiteRHSurf['vert
 outRHMask[RHIDX] = True
 outRHMask = numpy.logical_or(numpy.logical_not(PialRHPialCortexMask), outRHMask)
 
-outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
-freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.reordered.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+outS = replaceUnvisitedVerticesSmooth(outS, outRHMask)
+freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
 
-outC = dict()
-outC['numVertices'] = PialRHSurf['vertices'].shape[1]
-outC['numFaces'] = PialRHSurf['faces'].shape[1]
-outC['values'] = numpy.single(outRHMask)
-freesurfer.writeCurv(outC, os.path.join(outDir, 'rh.pial.visited.curv'))
+#outC = dict()
+#outC['numVertices'] = PialRHSurf['vertices'].shape[1]
+#outC['numFaces'] = PialRHSurf['faces'].shape[1]
+#outC['values'] = numpy.single(outRHMask)
+##print(numpy.where(numpy.logical_not(outRHMask)))
+#freesurfer.writeCurv(outC, os.path.join(outDir, 'rh.pial.visited.curv'))
+#
+#outC = dict()
+#outC['numVertices'] = PialRHSurf['vertices'].shape[1]
+#outC['numFaces'] = PialRHSurf['faces'].shape[1]
+#outC['values'] = numpy.single(numpy.logical_not(PialRHPialCortexMask))
+##print(numpy.where(numpy.logical_not(outLHMask)))
+#freesurfer.writeCurv(outC, os.path.join(outDir, 'rh.pial.mask.curv'))
+#
+#
