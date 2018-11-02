@@ -8,7 +8,7 @@ fi
 
 SUBJID=$1
 
-if [ -z "$2" ]
+if [ "$2" == "both" ]
 then
 	HEMIS="lh
 	rh"
@@ -24,11 +24,6 @@ CURDIR=`pwd`
 export SUBJECTS_DIR=`pwd`/freesurfer
 
 FSDIR=`pwd`/freesurfer/$SUBJID
-
-HEMIS="lh
-rh"
-
-export OMP_NUM_THREADS=`nproc`
 
 for CURHEMI in $HEMIS
 do
@@ -50,7 +45,7 @@ do
 		mris_sphere -remove_negative 1 -seed 1234 ${CURHEMI}.inflated ${CURHEMI}.sphere
 	fi
 	
-#	exit
+	exit
 #mris_write_curvature ${CURHEMI}.smoothwm ${CURHEMI}.curv ${CURHEMI}.area
 # computes the smoothwm curvature, here 
 	mris_curvature -w -a 10 ${CURHEMI}.smoothwm
@@ -63,7 +58,8 @@ do
 # writes out the vertex "area" file
 	FreesurferVertexArea $CURHEMI.white $CURHEMI.area
 	FreesurferVertexArea $CURHEMI.pial $CURHEMI.pial.area
-
+#echo "Thickness"
+	FreesurferCorticalThickness $SUBJID $CURHEMI
 #mris_register -curv $CURHEMI.sphere /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/$CURHEMI.template2.tif $CURHEMI.sphere.reg
 #mrisp_paint -a 2 /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/lh.template2.tif $CURHEMI.sphere.reg $CURHEMI.avg_curv
 #mris_ca_label -t $FREESURFER_HOME/FreeSurferColorLUT.txt -aseg ../mri/aseg.presurf.medial.mgz $SUBJID $CURHEMI sphere.reg /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/${CURHEMI}.aparc.gcs ../label/${CURHEMI}.aparc.annot
