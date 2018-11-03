@@ -30,6 +30,7 @@ def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
 
 	corticalThickness = numpy.zeros(numVertices)
 
+	verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool)
 	for z in CortexLabel['index']:
 		curNeighbours = numpy.array([z])
 		
@@ -38,23 +39,28 @@ def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
 		minDist = numpy.sqrt(numpy.sum(XC * XC))
 		minDistIDX = z
 		nextNeighboursMask = numpy.zeros(numVertices, dtype = numpy.bool)
-		
-		verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool)
+		nextNeighboursMask2 = numpy.zeros(numVertices, dtype = numpy.bool)
+		verticesVisited.fill(False)
 		verticesVisited[z] = True
 		curV = numpy.atleast_2d(curV)
 		for curOrder in range(1, maxOrder + 1):
 			# find the next set of neighbours
-			nextNeighbours = [vertexNeighbours[x] for x in curNeighbours]
-			nextNeighbours2 = numpy.unique(numpy.concatenate(nextNeighbours))
+			nextNeighbours = numpy.concatenate([vertexNeighbours[x] for x in curNeighbours])
 			nextNeighboursMask.fill(False)
-			for k in range(len(nextNeighbours)):
-				nextNeighboursMask[nextNeighbours[k]] = True
-			nextNeighboursMask = numpy.logical_and(numpy.logical_not(verticesVisited), nextNeighboursMask)
-			curNeighbours = numpy.where(nextNeighboursMask)[0]
+			I = numpy.logical_not(verticesVisited[nextNeighbours])
+			nextNeighboursMask[nextNeighbours[I]] = True
+
+			#for k in range(len(nextNeighbours)):
+			#	I = numpy.logical_not(verticesVisited[nextNeighbours[k]])
+			#	nextNeighboursMask[nextNeighbours[k]] = True
+			#	nextNeighboursMask2[nextNeighbours[k][I]] = True
+
+			#nextNeighboursMask = numpy.logical_and(numpy.logical_not(verticesVisited), nextNeighboursMask)
 			
-			verticesVisited[nextNeighboursMask] = True
+			curNeighbours = numpy.where(nextNeighboursMask)[0]
+			#curNeighboursDict = nextNeighboursDict.keys()
+			verticesVisited[curNeighbours] = True
 			XC = numpy.take(DSTVT, curNeighbours, axis = 0) - curV
-			XC = DSTVT[nextNeighboursMask] - curV
 			Dots = numpy.dot(XC, numpy.atleast_2d(vertexNormals[z]).T)
 			
 			I = numpy.where(Dots > 0)[0]
@@ -115,7 +121,7 @@ def main():
 	outC['numVertices'] = PialSurf['vertices'].shape[1]
 	outC['numFaces'] = PialSurf['faces'].shape[1]
 	outC['values'] = numpy.single((WhiteToPialThickness + PialToWhiteThickness) / 2.0)
-	freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.thickness'))
+	#freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.thickness'))
 
 if __name__ == "__main__":
 	main()
