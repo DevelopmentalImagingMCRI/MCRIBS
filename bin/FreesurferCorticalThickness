@@ -13,7 +13,7 @@ import GraphUtils
 
 # computes the minimum distance for each vertex of SurfaceSRC to SurfaceDST
 
-@profile
+#@profile
 def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
 	maxOrder = 5
 	
