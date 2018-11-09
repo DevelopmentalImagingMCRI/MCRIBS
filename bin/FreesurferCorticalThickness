@@ -37,28 +37,27 @@ def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
 		curV = SRCSurf['vertices'][:, z] 
 		XC = curV - DSTSurf['vertices'][:, z]
 		minDist = numpy.sqrt(numpy.sum(XC * XC))
-		minDistIDX = z
 		nextNeighboursMask = numpy.zeros(numVertices, dtype = numpy.bool)
-		nextNeighboursMask2 = numpy.zeros(numVertices, dtype = numpy.bool)
+		
 		verticesVisited.fill(False)
 		verticesVisited[z] = True
 		curV = numpy.atleast_2d(curV)
 		for curOrder in range(1, maxOrder + 1):
 			# find the next set of neighbours
 			nextNeighbours = numpy.concatenate([vertexNeighbours[x] for x in curNeighbours])
-			nextNeighboursMask.fill(False)
-			I = numpy.logical_not(verticesVisited[nextNeighbours])
-			nextNeighboursMask[nextNeighbours[I]] = True
 
-			#for k in range(len(nextNeighbours)):
-			#	I = numpy.logical_not(verticesVisited[nextNeighbours[k]])
-			#	nextNeighboursMask[nextNeighbours[k]] = True
-			#	nextNeighboursMask2[nextNeighbours[k][I]] = True
-
-			#nextNeighboursMask = numpy.logical_and(numpy.logical_not(verticesVisited), nextNeighboursMask)
+			nextNeighbours = nextNeighbours[numpy.logical_not(verticesVisited[nextNeighbours])]
+			nextNeighbours.sort(kind = 'mergesort')
+			#RolledIDX = numpy.roll(numpy.arange(T.size), 1)
+			RolledIDX = numpy.arange(-1, nextNeighbours.size - 1)
+			RolledIDX[0] = 0
+			#print(RolledIDX)
+			# this gives a true for the first occurrence of an element
+			GG = numpy.not_equal(nextNeighbours, nextNeighbours[RolledIDX])
+			#print GG
+			GG[0] = True
+			curNeighbours = nextNeighbours[GG]
 			
-			curNeighbours = numpy.where(nextNeighboursMask)[0]
-			#curNeighboursDict = nextNeighboursDict.keys()
 			verticesVisited[curNeighbours] = True
 			XC = numpy.take(DSTVT, curNeighbours, axis = 0) - curV
 			Dots = numpy.dot(XC, numpy.atleast_2d(vertexNormals[z]).T)
