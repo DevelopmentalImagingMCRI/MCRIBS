@@ -1,0 +1,37 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+export SUBJECTS_DIR=`pwd`/freesurfer
+
+if [ ! -d "$SUBJECTS_DIR/$SUBJID" ]
+then
+	echo "Subject not found $SUBJID"
+	exit
+fi
+
+cd $SUBJECTS_DIR/$SUBJID/mri
+
+# look for aparc+aseg.mgz or aparc+DKTatlas+aseg.mgz
+
+if [ -f "aparc+aseg.mgz" ]
+then
+	ASEGFILE="aparc+aseg.mgz"
+elif [ -f "aparc+DKTatlas+aseg.mgz" ]
+then
+	ASEGFILE="aparc+DKTatlas+aseg.mgz"
+fi
+
+if [ -z "$ASEGFILE" ]
+then
+	echo "Could not find a parcellated segmentation file: aparc+aseg.mgz or aparc+DKTatlas+aseg.mgz"
+else
+	echo "Using $ASEGFILE, running apas2aseg from freesurfer"
+	apas2aseg --i $ASEGFILE --o aseg.mgz 2>&1 > /dev/null
+fi
