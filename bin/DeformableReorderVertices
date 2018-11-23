@@ -33,7 +33,6 @@ for o, a in opts:
 def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None, V1DebugIDX = None, V2DebugIDX = None):
 	T = numpy.concatenate((V1['vertices'], V2['vertices']), axis = 1)
 	I = numpy.lexsort(T)
-	if debug == True:
 	IDX = numpy.concatenate((numpy.arange(V1['vertices'].shape[1]), numpy.arange(V2['vertices'].shape[1])))
 
 	#I = numpy.lexsort(T)
@@ -245,7 +244,9 @@ RHUpToPial5 = Pial5Pial4Equal[PialPial6Equal[PialRHPialEqual[PialRHPialCortexMas
 
 LHI = numpy.where(LHUpToPial5 < 0)[0]
 RHI = numpy.where(RHUpToPial5 < 0)[0]
+
 # find out why we are getting zero distances but negative one indices
+# there seems to be some vertices that stuff up in Pial5Pial4Equal, there are never many so an exhaustive search is not a big problem
 def findAnyEqualVerticesInSameSurface(Surf):
 	for z in range(Surf['vertices'].shape[1] - 1):
 		I = numpy.any(numpy.atleast_2d(Surf['vertices'][:, z]).T == Surf['vertices'][:, (z + 1):], axis = 0)
@@ -278,9 +279,8 @@ if LHI.size > 0:
 	LHUpToPial5[LHUpToPial5 < 0] = MinI
 	LHMinI = numpy.array(MinI)
 
-MinI = findEqualPoints(Pial5Surf, Pial4Surf, debug = True, V1DebugIDX = LHI, V2DebugIDX = LHMinI)
+#MinI = findEqualPoints(Pial5Surf, Pial4Surf, debug = True, V1DebugIDX = LHI, V2DebugIDX = LHMinI)
 
-raise
 if RHI.size > 0:
 	MinI, D = findClosestIDX(Pial5Surf, Pial4Surf, PialRHPialCortexIDX[RHI], return_dist = True)
 	#print RHI
@@ -296,7 +296,6 @@ if RHI.size > 0:
 	RHUpToPial5[RHUpToPial5 < 0] = MinI
 	RHMinI = numpy.array(MinI)
 
-raise
 LHIDX = WhiteWhiteLHEqual[Pial4Pial3Equal[Pial5Pial4Equal[LHUpToPial5]]]
 RHIDX = WhiteWhiteRHEqual[Pial4Pial3Equal[Pial5Pial4Equal[RHUpToPial5]]]
 
@@ -353,12 +352,12 @@ if RHDuplicates.size > 0:
 #
 
 # store the indices that were updated and which ones were not
-outLHMask = numpy.zeros(PialLHSurf['vertices'].shape[1], dtype = numpy.bool)
-outRHMask = numpy.zeros(PialRHSurf['vertices'].shape[1], dtype = numpy.bool)
+outLHMask = numpy.zeros(WhiteLHSurf['vertices'].shape[1], dtype = numpy.bool)
+outRHMask = numpy.zeros(WhiteRHSurf['vertices'].shape[1], dtype = numpy.bool)
 
 outS = dict()
 outS['faces'] = numpy.array(WhiteLHSurf['faces'])
-outS['vertices'] = numpy.zeros_like(PialLHSurf['vertices'])
+outS['vertices'] = numpy.zeros_like(WhiteLHSurf['vertices'])
 outS['vertices'][:, LHIDX] = PialLHSurf['vertices'][:, PialLHPialCortexIDX]
 #outS['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]] = PialLHSurf['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]]
 
@@ -386,7 +385,7 @@ freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), fileFormat = 'binary
 
 outS = dict()
 outS['faces'] = numpy.array(WhiteRHSurf['faces'])
-outS['vertices'] = numpy.zeros_like(PialRHSurf['vertices'])
+outS['vertices'] = numpy.zeros_like(WhiteRHSurf['vertices'])
 outS['vertices'][:, RHIDX] = PialRHSurf['vertices'][:, PialRHPialCortexIDX]
 #outS['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]] = PialLHSurf['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]]
 
