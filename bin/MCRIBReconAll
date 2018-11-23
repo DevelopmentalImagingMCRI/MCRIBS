@@ -60,6 +60,9 @@ def main():
 	aparc2asegArgGroup.add_argument('--aparc2aseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 	aparc2asegArgGroup.add_argument('--aparc2asegatlases', help = "Parcellation scheme to use", required = False, choices = atlases, nargs = '+', default = defaultAtlas)
 
+	apas2asegArgGroup = argParser.add_argument_group('apas2aseg', 'Refine aseg.presurf using cortical parcellations, depends on --aparc2aseg with aparc')
+	apas2asegArgGroup.add_argument('--apas2aseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+
 	argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
 	argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
 	
@@ -136,6 +139,12 @@ def main():
 		cmd.extend(options.aparc2asegatlases)
 		runCommand(cmd)
 		pass
+	
+	if options.apas2aseg == True:
+		cmd = ["MCRIBAPAS2ASEG", options.subjectid]
+		runCommand(cmd)
+		pass
+
 	quit()
 #def main():
 
