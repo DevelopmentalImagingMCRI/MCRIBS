@@ -7,7 +7,8 @@ then
 fi
 
 SUBJID=$1
-ANNOT=$2
+shift;
+ANNOTS=$@
 
 export SUBJECTS_DIR=`pwd`/freesurfer
 
@@ -19,5 +20,8 @@ fi
 
 cd $SUBJECTS_DIR/$SUBJID
 
-mri_aparc2aseg --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
-#ASEGRibbonFix mri/${ANNOT}+aseg.mgz mri/ribbon.mgz ../../DrawEM/$SUBJID/segmentations/${SUBJID}_all_labels.nii.gz mri/${ANNOT}+aseg.mgz
+for ANNOT in $ANNOTS
+do
+	mri_aparc2aseg --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
+	ASEGRibbonFix mri/${ANNOT}+aseg.mgz mri/ribbon.mgz ../../TissueSegDrawEM/$SUBJID/segmentations/${SUBJID}_all_labels.nii.gz mri/${ANNOT}+aseg.mgz
+done
