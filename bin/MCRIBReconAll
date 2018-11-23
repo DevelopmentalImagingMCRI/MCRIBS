@@ -62,6 +62,9 @@ def main():
 
 	apas2asegArgGroup = argParser.add_argument_group('apas2aseg', 'Refine aseg.presurf using cortical parcellations, depends on --aparc2aseg with aparc')
 	apas2asegArgGroup.add_argument('--apas2aseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+	
+	segstatsArgGroup = argParser.add_argument_group('segstats', 'Perform segstats on the aseg image, depends on --apas2aseg')
+	segstatsArgGroup.add_argument('--segstats', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 
 	argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
 	argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -142,6 +145,11 @@ def main():
 	
 	if options.apas2aseg == True:
 		cmd = ["MCRIBAPAS2ASEG", options.subjectid]
+		runCommand(cmd)
+		pass
+	
+	if options.segstats == True:
+		cmd = ["MCRIBSegStats", options.subjectid]
 		runCommand(cmd)
 		pass
 
