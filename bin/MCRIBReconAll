@@ -65,6 +65,9 @@ def main():
 	
 	segstatsArgGroup = argParser.add_argument_group('segstats', 'Perform segstats on the aseg image, depends on --apas2aseg')
 	segstatsArgGroup.add_argument('--segstats', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+	
+	parcstatsArgGroup = argParser.add_argument_group('parcstats', 'Perform stats on the cortical surfaces, depends on --apas2aseg')
+	parcstatsArgGroup.add_argument('--parcstats', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 
 	argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
 	argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -94,7 +97,7 @@ def main():
 	os.environ['OMP_NUM_THREADS'] = str(options.openmp)
 	
 	if not options.hemi is None:
-		Hemis = [options.hemi]
+		Hemis = options.hemi
 	else:
 		Hemis = 'both'
 	
@@ -126,9 +129,8 @@ def main():
 		pass
 	
 	if options.surfreg == True:
-		for curHemi in Hemis:
-			cmd = ["MCRIBSurfReg", options.subjectid, curHemi]
-			runCommand(cmd)
+		cmd = ["MCRIBSurfReg", options.subjectid, Hemis]
+		runCommand(cmd)
 		pass
 	
 	if options.cortparc == True:
@@ -152,7 +154,12 @@ def main():
 		cmd = ["MCRIBSegStats", options.subjectid]
 		runCommand(cmd)
 		pass
-
+	
+	if options.parcstats == True:
+		cmd = ["MCRIBParcStats", options.subjectid, Hemis]
+		cmd.extend(options.aparc2asegatlases)
+		runCommand(cmd)
+		pass
 	quit()
 #def main():
 
