@@ -32,7 +32,7 @@ APARCLabels = {'ctx-lh-bankssts': 'lBSTS',\
 'ctx-lh-parsorbitalis': 'lPORB',\
 'ctx-lh-parstriangularis': 'lPTRI',\
 'ctx-lh-pericalcarine': 'lPCAL',\
-'ctx-lh-postcentral': 'lPSTS',\
+'ctx-lh-postcentral': 'lPSTC',\
 'ctx-lh-posteriorcingulate': 'lPC',\
 'ctx-lh-precentral': 'lPREC',\
 'ctx-lh-precuneus': 'lPCUN',\
@@ -65,7 +65,7 @@ APARCLabels = {'ctx-lh-bankssts': 'lBSTS',\
 'ctx-rh-parsorbitalis': 'rPORB',\
 'ctx-rh-parstriangularis': 'rPTRI',\
 'ctx-rh-pericalcarine': 'rPCAL',\
-'ctx-rh-postcentral': 'rPSTS',\
+'ctx-rh-postcentral': 'rPSTC',\
 'ctx-rh-posteriorcingulate': 'rPC',\
 'ctx-rh-precentral': 'rPREC',\
 'ctx-rh-precuneus': 'rPCUN',\
@@ -100,7 +100,7 @@ APARCLabelsWithInsula = {'ctx-lh-bankssts': 'lBSTS',\
 'ctx-lh-parsorbitalis': 'lPORB',\
 'ctx-lh-parstriangularis': 'lPTRI',\
 'ctx-lh-pericalcarine': 'lPCAL',\
-'ctx-lh-postcentral': 'lPSTS',\
+'ctx-lh-postcentral': 'lPSTC',\
 'ctx-lh-posteriorcingulate': 'lPC',\
 'ctx-lh-precentral': 'lPREC',\
 'ctx-lh-precuneus': 'lPCUN',\
@@ -134,7 +134,7 @@ APARCLabelsWithInsula = {'ctx-lh-bankssts': 'lBSTS',\
 'ctx-rh-parsorbitalis': 'rPORB',\
 'ctx-rh-parstriangularis': 'rPTRI',\
 'ctx-rh-pericalcarine': 'rPCAL',\
-'ctx-rh-postcentral': 'rPSTS',\
+'ctx-rh-postcentral': 'rPSTC',\
 'ctx-rh-posteriorcingulate': 'rPC',\
 'ctx-rh-precentral': 'rPREC',\
 'ctx-rh-precuneus': 'rPCUN',\
@@ -168,7 +168,7 @@ DKTLabelsWithInsula = {'ctx-lh-caudalanteriorcingulate': 'lCAC',\
 'ctx-lh-parsorbitalis': 'lPORB',\
 'ctx-lh-parstriangularis': 'lPTRI',\
 'ctx-lh-pericalcarine': 'lPCAL',\
-'ctx-lh-postcentral': 'lPSTS',\
+'ctx-lh-postcentral': 'lPSTC',\
 'ctx-lh-posteriorcingulate': 'lPC',\
 'ctx-lh-precentral': 'lPREC',\
 'ctx-lh-precuneus': 'lPCUN',\
@@ -199,7 +199,7 @@ DKTLabelsWithInsula = {'ctx-lh-caudalanteriorcingulate': 'lCAC',\
 'ctx-rh-parsorbitalis': 'rPORB',\
 'ctx-rh-parstriangularis': 'rPTRI',\
 'ctx-rh-pericalcarine': 'rPCAL',\
-'ctx-rh-postcentral': 'rPSTS',\
+'ctx-rh-postcentral': 'rPSTC',\
 'ctx-rh-posteriorcingulate': 'rPC',\
 'ctx-rh-precentral': 'rPREC',\
 'ctx-rh-precuneus': 'rPCUN',\
