@@ -1,0 +1,35 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+HEMIS=$2
+shift
+shift
+ATLASES=$@
+
+export SUBJECTS_DIR=`pwd`/freesurfer
+cd $SUBJECTS_DIR/$SUBJID
+
+if [ "$HEMIS" == "both" ]
+then
+	HEMIS="lh
+	rh"
+fi
+
+
+mkdir -p stats
+# we can't use the etiv option since we dont have the talairach.xfm file
+
+for CURHEMI in $HEMIS
+do
+	for ATLAS in $ATLASES
+	do
+		cd $SUBJECTS_DIR/$SUBJID/surf
+		echo mris_anatomical_stats -th3 -mgz -cortex ../label/$CURHEMI.cortex.label -f stats/$CURHEMI.$ATLAS.stats -b -a label/$CURHEMI.$ATLAS.annot -c label/$CURHEMI.$ATLAS.ctab $SUBJID $CURHEMI
+	done
+done
