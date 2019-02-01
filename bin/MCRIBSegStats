@@ -13,4 +13,4 @@ cd $SUBJECTS_DIR/$SUBJID
 
 mkdir -p stats
 # we can't use the etiv option since we dont have the talairach.xfm file
-mri_segstats --seg mri/aseg.mgz --sum stats/aseg.stats --pv mri/T1.mgz --brainmask mri/brainmask.mgz --brain-vol-from-seg --excludeid 0 --excl-ctxgmwm --supratent --subcortgray --in mri/T1.mgz --in-intensity-name norm --in-intensity-units MR --surf-wm-vol --surf-ctx-vol --totalgray --ctab $FREESURFER_HOME/ASegStatsLUT.txt --subject $SUBJID
+mri_segstats --seg mri/aseg.mgz --sum stats/aseg.stats --empty --pv mri/T1.mgz --brainmask mri/brainmask.mgz --brain-vol-from-seg --excludeid 0 --excl-ctxgmwm --supratent --subcortgray --in mri/T1.mgz --in-intensity-name norm --in-intensity-units MR --surf-wm-vol --surf-ctx-vol --totalgray --ctab `dirname $0`/../lib/ASegStatsNeonateLUT.txt --subject $SUBJID

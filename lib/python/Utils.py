@@ -11,7 +11,41 @@ import errno
 import math
 import numexpr
 
+# for the label image V, return a dict() whose keys are IDX and for each key, return a tuple of indices for 
 
+def labelIDXList(V, IDX):
+	
+	In1D = numpy.in1d(V, IDX)
+	
+	In1DIDX = numpy.where(In1D)[0]
+	
+	# get label voxels that are in1D
+	In1DV = V[In1D.reshape(V.shape)]
+
+	SortedIn1DVIDX = numpy.argsort(In1DV)
+	SortedIn1DV = In1DV[SortedIn1DVIDX]
+
+	# use the histogram method to get counts
+	LabelCounts = numpy.bincount(SortedIn1DV)
+
+	outIDX = dict.fromkeys(IDX.tolist())
+
+	curIDX = 0
+	
+	for curLabelIDX in range(LabelCounts.size):
+		if LabelCounts[curLabelIDX] > 0:
+				curLabel = SortedIn1DV[curIDX]
+				outIDX[curLabel] = In1DIDX[SortedIn1DVIDX[curIDX:curIDX + LabelCounts[curLabelIDX]]]
+				if V.ndim > 1:
+						outIDX[curLabel] = numpy.unravel_index(outIDX[curLabel], V.shape)
+				curIDX += LabelCounts[curLabelIDX]
+	return outIDX
+
+V = numpy.tile(numpy.arange(5), [4, 1])
+
+IDX = numpy.array([1, 2, 3, 6])
+
+T = labelIDXList(V, IDX)
 # regionProps
 # for the label image returns a dictionary with
 # 'area' (vector): the number of pixels for each label

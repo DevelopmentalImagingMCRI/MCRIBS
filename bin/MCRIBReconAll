@@ -95,6 +95,7 @@ def main():
 	
 	# export OMP_NUM_THREADS=options.openmp
 	os.environ['OMP_NUM_THREADS'] = str(options.openmp)
+	os.environ['SUBJECTS_DIR'] = os.path.join(os.getcwd(), 'freesurfer')
 	
 	if not options.hemi is None:
 		Hemis = options.hemi
