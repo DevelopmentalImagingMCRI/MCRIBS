@@ -36,7 +36,7 @@ def main():
 	tissueSegArgGroup = argParser.add_argument_group('tissueseg', "Perform tissue type segmentation, depends --conform")
 	tissueSegArgGroup.add_argument('--tissueseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 	tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM'], default = 'DrawEM')
-	tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40)
+	tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 	
 	surfReconArgGroup = argParser.add_argument_group('surfrecon', 'Perform cortical surface extraction, depends --tissueseg')
 	surfReconArgGroup.add_argument('--surfrecon', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -109,7 +109,8 @@ def main():
 	
 	if options.tissueseg == True:
 		if options.tissuesegmethod == 'DrawEM':
-			cmd = ["MCRIBTissueSegDrawEM", options.subjectid]
+			cmd = ["MCRIBTissueSegDrawEM", options.subjectid, str(options.subjectage)]
+			print(" ".join(cmd))
 			runCommand(cmd)
 		pass	
 	
