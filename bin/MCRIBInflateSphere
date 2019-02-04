@@ -61,7 +61,6 @@ do
 	FreesurferVertexArea $CURHEMI.white $CURHEMI.area
 	FreesurferVertexArea $CURHEMI.pial $CURHEMI.pial.area
 #echo "Thickness"
-	FreesurferCorticalThickness $SUBJID $CURHEMI
 
 #mris_register -curv $CURHEMI.sphere /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/$CURHEMI.template2.tif $CURHEMI.sphere.reg
 #mrisp_paint -a 2 /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/lh.template2.tif $CURHEMI.sphere.reg $CURHEMI.avg_curv
