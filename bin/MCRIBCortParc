@@ -39,5 +39,6 @@ do
 			mris_ca_label -t `dirname $0`/../lib/${CURHEMI}.aparcLUT.txt  -aseg ../mri/aseg.internal.mgz -L ../label/${CURHEMI}.cortex.label $SUBJID $CURHEMI sphere.reg2 `dirname $0`/../lib/sphere_templates/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.nomask.annot
 		cd $P
 		FSAnnotMaskCortexLabel $FSDIR/label/${CURHEMI}.${ATLAS}.auto.nomask.annot $FSDIR/label/${CURHEMI}.cortex.label $FSDIR/label/${CURHEMI}.${ATLAS}.annot
+		FreesurferCorticalThickness $SUBJID $CURHEMI
 	done
 done

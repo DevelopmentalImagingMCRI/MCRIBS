@@ -36,10 +36,11 @@ do
 	for SURF in $SURFS
 	do
 		VTPExtractAll --surf-volgeom=TissueSeg/${SUBJID}_all_labels.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+		rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
 		mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
 		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.curv
 		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.surf
-		
+			
 	done
 done
 
