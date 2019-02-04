@@ -28,7 +28,6 @@ SubjectID = sys.argv[1]
 Hemis = sys.argv[2]
 Atlas = sys.argv[3]
 
-Atlas = 'aparc'
 if Hemis == 'both':
 	Hemis = ['lh', 'rh']
 else:
@@ -85,7 +84,7 @@ for Hemi in Hemis:
 	outDF = pandas.DataFrame(columns = ['StructName', 'NumVert', 'SurfArea', 'GrayVol', 'ThickAvg', 'ThickStd', 'MeanCurv', 'GausCurv', 'FoldInd', 'CurvInd'])
 	outDF.StructName = Annot['colortable']['struct_names']
 
-	outDF = outDF[outDF.StructName != 'unknown']
+	outDF = outDF[outDF.StructName != 'ctx-' + Hemi + '-unknown']
 
 	for curStructIDX in outDF.index:
 		I = numpy.where(numpy.logical_and(Annot['seg'] == curStructIDX, CortexLabelMask))[0]
@@ -110,6 +109,8 @@ for Hemi in Hemis:
 				fi = numpy.sum(area * numpy.abs(k1) * (numpy.abs(k1) - numpy.abs(k2)))
 				outDF.loc[curStructIDX, 'FoldInd'] = fi / (4 * numpy.pi)
 				outDF.loc[curStructIDX, 'CurvInd'] = ici / (4 * numpy.pi)
+	outDF.to_csv(os.path.join(SubjectsDir, SubjectID, 'stats', Hemi + "." + Atlas + ".stats"))
+
 #
 #			else:
 #				pici = numpy.zeros(I.size)
