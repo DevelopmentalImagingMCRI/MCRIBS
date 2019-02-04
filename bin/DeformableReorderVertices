@@ -131,7 +131,7 @@ def replaceUnvisitedVerticesSmooth(S, visitedMask):
 inDir = args[0]
 outDir = args[1]
 
-VTKLoad = False
+VTKLoad = True
 if VTKLoad == True:
 	WhiteInternalSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white+internal.vtp'))
 	WhiteSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white.vtp'))
