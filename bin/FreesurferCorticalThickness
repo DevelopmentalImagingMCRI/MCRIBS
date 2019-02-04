@@ -29,6 +29,7 @@ def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
 	DSTVT = DSTSurf['vertices'].T
 
 	corticalThickness = numpy.zeros(numVertices)
+	
 
 	verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool)
 	for z in CortexLabel['index']:
@@ -110,7 +111,11 @@ def main():
 	WhiteSurf = freesurfer.readSurf(os.path.join(SurfDir, Hemi + '.white'))
 	CortexLabel = freesurfer.readLabel(os.path.join(SurfDir, '..', 'label', Hemi + '.cortex.label'))
 	PialSurf = freesurfer.readSurf(os.path.join(SurfDir, Hemi + '.pial'))
+	
+	if CortexLabel is None:
+		CortexLabel = {'index': numpy.arange(WhiteSurf['vertices'].shape[1])}
 
+	print "Cortical Thickness"
 	print "White to pial"
 	WhiteToPialThickness = doMinThickness(WhiteSurf, PialSurf, CortexLabel)
 	print "Pial to white"
@@ -120,7 +125,7 @@ def main():
 	outC['numVertices'] = PialSurf['vertices'].shape[1]
 	outC['numFaces'] = PialSurf['faces'].shape[1]
 	outC['values'] = numpy.single((WhiteToPialThickness + PialToWhiteThickness) / 2.0)
-	#freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.thickness'))
+	freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.thickness'))
 
 if __name__ == "__main__":
 	main()
