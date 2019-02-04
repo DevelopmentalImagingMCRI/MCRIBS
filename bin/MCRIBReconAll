@@ -158,9 +158,12 @@ def main():
 		pass
 	
 	if options.parcstats == True:
-		cmd = ["MCRIBParcStats", options.subjectid, Hemis]
-		cmd.extend(options.aparc2asegatlases)
-		runCommand(cmd)
+		cmd = ["MCRIBParcStatsPython", options.subjectid, Hemis]
+		for curAtlas in options.aparc2asegatlases:
+			print(curAtlas)
+			curCmd = cmd[:]
+			curCmd.extend([curAtlas])
+			runCommand(curCmd)
 		pass
 	quit()
 #def main():
