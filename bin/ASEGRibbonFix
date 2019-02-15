@@ -57,7 +57,6 @@ CerebellumIMG = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([6, 7, 8, 45, 46, 
 WMToReplace = numpy.logical_and(WMSEGIMG, CerebellumIMG)
 
 if numpy.any(WMToReplace):
-    print 'Replacing WM'
     NewASEGIMG[WMToReplace] = RibbonIMG[WMToReplace]
 
 # dilate the 85 label into unknown and replace with CSF
@@ -67,6 +66,13 @@ CurUnWMIMG = (ASEGIMG == 85)
 #print numpy.any(CurUnWMIMG)
 NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 2)] = 159
 NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 41)] = 160
+
+# restore the thalamus labels
+DrawEMLHThalamus = numpy.reshape(numpy.in1d(DrawEMIMG, numpy.array([43, 87])), DrawEMIMG.shape)
+NewASEGIMG[DrawEMLHThalamus] = 9
+DrawEMRHThalamus = numpy.reshape(numpy.in1d(DrawEMIMG, numpy.array([42, 86])), DrawEMIMG.shape)
+NewASEGIMG[DrawEMRHThalamus] = 48
+
 
 DrawEMExternalIMG = numpy.reshape(numpy.in1d(DrawEMIMG, DrawEMExternalLabels), DrawEMIMG.shape)
 
