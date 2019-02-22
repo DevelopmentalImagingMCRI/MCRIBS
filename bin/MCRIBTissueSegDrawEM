@@ -42,7 +42,11 @@ else
 	cp freesurfer/$SUBJID/mri/T1.mgz freesurfer/$SUBJID/mri/orig.mgz
 	cp freesurfer/$SUBJID/mri/T1.mgz freesurfer/$SUBJID/mri/brain.mgz
 	
-	DRAWEMIMAGE=$DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz
+#DRAWEMIMAGE=$DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz
+	DRAWEMIMAGE=$OUTDIR/${SUBJID}_all_labels.nii.gz
+# make a symbolic link from the manedit file
+# initially it is a link, if it is overwritten with a file then the manedit is used
+	ln -sf ${SUBJID}_all_labels.nii.gz $OUTDIR/${SUBJID}_all_labels_manedit.nii.gz
 	ASEGIMAGE=freesurfer/$SUBJID/mri/aseg.presurf.preunwmfix.mgz
 
 	CMD="mri_binarize --i $DRAWEMIMAGE --o $ASEGIMAGE"
@@ -96,7 +100,8 @@ else
 
 # thalamus
 	CMD="$CMD --replace 42 48 --replace 87 9 --replace 86 48 --replace 43 9"
-
+# subthalamic nuclei
+	CMD="$CMD --replace 44 52 --replace 45 13"
 #CSF
 #CMD="$CMD --replace 83 24"
 # remove the CSF label due to aparc2aseg issues later on
