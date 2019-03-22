@@ -22,7 +22,7 @@ def structN4DefaultOptions():
 	return ['-v', '-c', '[100x100x100x100,0]', '-b', '[200]', '-s', '3']
 
 def main():
-	doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon', 'cortparc', 'surfreg'])
+	doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon', 'cortparc', 'surfreg', 'segstats', 'aparc2aseg', 'apas2aseg', 'parcstats', 'all'])
 	
 	atlases = ['aparc', 'aparc+DKTatlas']
 	defaultAtlas = atlases
@@ -68,6 +68,8 @@ def main():
 	
 	parcstatsArgGroup = argParser.add_argument_group('parcstats', 'Perform stats on the cortical surfaces, depends on --apas2aseg')
 	parcstatsArgGroup.add_argument('--parcstats', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+	argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
+	argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps", required = False, action = 'store_true')
 
 	argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
 	argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -102,62 +104,62 @@ def main():
 	else:
 		Hemis = 'both'
 	
-	if options.conform == True:
+	if options.conform == True or options.all == True:
 		cmd = ["MCRIBConform", os.path.join('RawT2', options.subjectid + ".nii.gz"), options.voxelsize, os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz")]
 		runCommand(cmd)
 		#rint("--struct-reorient no longer needed, ignoring")
 		pass
 	
-	if options.tissueseg == True:
+	if options.tissueseg == True or options.all == True:
 		if options.tissuesegmethod == 'DrawEM':
 			cmd = ["MCRIBTissueSegDrawEM", options.subjectid, str(options.subjectage)]
 			print(" ".join(cmd))
 			runCommand(cmd)
 		pass	
 	
-	if options.surfrecon == True:
+	if options.surfrecon == True or options.all == True:
 		cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh)]
 		runCommand(cmd)
 		pass
 	
-	if options.inflatesphere == True:
+	if options.inflatesphere == True or options.all == True or options.autoreconaftersurf == True:
 		cmd = ["MCRIBInflateSphere", options.subjectid, Hemis]
 		runCommand(cmd)
 		pass
 	
-	if options.cortribbon == True:
+	if options.cortribbon == True or options.all == True or options.autoreconaftersurf == True:
 		cmd = ["MCRIBVolMask", options.subjectid]
 		runCommand(cmd)
 		pass
 	
-	if options.surfreg == True:
+	if options.surfreg == True or options.all == True or options.autoreconaftersurf == True:
 		cmd = ["MCRIBSurfReg", options.subjectid, Hemis]
 		runCommand(cmd)
 		pass
 	
-	if options.cortparc == True:
+	if options.cortparc == True or options.all == True or options.autoreconaftersurf == True:
 		cmd = ["MCRIBCortParc", options.subjectid, Hemis]
 		cmd.extend(options.cortparcatlases)
 		runCommand(cmd)
 		pass
 	
-	if options.aparc2aseg == True:
+	if options.aparc2aseg == True or options.all == True or options.autoreconaftersurf == True:
 		cmd = ["MCRIBAPARC2ASEG", options.subjectid]
 		cmd.extend(options.aparc2asegatlases)
 		runCommand(cmd)
 		pass
 	
-	if options.apas2aseg == True:
+	if options.apas2aseg == True or options.all == True or options.autoreconaftersurf == True:
 		cmd = ["MCRIBAPAS2ASEG", options.subjectid]
 		runCommand(cmd)
 		pass
 	
-	if options.segstats == True:
+	if options.segstats == True or options.all == True or options.autoreconaftersurf == True:
 		cmd = ["MCRIBSegStats", options.subjectid]
 		runCommand(cmd)
 		pass
 	
-	if options.parcstats == True:
+	if options.parcstats == True or options.all == True or options.autoreconaftersurf == True:
 		cmd = ["MCRIBParcStatsPython", options.subjectid, Hemis]
 		for curAtlas in options.aparc2asegatlases:
 			print(curAtlas)
