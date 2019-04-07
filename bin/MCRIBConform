@@ -5,16 +5,39 @@ import os
 import sys
 import numpy
 import scipy
+import getopt
 
 import NIFTIOrientationTools
 import Utils
 
-if not os.path.isfile(sys.argv[1]):
-	print "Input file not found: " + sys.argv[1]
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['interp-method='])
+
+if len(args) != 3:
+	print "The number of arguments must be 3"
+	print sys.argv[0] + " [--interp-method=] <input file> <new voxel size> <output file>"
+	exit()
+
+inputFileName = args[0]
+newVoxelSizeStr = args[1]
+outputFileName = args[2]
+
+if not os.path.isfile(inputFileName):
+	print "Input file not found: " + inputFileName
 	quit()
 
-inputNII = nibabel.load(sys.argv[1])
-outputFileName = sys.argv[3]
+inputNII = nibabel.load(inputFileName)
+
+interpMethod = 'linear'
+
+for o, a in opts:
+    if o == '--interp-method':
+        interpMethod = a
+    if o == '-v':
+        verbose = True
+
+if not interpMethod in ['linear', 'nearest']:
+    print "Interpolation method not supported"
+    quit()
 
 (outputDir, Junk) = os.path.split(outputFileName)
 
@@ -35,14 +58,15 @@ newAffine = NIFTIOrientationTools.applyOrntToNIIAffine(inputNII, inputToRefTrans
 oldPixDims = numpy.ravel(numpy.array(numpy.sqrt(numpy.sum(numpy.multiply(newAffine[0:3, 0:3], newAffine[0:3, 0:3]), axis = 1))))
 
 try:
-	newVoxelSize = float(sys.argv[2])
+    newVoxelSize = float(newVoxelSizeStr)
 except Exception:
-	# it is volume preserving
-	oldVol = numpy.prod(oldPixDims)
-	# numpy.cbrt is cube-root
-	newVoxelSize = numpy.cbrt(oldVol)
+    # it is volume preserving
+    oldVol = numpy.prod(oldPixDims)
+    # numpy.cbrt is cube-root
+    newVoxelSize = numpy.cbrt(oldVol)
 
-	print("Volume preserving " + str(newVoxelSize))
+    print("Volume preserving " + str(newVoxelSize))
+
 
 # set the new pixel dimensions
 newAffine[0:3, 0:3] = newAffine[0:3, 0:3] / oldPixDims * newVoxelSize
@@ -59,7 +83,7 @@ newzz = numpy.arange(0, oldzz[-1] + newVoxelSize / 2, newVoxelSize)
 
 newX, newY, newZ = numpy.meshgrid(newxx, newyy, newzz, indexing = 'ij')
 
-newIMG = Utils.interp3q(oldyy, oldxx, oldzz, numpy.double(outputIMG), newY, newX, newZ, extrapval = 0)
+newIMG = Utils.interp3q(oldyy, oldxx, oldzz, numpy.double(outputIMG), newY, newX, newZ, extrapval = 0, interpmethod = interpMethod)
 newIMG = newIMG.astype(inputNII.get_data_dtype())
 
 newNII = nibabel.Nifti1Image(newIMG, affine = newAffine)

@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+import os
+import getopt
+import sys
+import subprocess
+import argparse
+import numpy
+import nibabel
+
+def runCommand(CMD):
+    print("Running command:")
+    print("\t" + " ".join(CMD))
+    try:
+        subprocess.check_call(CMD)
+    except subprocess.CalledProcessError:
+        print("Command Failed")
+        quit()
+def main():
+
+    argParser = argparse.ArgumentParser(description = "Performs conforming of a label image associated with a preprocessed RawT2 image that has been conformed previously with MCRIBReconAll --conform\n\t\tUses the resolution of the conformed T2 image", usage = sys.argv[0] + " <subjectid> <indir> <outdir>", formatter_class = argparse.RawTextHelpFormatter)
+    argParser.add_argument('subjectid', help = "The subject ID, must have RawT2/<subjectid>.nii.gz, RawT2RadiologicalIsotropic/<subjectid>.nii.gz")
+    argParser.add_argument('indir', help = "The directory that contains the label file <indir>/<subjectid>.nii.gz")
+    argParser.add_argument('outdir', help = "The directory that will contain the conformed label file <outdir>/<subjectid>.nii.gz")
+    
+    options = argParser.parse_args()
+    
+    if os.path.isfile(os.path.join('RawT2', options.subjectid + ".nii.gz")) and os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz") and os.path.join(options.indir, options.subjectid + ".nii.gz") and os.path.isdir(options.outdir):
+        NII = nibabel.load(os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz"))
+
+        newVoxelSize = NII.header.get_zooms()[0]
+        cmd = ["MCRIBConform", "--interp-method=nearest", os.path.join(options.indir, options.subjectid + ".nii.gz"), str(newVoxelSize), os.path.join(options.outdir, options.subjectid + ".nii.gz")]
+        runCommand(cmd)
+
+    else:
+        print("A file or directory was not there")
+
+#def main():
+
+if __name__ == "__main__":
+    main()
