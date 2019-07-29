@@ -1,0 +1,301 @@
+##############################################################################
+# Medical Image Registration ToolKit (MIRTK)
+#
+# Copyright 2016-2017 Imperial College London
+# Copyright 2016-2017 Andreas Schuh
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##############################################################################
+
+"""
+This module can be used to execute the MIRTK command-line tools from an image
+processing pipeline script. Its main usage is identical to the actual subprocess
+module which is used internally by this mirtk.subprocess module.
+"""
+
+from __future__ import absolute_import, unicode_literals
+
+import os
+import sys
+import shlex
+import traceback
+import subprocess
+
+from collections import OrderedDict
+
+
+# ============================================================================
+# configuration
+# ============================================================================
+
+__dir__ = os.path.dirname(os.path.realpath(__file__))
+
+config      = '@__CONFIG__@'
+libexec_dir = os.path.realpath(os.path.join(__dir__, '@LIBEXEC_DIR@'))
+
+if sys.platform.startswith('win'): libexec_ext = ['.exe', '.cmd', '.bat']
+else:                              libexec_ext = ['']
+
+# default values for kwargs of run function
+showcmd = False
+workdir = None
+threads = 0
+onerror = 'throw'
+onexit = None
+
+# ============================================================================
+# command execution
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+def remove_kwargs(kwargs, keys):
+    if not isinstance(keys, (tuple, list)):
+        keys = [keys]
+    for k in keys:
+        if k in kwargs:
+            del kwargs[k]
+
+
+# ----------------------------------------------------------------------------
+def path(argv, quiet=False):
+    """Get full path of MIRTK command executable."""
+    if isinstance(argv, list): command = argv[0]
+    else:                      command = argv
+    if   command == 'calculate':          command = 'calculate-element-wise'
+    elif command == 'convert-dof2csv':    command = 'convert-dof'
+    elif command == 'convert-dof2velo':   command = 'convert-dof'
+    elif command == 'concatenate-dofs':   command = 'compose-dofs'
+    elif command == 'concatenate-images': command = 'combine-images'
+    elif command == 'remesh':             command = 'remesh-surface'
+    fpath = None
+    for ext in libexec_ext:
+        p = os.path.join(libexec_dir, config, command + ext)
+        if os.path.isfile(p):
+            fpath = p
+            break
+    if not fpath:
+        for ext in libexec_ext:
+            p = os.path.join(libexec_dir, command + ext)
+            if os.path.isfile(p):
+                fpath = p
+                break
+    if not quiet:
+        if not fpath:
+            sys.stderr.write('Error: Missing executable for command: ' + command + '\n')
+        elif not os.access(fpath, os.X_OK):
+            sys.stderr.write('Error: Insufficient permissions to execute command: ' + fpath + '\n')
+    return fpath
+
+
+# ----------------------------------------------------------------------------
+def flatten(arg):
+    """Given an argument, possibly a list nested to any level, return a flat list."""
+    if isinstance(arg, (tuple, list)):
+        lis = []
+        for item in arg:
+            lis.extend(flatten(item))
+        return lis
+    else:
+        return [arg]
+
+
+# ----------------------------------------------------------------------------
+def quote(argv):
+    """Return quoted command arguments."""
+    args = []
+    for arg in argv:
+        arg = str(arg)
+        if ' ' in arg:
+            arg = '"' + arg + '"'
+        args.append(arg)
+    return args
+
+
+# ----------------------------------------------------------------------------
+def _call(argv, verbose=0, execfunc=subprocess.call):
+    """Execute MIRTK command."""
+    if not isinstance(argv, list):
+        argv = shlex.split(argv)
+    argv = [str(arg) for arg in argv]
+    if argv[0] == 'convert-dof2csv':
+        new_argv = ['convert-dof']
+        out_fmt  = 'star_ccm_table'
+        for arg in argv[1:]:
+            if arg == '-pos': out_fmt = 'star_ccm_table_xyz'
+            else: new_argv.append(arg)
+        new_argv.extend(['-output-format', out_fmt])
+        argv = new_argv
+    argv[0] = path(argv[0])
+    if not argv[0]: return 1
+    if verbose > 0:
+        sys.stdout.write("> ")
+        sys.stdout.write(" ".join(quote(argv)))
+        sys.stdout.write("\n\n")
+    sys.stdout.flush()
+    return execfunc(argv)
+
+
+# ----------------------------------------------------------------------------
+def call(argv, verbose=0):
+    """Execute MIRTK command and return exit code."""
+    return _call(argv, verbose=verbose, execfunc=subprocess.call)
+
+
+# ----------------------------------------------------------------------------
+def check_call(argv, verbose=0):
+    """Execute MIRTK command and throw exception on error."""
+    _call(argv, verbose=verbose, execfunc=subprocess.check_call)
+
+
+# ----------------------------------------------------------------------------
+def check_output(argv, verbose=0, code='utf-8'):
+    """Execute MIRTK command and return its output."""
+    output = _call(argv, verbose=verbose, execfunc=subprocess.check_output)
+    if code: output = output.decode(code)
+    return output
+
+
+# ----------------------------------------------------------------------------
+def run(cmd, *args, **kwargs):
+    """Execute MIRTK command and throw exception or exit on error.
+
+    This function calls the specified MIRTK command with the given positional
+    and option arguments (keyword arguments prepended by single dash, '-').
+    The 'onexit' and 'onexit' keyword arguments define the return value and
+    the error handling when the subprocess returns a non-zero exit code.
+    By default, this function behaves identical to check_call, i.e., throws
+    and exception when the command failed and does not return a value otherwise.
+
+    Arguments
+    ---------
+
+    onexit: str
+        Defines action to take when command subprocess finished.
+        - 'none': Always return None, even when process failed when onerror='return'
+        - 'output': Return standard output of command instead of printing it
+        - 'returncode': Return exit code of command. When onerror is not 'return',
+          this always returns 0 indicating successful execution of the command.
+    onerror: str
+        - 'return': Return value specified by 'onexit' even when command failed.
+        - 'throw': Throw CalledProcessError when command failed.
+        - 'exit': Exit this process (sys.exit) with exit command of failed command.
+
+
+    Deprecated
+    ----------
+
+    This convenience wrapper for check_call throws a subprocess.CalledProcessError 
+    when the command returned a non-zero exit code when exit_on_error=False.
+    If exit_on_error=True, a the command arguments, the exit code, and the
+    Python stack trace are printed to sys.stderr and this process terminated
+    using sys.exit with the return code of the executed command.
+
+    """
+    default = globals()
+    if "exit_on_error" in kwargs and "onerror" in kwargs:
+        raise ValueError("Deprecated keyword argument 'exit_on_error' given together with new 'onerror' argument!")
+    showcmd = kwargs.get("showcmd", default["showcmd"])
+    workdir = kwargs.get("workdir", default["workdir"])
+    threads = kwargs.get("threads", default["threads"])
+    if "exit_on_error" in kwargs:
+        onerror = kwargs.get("onerror", "exit" if kwargs.get("exit_on_error", False) else "throw")
+    else:
+        onerror = kwargs.get("onerror", default["onerror"])
+    if onerror is None:
+        onerror = 'return'
+    else:
+        onerror = onerror.lower()
+        if onerror not in ('return', 'throw', 'exit'):
+            raise ValueError("Invalid 'onerror={}' argument! Must be 'return', 'throw', or 'exit'.".format(onerror))
+    onexit = kwargs.get("onexit", default["onexit"])
+    if onexit is None:
+        onexit = 'none'
+    else:
+        onexit = onexit.lower()
+        if onexit in ('code', 'exit_code', 'return_code'):
+            onexit = 'returncode'
+        if onexit in ('stdout', 'return_stdout', 'return_output'):
+            onexit = 'output'
+        if onexit not in ('none', 'output', 'returncode'):
+            raise ValueError("Invalid 'onexit={}' argument! Must be 'none', 'returncode', 'output' or alternatives thereof.".format(onexit))
+    remove_kwargs(kwargs, ["showcmd", "workdir", "threads", "onexit", "onerror", "exit_on_error"])
+    # command arguments
+    argv = [cmd]
+    argv.extend(args)
+    argv.extend(kwargs.get("args", []))
+    remove_kwargs(kwargs, "args")
+    # add ordered list of options
+    opts = kwargs.get("opts", {})
+    remove_kwargs(kwargs, "opts")
+    if isinstance(opts, list):
+        for item in opts:
+            if isinstance(item, (tuple, list)):
+                opt = item[0]
+                arg = flatten(item[1:])
+            else:
+                opt = item
+                arg = None
+            if not opt.startswith('-'):
+                opt = '-' + opt
+            argv.append(opt)
+            if not arg is None:
+                argv.extend(flatten(arg))
+    # add unordered dict of options
+    else:
+        for opt, arg in opts.items():
+            if not opt.startswith('-'):
+                opt = '-' + opt
+            argv.append(opt)
+            if not arg is None:
+                argv.extend(flatten(arg))
+    # add options given as kwargs
+    for opt, arg in kwargs.items():
+        opt = opt.replace('_', '-')
+        if not opt.startswith('-'):
+            opt = '-' + opt
+        argv.append(opt)
+        if not arg is None:
+            argv.extend(flatten(arg))
+    # add -threads option
+    if threads > 0 and not 'threads' in opts:
+        argv.extend(['-threads', str(threads)])
+    # execute command
+    retval = None
+    prevdir = os.getcwd()
+    if workdir:
+        os.chdir(workdir)
+    try:
+        if onexit == 'output':
+            retval = check_output(argv, verbose=1 if showcmd else 0)
+        else:
+            check_call(argv, verbose=1 if showcmd else 0)
+            if onexit == 'returncode':
+                retval = 0
+    except subprocess.CalledProcessError as e:
+        if onerror == 'exit':
+            sys.stdout.flush()
+            sys.stderr.write("\n")
+            sys.stderr.write("Command: ")
+            sys.stderr.write(" ".join(quote(argv)))
+            sys.stderr.write("\n")
+            sys.stderr.write("\nError: Command returned non-zero exit status {}\n".format(e.returncode))
+            sys.stderr.write("\nTraceback (most recent call last):\n")
+            traceback.print_stack()
+            sys.exit(e.returncode)
+        elif onerror == 'throw':
+            raise e
+        if onexit == 'returncode':
+            retval = e.returncode
+    finally:
+        os.chdir(prevdir)
+    return retval
