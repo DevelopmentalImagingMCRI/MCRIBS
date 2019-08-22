@@ -1,0 +1,10 @@
+itkSegmentTable: 7
+1	CSF
+2	Cortical gray matter
+3	White matter
+4	Background
+5	Ventricles
+6	Cerebellum + Brainstem
+7	Deep Gray Matter
+8       High-intensity White matter
+9       Low-intensity White matter
