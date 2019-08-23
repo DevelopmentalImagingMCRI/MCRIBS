@@ -1,0 +1,33 @@
+#!/bin/bash
+
+if [ -z "$1" -o -z "$2" ]
+then
+	echo "Usage: $0 <subject> <hemis> [atlases]"
+	exit
+fi
+
+SUBJID=$1
+HEMIS=$2
+shift
+shift
+
+export SUBJECTS_DIR=`pwd`/freesurfer
+FSDIR=$SUBJECTS_DIR/$SUBJID
+
+if [ "$HEMIS" == "both" ]
+then
+	HEMIS="lh
+	rh"
+fi
+
+P=`pwd`
+
+ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
+
+for CURHEMI in $HEMIS
+do
+	VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
+	cd $SUBJECTS_DIR/$SUBJID/surf
+	FreesurferCorticalThickness $SUBJID $CURHEMI
+	cd $P
+done
