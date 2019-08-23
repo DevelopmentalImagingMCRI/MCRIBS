@@ -10,7 +10,7 @@ then
 	mkdir -p VTK/VTK-build
 	rm -fr VTK/VTK-install
 	cd VTK
-	#git clone https://github.com/Kitware/VTK.git
+	git clone https://github.com/Kitware/VTK.git
 	cd VTK
 	git checkout tags/v8.2.0
 	cd ../VTK-build
@@ -24,8 +24,9 @@ then
 fi
 #apt install -y zlib1g-dev libboost-dev libeigen3-dev libflann-dev
 
-tar xpf MIRTK.tar.xz
 rm -fr MIRTK/MIRTK-build
 mkdir -p MIRTK/MIRTK-build
 cd MIRTK/MIRTK-build
-cmake -DMODULE_Deformable=ON -DMODULE_Mapping=ON -DMODULE_PointSet=ON -DMODULE_Scripting=ON -DWITH_TBB=ON -DMODULE_DrawEM=ON -DDEPENDS_VTK_DIR=$MCRIBSDIR/VTK/VTK-install/lib/cmake/vtk-8.2 -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/MIRTK/MIRTK-install -DCMAKE_BUILD_TYPE=Debug -DWITH_FLANN=ON ../MIRTK
+cmake -DMODULE_Deformable=ON -DMODULE_Mapping=ON -DMODULE_PointSet=ON -DMODULE_Scripting=ON -DWITH_TBB=ON -DMODULE_DrawEM=ON -DWITH_VTK=ON -DDEPENDS_VTK_DIR=$MCRIBSDIR/VTK/VTK-install/lib/cmake/vtk-8.2 -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/MIRTK/MIRTK-install -DCMAKE_BUILD_TYPE=Release -DWITH_FLANN=ON ../MIRTK
+make -j`nproc`
+make install
