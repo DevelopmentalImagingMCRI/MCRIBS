@@ -16,10 +16,12 @@ The script build.sh will build VTK and MIRTK. Install the following dependencies
   - zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libeigen3-dev
 - For MIRTK
   - libtbb-dev libflann-dev
-
+- For python
+  - python-vtk python3-vtk
+  
 This will install all of the dependencies
 
-`apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libtbb-dev libflann-dev libeigen3-dev`
+`apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libtbb-dev libflann-dev libeigen3-dev python-vtk python3-vtk`
 
 The script build.sh will checkout VTK 8.2.0 and build it.
 
