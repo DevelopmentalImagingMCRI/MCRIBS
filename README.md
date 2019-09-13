@@ -19,9 +19,13 @@ The script build.sh will build VTK and MIRTK. Install the following dependencies
 - For python
   - python-vtk python3-vtk
   
-This will install all of the dependencies
+This will install all of the dependencies for ubuntu:
 
 `apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libtbb-dev libflann-dev libeigen3-dev python-vtk python3-vtk`
+
+In centos, do this:
+
+`yum install zlib1g-devel boost-devel mesa-libGLU-devel libXt-devel python-devel tbb-devel eigen3-devel vtk-python-vtkk`
 
 The script build.sh will checkout VTK 8.2.0 and build it.
 
