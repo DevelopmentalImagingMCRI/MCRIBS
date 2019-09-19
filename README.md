@@ -25,9 +25,9 @@ This will install all of the dependencies for ubuntu:
 
 In centos, do this:
 
-`yum install zlib1g-devel boost-devel mesa-libGLU-devel libXt-devel python-devel tbb-devel eigen3-devel vtk-python-vtkk`
+`yum install zlib1g-devel boost-devel mesa-libGLU-devel libXt-devel python-devel tbb-devel eigen3-devel vtk-python`
 
-The script build.sh will checkout VTK 8.2.0 and build it.
+The script build.sh will checkout VTK 8.2.0 and build it. TODO: get MIRTK and python to use bindings in the VTK 8.2.0 build directory.
 
 # Setting up
 
