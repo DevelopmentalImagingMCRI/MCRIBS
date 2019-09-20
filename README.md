@@ -15,17 +15,17 @@ The script build.sh will build VTK and MIRTK. Install the following dependencies
 - For VTK
   - zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libeigen3-dev
 - For MIRTK
-  - libtbb-dev libflann-dev
+  - libtbb-dev libflann-dev python-contextlib2
 - For python
   - python-vtk python3-vtk
   
 This will install all of the dependencies for ubuntu:
 
-`apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libtbb-dev libflann-dev libeigen3-dev python-vtk python3-vtk`
+`apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libtbb-dev libflann-dev libeigen3-dev python-vtk python3-vtk python-contextlib2`
 
 In centos, do this:
 
-`yum install zlib1g-devel boost-devel mesa-libGLU-devel libXt-devel python-devel tbb-devel eigen3-devel vtk-python`
+
 
 The script build.sh will checkout VTK 8.2.0 and build it. TODO: get MIRTK and python to use bindings in the VTK 8.2.0 build directory.
 
