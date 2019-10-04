@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import vtk
 import numpy
@@ -11,8 +11,8 @@ import getopt
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 1:
-	print "The number of arguments must be 1"
-	print sys.argv[0] + " <vtp file>"
+	print("The number of arguments must be 1")
+	print(sys.argv[0] + " <vtp file>")
 	exit()
 
 numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
@@ -35,7 +35,7 @@ for o, a in opts:
 		verbose = True
 
 if verbose == True:
-	print inFilePrefix
+	print(inFilePrefix)
 #SurfReader = vtk.vtkXMLPolyDataReader()
 #SurfReader.SetFileName(surfFileName)
 #SurfReader.Update()
@@ -68,7 +68,7 @@ for arrayIDX in range(pointData.GetNumberOfArrays()):
 	curArrayName = pointData.GetArrayName(arrayIDX)
 	curArrayName = curArrayName.replace(" ", "_")
 	if verbose == True:
-		print curArrayName
+		print(curArrayName)
 	curArray = pointData.GetArray(arrayIDX)
 	curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
 	curArray = numpy.array(curArray)
@@ -90,7 +90,7 @@ for arrayIDX in range(cellData.GetNumberOfArrays()):
 	curArrayName = cellData.GetArrayName(arrayIDX)
 	curArrayName = curArrayName.replace(" ", "_")
 	if verbose == True:
-		print curArrayName
+		print(curArrayName)
 	curArray = cellData.GetArray(arrayIDX)
 	curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
 	curArray = numpy.array(curArray)

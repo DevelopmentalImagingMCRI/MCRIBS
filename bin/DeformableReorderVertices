@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import vtk
 import numpy
@@ -14,8 +14,8 @@ import GraphUtils
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 2:
-	print "The number of arguments must be 1"
-	print sys.argv[0] + " <deformable directory> <output directory>"
+	print("The number of arguments must be 1")
+	print(sys.argv[0] + " <deformable directory> <output directory>")
 	exit()
 
 #numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
@@ -45,23 +45,23 @@ def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None, V1Debug
 		InverseI[I] = numpy.arange(I.size)
 		#print I
 		#print InverseI
-		print InverseI[V1DebugIDX]
-		print InverseI[V2DebugIDXInIDX]
+		print(InverseI[V1DebugIDX])
+		print(InverseI[V2DebugIDXInIDX])
 
 
 		X = (numpy.diff(SortedT, axis = 1) == 0)
 		S = numpy.all(X == True, axis = 0)
-		print X[:, InverseI[V1DebugIDX]]
-		print S[InverseI[V1DebugIDX]]
+		print(X[:, InverseI[V1DebugIDX]])
+		print(S[InverseI[V1DebugIDX]])
 		DD = numpy.where(S)[0]
-		print numpy.in1d(InverseI[V1DebugIDX], DD)
+		print(numpy.in1d(InverseI[V1DebugIDX], DD))
 		#print DD
 		#print InverseI[V1DebugIDX]
 
 	#print SortedT
 	D = numpy.where(numpy.all(numpy.diff(SortedT, axis = 1) == 0, axis = 0))[0]
 	if debug == True:
-		print D	
+		print(D)	
 	#SameIDX = dict()
 	
 	SrcIDX = numpy.zeros(V1['vertices'].shape[1], dtype = numpy.int32)
@@ -160,42 +160,42 @@ else:
 	Pial6Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-6_world.surf'))
 
 if WhiteInternalSurf is None:
-    print "WhiteInternalSurf not found"
+    print("WhiteInternalSurf not found")
     exit()
     
 if WhiteSurf is None:
-    print "WhiteInternalSurf not found"
+    print("WhiteInternalSurf not found")
     exit()
 
 if WhiteLHSurf is None:
-    print "WhiteLHSurf not found"
+    print("WhiteLHSurf not found")
     exit()
 if WhiteRHSurf is None:
-    print "WhiteRHSurf not found"
+    print("WhiteRHSurf not found")
     exit()
 if PialInternalSurf is None:
-    print "PialInternalSurf not found"
+    print("PialInternalSurf not found")
     exit()
 if PialSurf is None:
-    print "PialSurf not found"
+    print("PialSurf not found")
     exit()
 if PialLHSurf is None:
-    print "PialLHSurf not found"
+    print("PialLHSurf not found")
     exit()
 if PialRHSurf is None:
-    print "PialRHSurf not found"
+    print("PialRHSurf not found")
     exit()
 if Pial3Surf is None:
-    print "Pial3Surf not found"
+    print("Pial3Surf not found")
     exit()
 if Pial4Surf is None:
-    print "Pial4Surf not found"
+    print("Pial4Surf not found")
     exit()
 if Pial5Surf is None:
-    print "Pial5Surf not found"
+    print("Pial5Surf not found")
     exit()
 if Pial6Surf is None:
-    print "Pial6Surf not found"
+    print("Pial6Surf not found")
     exit()
 
 #Pial5RegionId = VTPUtils.readVTPCellArray(os.path.join(inDir, 'temp', 'pial-5.vtp'), 'RegionId')
@@ -252,7 +252,7 @@ def findAnyEqualVerticesInSameSurface(Surf):
 		I = numpy.any(numpy.atleast_2d(Surf['vertices'][:, z]).T == Surf['vertices'][:, (z + 1):], axis = 0)
 		IDX = numpy.where(I)[0]
 		if IDX.size > 0:
-			print str(z) + " " + str(IDX)
+			print(str(z) + " " + str(IDX))
 
 # for each vertex in SurfSRC[IDX], find the closest vertex index in SurfDST
 def findClosestIDX(SurfSRC, SurfDST, IDX, return_dist = False):

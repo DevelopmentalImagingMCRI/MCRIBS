@@ -18,7 +18,7 @@ def vertexRegionId(F, FaceRegionId):
 def readVTPSurf(inFileName):
 	
 	if not os.path.isfile(inFileName):
-		print "File Not Found: " + inFileName
+		print("File Not Found: " + inFileName)
 		return None
 	Reader = vtk.vtkXMLPolyDataReader()
 	Reader.SetFileName(inFileName)
@@ -40,7 +40,7 @@ def readVTPSurf(inFileName):
 def readVTPCellArray(inFileName, cellArrayName):
 	
 	if not os.path.isfile(inFileName):
-		print "File Not Found: " + inFileName
+		print("File Not Found: " + inFileName)
 		return None
 	Reader = vtk.vtkXMLPolyDataReader()
 	Reader.SetFileName(inFileName)

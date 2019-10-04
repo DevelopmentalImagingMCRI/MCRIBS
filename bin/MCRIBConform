@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import nibabel
 import os
@@ -13,8 +13,8 @@ import Utils
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['interp-method='])
 
 if len(args) != 3:
-	print "The number of arguments must be 3"
-	print sys.argv[0] + " [--interp-method=] <input file> <new voxel size> <output file>"
+	print("The number of arguments must be 3")
+	print(sys.argv[0] + " [--interp-method=] <input file> <new voxel size> <output file>")
 	exit()
 
 inputFileName = args[0]
@@ -22,7 +22,7 @@ newVoxelSizeStr = args[1]
 outputFileName = args[2]
 
 if not os.path.isfile(inputFileName):
-	print "Input file not found: " + inputFileName
+	print("Input file not found: " + inputFileName)
 	quit()
 
 inputNII = nibabel.load(inputFileName)
@@ -36,7 +36,7 @@ for o, a in opts:
         verbose = True
 
 if not interpMethod in ['linear', 'nearest']:
-    print "Interpolation method not supported"
+    print("Interpolation method not supported")
     quit()
 
 (outputDir, Junk) = os.path.split(outputFileName)
@@ -65,7 +65,7 @@ except Exception:
     # numpy.cbrt is cube-root
     newVoxelSize = numpy.cbrt(oldVol)
 
-    print("Volume preserving " + str(newVoxelSize))
+    print(("Volume preserving " + str(newVoxelSize)))
 
 
 # set the new pixel dimensions

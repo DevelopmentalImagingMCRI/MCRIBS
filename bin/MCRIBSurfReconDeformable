@@ -45,5 +45,4 @@ do
 done
 
 # make the pial surfaces by reordering the pial vertices in the VTP files
-echo "Making the pial surfaces"
 DeformableReorderVertices --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID freesurfer/$SUBJID/surf

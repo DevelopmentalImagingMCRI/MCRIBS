@@ -36,18 +36,18 @@ do
 	cp ${CURHEMI}.white ${CURHEMI}.smoothwm
 	cp ${CURHEMI}.white ${CURHEMI}.orig
 
-	mris_inflate_cuda ${CURHEMI}.smoothwm ${CURHEMI}.inflated 
-	if [ "$?" != "0" ]
-	then
-		mris_inflate ${CURHEMI}.smoothwm ${CURHEMI}.inflated 
-	fi
-	
-	mris_sphere_cuda -remove_negative 1 -seed 1234 ${CURHEMI}.inflated ${CURHEMI}.sphere
-	if [ "$?" != "0" ]
-	then
-		mris_sphere -remove_negative 1 -seed 1234 ${CURHEMI}.inflated ${CURHEMI}.sphere
-	fi
-	
+#	mris_inflate_cuda ${CURHEMI}.smoothwm ${CURHEMI}.inflated 
+#	if [ "$?" != "0" ]
+#	then
+#		mris_inflate ${CURHEMI}.smoothwm ${CURHEMI}.inflated 
+#	fi
+#	
+#	mris_sphere_cuda -remove_negative 1 -seed 1234 ${CURHEMI}.inflated ${CURHEMI}.sphere
+#	if [ "$?" != "0" ]
+#	then
+#		mris_sphere -remove_negative 1 -seed 1234 ${CURHEMI}.inflated ${CURHEMI}.sphere
+#	fi
+#	
 #mris_write_curvature ${CURHEMI}.smoothwm ${CURHEMI}.curv ${CURHEMI}.area
 # computes the smoothwm curvature, here 
 	mris_curvature -w -a 10 ${CURHEMI}.smoothwm

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import numpy
 import sys
@@ -10,10 +10,10 @@ import freesurfer
 import GraphUtils
 
 if len(sys.argv) < 4:
-    print "Incorrect number of arguments"
-    print
-    print "Usage: " + sys.argv[0] + " <subject id> <hemi>"
-    print "Performs the parcellation stats on the white matter surface given a parcellation annot file"
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <subject id> <hemi>")
+    print("Performs the parcellation stats on the white matter surface given a parcellation annot file")
     quit()
 
 # ColHeaders  Index SegId NVoxels Volume_mm3 StructName normMean normStdDev normMin normMax normRange
@@ -21,7 +21,7 @@ if len(sys.argv) < 4:
 try:
     SubjectsDir = os.environ['SUBJECTS_DIR']
 except Exception:
-    print "Could not find the SUBJECTS_DIR environment variable"
+    print("Could not find the SUBJECTS_DIR environment variable")
     exit()
 
 SubjectID = sys.argv[1]
@@ -56,7 +56,7 @@ for Hemi in Hemis:
     R = checkFilesReturnNameOnFailure([LabelFileName, AreaFileName, ThicknessFileName, AnnotFileName, MeanCurvFileName, GaussCurvFileName])
 
     if not R is None:
-        print "Could not find: " + R
+        print("Could not find: " + R)
         quit()
 
     CortexLabel = freesurfer.readLabel(LabelFileName)
@@ -87,8 +87,8 @@ for Hemi in Hemis:
     outDF = pandas.DataFrame(columns = ['StructName', 'NumVert', 'SurfArea', 'GrayVol', 'ThickAvg', 'ThickStd', 'MeanCurv', 'GausCurv', 'FoldInd', 'CurvInd'])
     outDF.StructName = Annot['colortable']['struct_names']
 
-
     outDF = outDF[outDF.StructName != 'ctx-' + Hemi + '-unknown']
+    outDF = outDF[outDF.StructName != 'unknown']
 
     for curStructIDX in outDF.index:
         I = numpy.where(numpy.logical_and(Annot['seg'] == curStructIDX, CortexLabelMask))[0]
@@ -117,5 +117,5 @@ for Hemi in Hemis:
     #numericFields = ['NumVert', 'SurfArea', 'GrayVol', 'ThickAvg', 'ThickStd', 'MeanCurv', 'GausCurv', 'FoldInd', 'CurvInd']
 
     #for curField in numericFields:
-        #outDF.
-    outDF.to_csv(os.path.join(SubjectsDir, SubjectID, 'stats', Hemi + "." + Atlas + ".stats"))
+    #    outDF[curField] = outDF[curField].to_numeric()
+    outDF.to_csv(os.path.join(SubjectsDir, SubjectID, 'stats', Hemi + "." + Atlas + ".stats"), index = False)

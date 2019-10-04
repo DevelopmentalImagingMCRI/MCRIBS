@@ -315,7 +315,7 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
 		try:
 			FID = open(fileName, 'wb')
 		except Exception:
-			print("Could not open: " + fileName)
+			print(("Could not open: " + fileName))
 			return
 	
 		FID.write(surfaceMagicNumber)
@@ -360,7 +360,7 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
 		try:
 			FID = open(fileName, 'w')
 		except Exception:
-			print("Could not open: " + fileName)
+			print(("Could not open: " + fileName))
 			return
 		
 		if 'description' in surfStruct:
@@ -528,7 +528,7 @@ def writeCurv(values, fileName):
 	try:
 		FID = open(fileName, 'wb')
 	except Exception:
-		print("Could not open: " + fileName)
+		print(("Could not open: " + fileName))
 		return
 
 	FID.write(curvMagicNumber)
@@ -688,7 +688,7 @@ def writeAnnot(annotDict, fileName):
 	try:
 		FID = open(fileName, 'wb')
 	except Exception:
-		print("Could not open: " + fileName)
+		print(("Could not open: " + fileName))
 		return
 	FID.write(struct.pack('>I', annotDict['vertices'].size))
 	
@@ -743,7 +743,7 @@ def writeAnnot(annotDict, fileName):
 def readICO(order):
 	ICOFile = os.path.join(os.environ['FREESURFER_HOME'], 'lib', 'bem', 'ic' + str(order) + '.tri')
 	if not os.path.isfile(ICOFile):
-		print("Couldnt find ICO file: " + ICOFile)
+		print(("Couldnt find ICO file: " + ICOFile))
 		quit()
 
 	FID = open(ICOFile, 'r')

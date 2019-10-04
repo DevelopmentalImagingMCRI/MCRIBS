@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import vtk
 import numpy
@@ -17,8 +17,8 @@ import GraphUtils
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 4:
-	print "The number of arguments must be 4"
-	print sys.argv[0] + " <vtp file> <fs surface file> <aseg internal file> <curv file>"
+	print("The number of arguments must be 4")
+	print(sys.argv[0] + " <vtp file> <fs surface file> <aseg internal file> <curv file>")
 	exit()
 
 numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import nibabel
 import os
@@ -13,19 +13,19 @@ import Utils
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['interp-method='])
 
 if len(args) != 2:
-	print "The number of arguments must be 3"
-	print sys.argv[0] + " <cropped file> <original file>"
+	print("The number of arguments must be 3")
+	print(sys.argv[0] + " <cropped file> <original file>")
 	exit()
 
 croppedFileName = args[0]
 origFileName = args[1]
 
 if not os.path.isfile(croppedFileName):
-    print "Input file not found: " + croppedFileName
+    print("Input file not found: " + croppedFileName)
     quit()
 
 if not os.path.isfile(origFileName):
-    print "Input file not found: " + origFileName
+    print("Input file not found: " + origFileName)
     quit()
 
 croppedNII = nibabel.load(croppedFileName)
@@ -56,5 +56,5 @@ if initialCrop == True:
 
 for curIDX in range(CornerROWS.size):
     if numpy.array_equal(croppedIMG, origIMG[CornerROWS[curIDX]:(CornerROWS[curIDX] + croppedIMG.shape[0]), CornerCOLS[curIDX]:(CornerCOLS[curIDX] + croppedIMG.shape[1]), CornerSLICES[curIDX]:(CornerSLICES[curIDX] + croppedIMG.shape[2])]):
-        print str(CornerROWS[curIDX]) + " " + str(croppedIMG.shape[0]) + " " + str(CornerCOLS[curIDX]) + " " + str(croppedIMG.shape[1]) + " " + str(CornerSLICES[curIDX]) + " " + str(croppedIMG.shape[2])
+        print(str(CornerROWS[curIDX]) + " " + str(croppedIMG.shape[0]) + " " + str(CornerCOLS[curIDX]) + " " + str(croppedIMG.shape[1]) + " " + str(CornerSLICES[curIDX]) + " " + str(croppedIMG.shape[2]))
         break
