@@ -13,13 +13,15 @@ SURFRECONDIR=SurfReconDeformable/$SUBJID
 
 VOLGEOM=TissueSeg/${SUBJID}_all_labels.nii.gz
 
-VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/temp/pial-5.vtp
-VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/meshes/white.vtp
-VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/meshes/white+internal.vtp
+VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/temp/pial-4.vtp
+#VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/temp/pial-5.vtp
+#VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/meshes/white.vtp
+#VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/meshes/white+internal.vtp
 
 W=`PialDisplayCollisionVertices $SURFRECONDIR/temp/pial-5.vtp`
 freeview \
 	-v RawT2RadiologicalIsotropic/${SUBJID}.nii.gz \
 	-v $VOLGEOM:colormap=lut:lut=$HOME/AARNETownCloud/drawem/FS_all_labels.txt:opacity=0.3 \
 	-v $SURFRECONDIR/recon/regions.nii.gz \
-	-f $SURFRECONDIR/temp/pial-5_tkr.surf:overlay=$SURFRECONDIR/temp/pial-5.CollisionMask.curv:edgecolor=overlay:goto=$W
+	-f $SURFRECONDIR/temp/pial-5_tkr.surf:overlay=$SURFRECONDIR/temp/pial-5.CollisionMask.curv:edgecolor=overlay:goto=$W \
+	-f $SURFRECONDIR/temp/pial-4_tkr.surf

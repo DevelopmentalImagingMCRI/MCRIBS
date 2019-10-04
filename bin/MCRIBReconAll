@@ -47,6 +47,9 @@ def main():
     surfRegArgGroup = argParser.add_argument_group('surfreg', 'Perform surface registration to the spherical template, depends --surfrecon')
     surfRegArgGroup.add_argument('--surfreg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     
+    surfVolArgGroup = argParser.add_argument_group('surfvol', 'Perform surface volume calculations, depends --surfrecon')
+    surfVolArgGroup.add_argument('--surfvol', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+    
     cortRibbonArgGroup = argParser.add_argument_group('cortribbon', 'Perform cortical ribbon volume generation, depends --surfrecon')
     cortRibbonArgGroup.add_argument('--cortribbon', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     
@@ -70,7 +73,8 @@ def main():
     parcstatsArgGroup = argParser.add_argument_group('parcstats', 'Perform stats on the cortical surfaces, depends on --apas2aseg')
     parcstatsArgGroup.add_argument('--parcstats', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
-    argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps", required = False, action = 'store_true')
+    argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps after surface reconstruction", required = False, action = 'store_true')
+    
 
     argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
     argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -125,6 +129,11 @@ def main():
     
     if options.inflatesphere == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBInflateSphere", options.subjectid, Hemis]
+        runCommand(cmd)
+        pass
+    
+    if options.surfvol == True or options.all == True or options.autoreconaftersurf == True:
+        cmd = ["MCRIBSurfVol", options.subjectid, Hemis]
         runCommand(cmd)
         pass
     

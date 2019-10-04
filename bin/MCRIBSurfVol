@@ -1,0 +1,29 @@
+#!/bin/bash
+
+if [ -z "$1" -o -z "$2" ]
+then
+	echo "Usage: $0 <subject> <hemis>"
+	exit
+fi
+
+SUBJID=$1
+HEMIS=$2
+
+#ATLASES=aparc
+export SUBJECTS_DIR=`pwd`/freesurfer
+FSDIR=$SUBJECTS_DIR/$SUBJID
+
+if [ "$HEMIS" == "both" ]
+then
+	HEMIS="lh
+	rh"
+fi
+
+P=`pwd`
+
+for CURHEMI in $HEMIS
+do
+    cd $SUBJECTS_DIR/$SUBJID/surf
+    mris_convert --volume $SUBJID $CURHEMI $SUBJECTS_DIR/$SUBJID/surf/$CURHEMI.volume
+    cd $P
+done
