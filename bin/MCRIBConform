@@ -13,17 +13,17 @@ import Utils
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['interp-method='])
 
 if len(args) != 3:
-	print("The number of arguments must be 3")
-	print(sys.argv[0] + " [--interp-method=] <input file> <new voxel size> <output file>")
-	exit()
+    print("The number of arguments must be 3")
+    print(sys.argv[0] + " [--interp-method=] <input file> <new voxel size> <output file>")
+    exit()
 
 inputFileName = args[0]
 newVoxelSizeStr = args[1]
 outputFileName = args[2]
 
 if not os.path.isfile(inputFileName):
-	print("Input file not found: " + inputFileName)
-	quit()
+    print("Input file not found: " + inputFileName)
+    quit()
 
 inputNII = nibabel.load(inputFileName)
 

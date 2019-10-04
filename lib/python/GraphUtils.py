@@ -50,70 +50,70 @@ def getVertexNeighbours(S):
     return vertexNeighbours
 
 def vertexFaceIDX(F):
-	numVertices = numpy.max(F) + 1
+    numVertices = numpy.max(F) + 1
 
-	vertexFaceIDX = list()
-	for z in range(numVertices):
-		vertexFaceIDX.append(list())
-	
-	for z in range(F.shape[1]):
-		vertexFaceIDX[F[0, z]].append(z)
-		vertexFaceIDX[F[1, z]].append(z)
-		vertexFaceIDX[F[2, z]].append(z)
-	
-	for z in range(numVertices):
-		vertexFaceIDX[z] = numpy.array(vertexFaceIDX[z])
-	return vertexFaceIDX
+    vertexFaceIDX = list()
+    for z in range(numVertices):
+        vertexFaceIDX.append(list())
+    
+    for z in range(F.shape[1]):
+        vertexFaceIDX[F[0, z]].append(z)
+        vertexFaceIDX[F[1, z]].append(z)
+        vertexFaceIDX[F[2, z]].append(z)
+    
+    for z in range(numVertices):
+        vertexFaceIDX[z] = numpy.array(vertexFaceIDX[z])
+    return vertexFaceIDX
 
 # for the surface S returns a tuple (FaceNormals, FaceAreas, VertexNormals, VertexAreas)
 
 def surfaceAreasNormals(S):
-	
-	VA = numpy.take(S['vertices'], S['faces'][0], axis = 1)
-	VB = numpy.take(S['vertices'], S['faces'][1], axis = 1)
-	VC = numpy.take(S['vertices'], S['faces'][2], axis = 1)
-	
-	faceNormals = numpy.cross(VB - VA, VC - VA, axis = 0)
-	faceAreas = numpy.sqrt(numpy.sum(faceNormals * faceNormals, axis = 0)) / 2
-	faceNormals = faceNormals / faceAreas / 2
-	
-	vertexFaces = vertexFaceIDX(S['faces'])
+    
+    VA = numpy.take(S['vertices'], S['faces'][0], axis = 1)
+    VB = numpy.take(S['vertices'], S['faces'][1], axis = 1)
+    VC = numpy.take(S['vertices'], S['faces'][2], axis = 1)
+    
+    faceNormals = numpy.cross(VB - VA, VC - VA, axis = 0)
+    faceAreas = numpy.sqrt(numpy.sum(faceNormals * faceNormals, axis = 0)) / 2
+    faceNormals = faceNormals / faceAreas / 2
+    
+    vertexFaces = vertexFaceIDX(S['faces'])
 
-	vertexNormals = numpy.zeros_like(S['vertices'])
-	vertexAreas = numpy.zeros(S['vertices'].shape[1])
-	
-	for z in range(S['vertices'].shape[1]):
-		vertexAreas[z] = numpy.sum(faceAreas[vertexFaces[z]]) / 3
+    vertexNormals = numpy.zeros_like(S['vertices'])
+    vertexAreas = numpy.zeros(S['vertices'].shape[1])
+    
+    for z in range(S['vertices'].shape[1]):
+        vertexAreas[z] = numpy.sum(faceAreas[vertexFaces[z]]) / 3
 
-		vertexNormals[:, z] = numpy.sum(numpy.atleast_2d(faceAreas[vertexFaces[z]]) * faceNormals[:, vertexFaces[z]], axis = 1)
-	
-	vertexNormals = vertexNormals / numpy.atleast_2d(numpy.sqrt(numpy.sum(vertexNormals * vertexNormals, axis = 1))).T
-	return (faceNormals, faceAreas, vertexNormals, vertexAreas)
+        vertexNormals[:, z] = numpy.sum(numpy.atleast_2d(faceAreas[vertexFaces[z]]) * faceNormals[:, vertexFaces[z]], axis = 1)
+    
+    vertexNormals = vertexNormals / numpy.atleast_2d(numpy.sqrt(numpy.sum(vertexNormals * vertexNormals, axis = 1))).T
+    return (faceNormals, faceAreas, vertexNormals, vertexAreas)
 
 def connectedComponents(S, Mask):
-	Neighbours = getVertexNeighbours(S)
+    Neighbours = getVertexNeighbours(S)
 
-	ConnIDX = numpy.zeros(Mask.size, dtype = numpy.int32)
-	CurConnLabel = 1
+    ConnIDX = numpy.zeros(Mask.size, dtype = numpy.int32)
+    CurConnLabel = 1
 
-	while True:
-		Unvisited = numpy.where(numpy.logical_and(ConnIDX == 0, Mask))[0]
-		if Unvisited.size == 0:
-			break
-		
-		CurVertices = [Unvisited[0]]
-		ConnIDX[Unvisited[0]] = CurConnLabel
+    while True:
+        Unvisited = numpy.where(numpy.logical_and(ConnIDX == 0, Mask))[0]
+        if Unvisited.size == 0:
+            break
+        
+        CurVertices = [Unvisited[0]]
+        ConnIDX[Unvisited[0]] = CurConnLabel
 
-		while True:
-			CurNeighbours = [Neighbours[x] for x in CurVertices]
-			CurNeighbours = numpy.unique(numpy.concatenate(CurNeighbours))
-			I = numpy.logical_and(Mask[CurNeighbours], ConnIDX[CurNeighbours] == 0)
-			if numpy.all(I == False):
-				break
-			ConnIDX[CurNeighbours[I]] = CurConnLabel
-			CurVertices = CurNeighbours[I]
-		CurConnLabel = CurConnLabel + 1
-	return ConnIDX
+        while True:
+            CurNeighbours = [Neighbours[x] for x in CurVertices]
+            CurNeighbours = numpy.unique(numpy.concatenate(CurNeighbours))
+            I = numpy.logical_and(Mask[CurNeighbours], ConnIDX[CurNeighbours] == 0)
+            if numpy.all(I == False):
+                break
+            ConnIDX[CurNeighbours[I]] = CurConnLabel
+            CurVertices = CurNeighbours[I]
+        CurConnLabel = CurConnLabel + 1
+    return ConnIDX
 
 
 

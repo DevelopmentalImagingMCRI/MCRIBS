@@ -7,12 +7,12 @@ import nibabel
 import scipy.ndimage.morphology
 
 if len(sys.argv) < 5:
-	print("Incorrect number of arguments")
-	print()
-	print("Usage: " + sys.argv[0] + " <input mgz> <ribbon mgz> <drawem label nii> <out mgz>")
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <input mgz> <ribbon mgz> <drawem label nii> <out mgz>")
         print()
         print("Fixes aseg labels using the ribbon")
-	quit()
+    quit()
 
 ASEGFileName = sys.argv[1]
 RibbonFileName = sys.argv[2]
@@ -20,16 +20,16 @@ DrawEMFileName = sys.argv[3]
 OutFileName = sys.argv[4]
 
 if not os.path.isfile(ASEGFileName):
-	print("ASEG file not found")
-	quit()
+    print("ASEG file not found")
+    quit()
 
 if not os.path.isfile(RibbonFileName):
-	print("Ribbon file not found")
-	quit()
+    print("Ribbon file not found")
+    quit()
 
 if not os.path.isfile(DrawEMFileName):
-	print("DrawEM file not found")
-	quit()
+    print("DrawEM file not found")
+    quit()
         
 ASEGNII = nibabel.load(ASEGFileName)
 RibbonNII = nibabel.load(RibbonFileName)
