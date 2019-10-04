@@ -24,6 +24,7 @@ P=`pwd`
 for CURHEMI in $HEMIS
 do
     cd $SUBJECTS_DIR/$SUBJID/surf
-    mris_convert --volume $SUBJID $CURHEMI $SUBJECTS_DIR/$SUBJID/surf/$CURHEMI.volume
+    vertexvol --s $SUBJID --${CURHEMI} --th3
+#mris_convert --volume $SUBJID $CURHEMI $SUBJECTS_DIR/$SUBJID/surf/$CURHEMI.volume
     cd $P
 done

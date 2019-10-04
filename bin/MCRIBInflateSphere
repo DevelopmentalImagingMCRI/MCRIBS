@@ -59,7 +59,7 @@ do
 	mris_curvature_stats -m --writeCurvatureFiles -G -o ../stats/$CURHEMI.curv.stats -F smoothwm $SUBJID $CURHEMI curv sulc
 # writes out the vertex "area" file
 	FreesurferVertexArea $CURHEMI.white $CURHEMI.area
-	FreesurferVertexArea $CURHEMI.pial $CURHEMI.pial.area
+	FreesurferVertexArea $CURHEMI.pial $CURHEMI.area.pial
 #echo "Thickness"
 
 #mris_register -curv $CURHEMI.sphere /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/$CURHEMI.template2.tif $CURHEMI.sphere.reg
