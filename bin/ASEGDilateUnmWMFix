@@ -7,19 +7,19 @@ import nibabel
 import scipy.ndimage.morphology
 
 if len(sys.argv) < 4:
-	print("Incorrect number of arguments")
-	print()
-	print("Usage: " + sys.argv[0] + " <input mgz> <ribbon mgz> <out mgz>")
-	print("Changes the optic chiasm label in the aseg, requires the ribbon")
-	quit()
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <input mgz> <ribbon mgz> <out mgz>")
+    print("Changes the optic chiasm label in the aseg, requires the ribbon")
+    quit()
 
 ASEGFileName = sys.argv[1]
 RibbonFileName = sys.argv[2]
 OutFileName = sys.argv[3]
 
 if not os.path.isfile(ASEGFileName):
-	print("ASEG file not found " + ASEGFileName) 
-	quit()
+    print("ASEG file not found " + ASEGFileName) 
+    quit()
 
 ASEGNII = nibabel.load(ASEGFileName)
 ASEGIMG = ASEGNII.get_data()

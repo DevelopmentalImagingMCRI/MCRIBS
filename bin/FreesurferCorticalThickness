@@ -14,119 +14,119 @@ import GraphUtils
 
 #@profile
 def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
-	maxOrder = 5
-	
-	faceNormals, faceAreas, vertexNormals, vertexAreas = GraphUtils.surfaceAreasNormals(SRCSurf)
-	vertexNormals = vertexNormals.T
-	if invertNormals == True:
-		vertexNormals = -vertexNormals
+    maxOrder = 5
+    
+    faceNormals, faceAreas, vertexNormals, vertexAreas = GraphUtils.surfaceAreasNormals(SRCSurf)
+    vertexNormals = vertexNormals.T
+    if invertNormals == True:
+        vertexNormals = -vertexNormals
 
-	vertexNeighbours = GraphUtils.getVertexNeighbours(SRCSurf)
+    vertexNeighbours = GraphUtils.getVertexNeighbours(SRCSurf)
 
-	numVertices = SRCSurf['vertices'].shape[1]
-	
-	DSTVT = DSTSurf['vertices'].T
+    numVertices = SRCSurf['vertices'].shape[1]
+    
+    DSTVT = DSTSurf['vertices'].T
 
-	corticalThickness = numpy.zeros(numVertices)
-	
+    corticalThickness = numpy.zeros(numVertices)
+    
 
-	verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool)
-	for z in CortexLabel['index']:
-		curNeighbours = numpy.array([z])
-		
-		curV = SRCSurf['vertices'][:, z] 
-		XC = curV - DSTSurf['vertices'][:, z]
-		minDist = numpy.sqrt(numpy.sum(XC * XC))
-		nextNeighboursMask = numpy.zeros(numVertices, dtype = numpy.bool)
-		
-		verticesVisited.fill(False)
-		verticesVisited[z] = True
-		curV = numpy.atleast_2d(curV)
-		for curOrder in range(1, maxOrder + 1):
-			# find the next set of neighbours
-			nextNeighbours = numpy.concatenate([vertexNeighbours[x] for x in curNeighbours])
+    verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool)
+    for z in CortexLabel['index']:
+        curNeighbours = numpy.array([z])
+        
+        curV = SRCSurf['vertices'][:, z] 
+        XC = curV - DSTSurf['vertices'][:, z]
+        minDist = numpy.sqrt(numpy.sum(XC * XC))
+        nextNeighboursMask = numpy.zeros(numVertices, dtype = numpy.bool)
+        
+        verticesVisited.fill(False)
+        verticesVisited[z] = True
+        curV = numpy.atleast_2d(curV)
+        for curOrder in range(1, maxOrder + 1):
+            # find the next set of neighbours
+            nextNeighbours = numpy.concatenate([vertexNeighbours[x] for x in curNeighbours])
 
-			nextNeighbours = nextNeighbours[numpy.logical_not(verticesVisited[nextNeighbours])]
-			nextNeighbours.sort(kind = 'mergesort')
-			#RolledIDX = numpy.roll(numpy.arange(T.size), 1)
-			RolledIDX = numpy.arange(-1, nextNeighbours.size - 1)
-			RolledIDX[0] = 0
-			#print(RolledIDX)
-			# this gives a true for the first occurrence of an element
-			GG = numpy.not_equal(nextNeighbours, nextNeighbours[RolledIDX])
-			#print GG
-			GG[0] = True
-			curNeighbours = nextNeighbours[GG]
-			
-			verticesVisited[curNeighbours] = True
-			XC = numpy.take(DSTVT, curNeighbours, axis = 0) - curV
-			Dots = numpy.dot(XC, numpy.atleast_2d(vertexNormals[z]).T)
-			
-			I = numpy.where(Dots > 0)[0]
-			if I.size > 0:
-				XC = numpy.take(XC, I, axis = 0)
-				#XC = XC[I] #numpy.take(XC, I, axis = 0)
-				D = numpy.sqrt(numpy.sum(XC * XC, axis = 1))
-			
-				#Dots = numpy.sum(XC * numpy.atleast_2d(vertexNormals[z]))
-				#curMinDistIDX = numpy.argmin(D)
-				#curMinDistIDX = I[curMinDistIDX]
-				#curMinDist = D[curMinDistIDX]
-				curMinDist = numpy.min(D)	
-				if curMinDist < minDist:
-					minDist = curMinDist
-					#minDistIDX = curNeighbours[curMinDistIDX]
-		corticalThickness[z] = minDist
+            nextNeighbours = nextNeighbours[numpy.logical_not(verticesVisited[nextNeighbours])]
+            nextNeighbours.sort(kind = 'mergesort')
+            #RolledIDX = numpy.roll(numpy.arange(T.size), 1)
+            RolledIDX = numpy.arange(-1, nextNeighbours.size - 1)
+            RolledIDX[0] = 0
+            #print(RolledIDX)
+            # this gives a true for the first occurrence of an element
+            GG = numpy.not_equal(nextNeighbours, nextNeighbours[RolledIDX])
+            #print GG
+            GG[0] = True
+            curNeighbours = nextNeighbours[GG]
+            
+            verticesVisited[curNeighbours] = True
+            XC = numpy.take(DSTVT, curNeighbours, axis = 0) - curV
+            Dots = numpy.dot(XC, numpy.atleast_2d(vertexNormals[z]).T)
+            
+            I = numpy.where(Dots > 0)[0]
+            if I.size > 0:
+                XC = numpy.take(XC, I, axis = 0)
+                #XC = XC[I] #numpy.take(XC, I, axis = 0)
+                D = numpy.sqrt(numpy.sum(XC * XC, axis = 1))
+            
+                #Dots = numpy.sum(XC * numpy.atleast_2d(vertexNormals[z]))
+                #curMinDistIDX = numpy.argmin(D)
+                #curMinDistIDX = I[curMinDistIDX]
+                #curMinDist = D[curMinDistIDX]
+                curMinDist = numpy.min(D)    
+                if curMinDist < minDist:
+                    minDist = curMinDist
+                    #minDistIDX = curNeighbours[curMinDistIDX]
+        corticalThickness[z] = minDist
 
-	return corticalThickness
+    return corticalThickness
 
 #@profile
 def main():
-	opts, args = getopt.getopt(sys.argv[1:], "vh", [])
+    opts, args = getopt.getopt(sys.argv[1:], "vh", [])
 
-	if len(args) != 2:
-		print("The ")
-		print(sys.argv[0] + " <subject id> <hemi>")
-		exit()
+    if len(args) != 2:
+        print("The ")
+        print(sys.argv[0] + " <subject id> <hemi>")
+        exit()
 
 #numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
 
-	geometryNIIFile = None
+    geometryNIIFile = None
 
-	verbose = False
-	for o, a in opts:
-		if o == '-v':
-			verbose = True
+    verbose = False
+    for o, a in opts:
+        if o == '-v':
+            verbose = True
 
-	SubjId = args[0]
-	Hemi = args[1]
+    SubjId = args[0]
+    Hemi = args[1]
 
-	SurfDir = os.path.join(os.environ['SUBJECTS_DIR'], SubjId, 'surf')
+    SurfDir = os.path.join(os.environ['SUBJECTS_DIR'], SubjId, 'surf')
 
-	if not os.path.isdir(SurfDir):
-		print("Could not find surface directory: " + SurfDir)
-		exit()
+    if not os.path.isdir(SurfDir):
+        print("Could not find surface directory: " + SurfDir)
+        exit()
 
-	WhiteSurf = freesurfer.readSurf(os.path.join(SurfDir, Hemi + '.white'))
-	CortexLabel = freesurfer.readLabel(os.path.join(SurfDir, '..', 'label', Hemi + '.cortex.label'))
-	PialSurf = freesurfer.readSurf(os.path.join(SurfDir, Hemi + '.pial'))
-	
-	if CortexLabel is None:
-		CortexLabel = {'index': numpy.arange(WhiteSurf['vertices'].shape[1])}
+    WhiteSurf = freesurfer.readSurf(os.path.join(SurfDir, Hemi + '.white'))
+    CortexLabel = freesurfer.readLabel(os.path.join(SurfDir, '..', 'label', Hemi + '.cortex.label'))
+    PialSurf = freesurfer.readSurf(os.path.join(SurfDir, Hemi + '.pial'))
+    
+    if CortexLabel is None:
+        CortexLabel = {'index': numpy.arange(WhiteSurf['vertices'].shape[1])}
 
-	print("Cortical Thickness")
-	print("White to pial")
-	WhiteToPialThickness = doMinThickness(WhiteSurf, PialSurf, CortexLabel)
-	print("Pial to white")
-	PialToWhiteThickness = doMinThickness(PialSurf, WhiteSurf, CortexLabel, invertNormals = True)
-	print("Done")
-	outC = dict()
-	outC['numVertices'] = PialSurf['vertices'].shape[1]
-	outC['numFaces'] = PialSurf['faces'].shape[1]
-	outC['values'] = numpy.single((WhiteToPialThickness + PialToWhiteThickness) / 2.0)
-	freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.thickness'))
+    print("Cortical Thickness")
+    print("White to pial")
+    WhiteToPialThickness = doMinThickness(WhiteSurf, PialSurf, CortexLabel)
+    print("Pial to white")
+    PialToWhiteThickness = doMinThickness(PialSurf, WhiteSurf, CortexLabel, invertNormals = True)
+    print("Done")
+    outC = dict()
+    outC['numVertices'] = PialSurf['vertices'].shape[1]
+    outC['numFaces'] = PialSurf['faces'].shape[1]
+    outC['values'] = numpy.single((WhiteToPialThickness + PialToWhiteThickness) / 2.0)
+    freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.thickness'))
 
 if __name__ == "__main__":
-	main()
+    main()
 
 

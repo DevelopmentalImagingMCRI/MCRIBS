@@ -10,8 +10,10 @@ if len(sys.argv) < 5:
     print("Incorrect number of arguments")
     print()
     print("Usage: " + sys.argv[0] + " <input mgz> <ribbon mgz> <drawem label nii> <out mgz>")
+
     print()
     print("Fixes aseg labels using the ribbon")
+
     quit()
 
 ASEGFileName = sys.argv[1]
@@ -30,7 +32,7 @@ if not os.path.isfile(RibbonFileName):
 if not os.path.isfile(DrawEMFileName):
     print("DrawEM file not found")
     quit()
-        
+
 ASEGNII = nibabel.load(ASEGFileName)
 RibbonNII = nibabel.load(RibbonFileName)
 DrawEMNII = nibabel.load(DrawEMFileName)

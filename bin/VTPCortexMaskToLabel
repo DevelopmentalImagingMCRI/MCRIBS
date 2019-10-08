@@ -17,9 +17,9 @@ import GraphUtils
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 4:
-	print("The number of arguments must be 4")
-	print(sys.argv[0] + " <vtp file> <fs surface file> <aseg internal file> <curv file>")
-	exit()
+    print("The number of arguments must be 4")
+    print(sys.argv[0] + " <vtp file> <fs surface file> <aseg internal file> <curv file>")
+    exit()
 
 numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
 
@@ -37,8 +37,8 @@ FaceCortexMask = (FaceCortexMask == 1)
 VertexCortexMask = numpy.zeros(VTPSurf['vertices'].shape[1], dtype = numpy.bool)
 
 for z in range(VTPSurf['faces'].shape[1]):
-	if FaceCortexMask[z] == True:
-		VertexCortexMask[VTPSurf['faces'][:, z]] = True
+    if FaceCortexMask[z] == True:
+        VertexCortexMask[VTPSurf['faces'][:, z]] = True
 
 # erase CC and thalamus from the masks
 ASEGMGZ = nibabel.load(inASEGFileName)
@@ -91,7 +91,7 @@ FID.write("%d" % numpy.count_nonzero(VertexCortexMask) + "\n")
 I = numpy.where(VertexCortexMask)[0]
 
 for z in I:
-	FID.write("%d  %f  %f  %f  0.00000\n" % (z, FSSurf['vertices'][0, z], FSSurf['vertices'][1, z],  FSSurf['vertices'][2, z]))
+    FID.write("%d  %f  %f  %f  0.00000\n" % (z, FSSurf['vertices'][0, z], FSSurf['vertices'][1, z],  FSSurf['vertices'][2, z]))
 FID.close()
 #C['values'] = VTPUtils.vertexRegionId(S['faces'], FaceCortexMask)
 
