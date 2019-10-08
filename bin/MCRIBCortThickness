@@ -22,12 +22,12 @@ fi
 
 P=`pwd`
 
-ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
+`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
 
 for CURHEMI in $HEMIS
 do
-	VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
+	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
 	cd $SUBJECTS_DIR/$SUBJID/surf
-	FreesurferCorticalThickness $SUBJID $CURHEMI
+	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/FreesurferCorticalThickness $SUBJID $CURHEMI
 	cd $P
 done

@@ -19,6 +19,9 @@ OUTDIR=SurfReconDeformable
 
 mkdir -p $OUTDIR/$SUBJID
 
+#export LD_LIBRARY_PATH=`dirname $0`/../MIRTK/MIRTK-install/lib:$LD_LIBRARY_PATH
+#export PATH=`dirname $0`/../MIRTK/MIRTK-install/bin:$PATH
+
 recon-neonatal-cortex -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t $OMP_NUM_THREADS -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex.cfg -s $SUBJID -t 1 -v -d -f
@@ -35,7 +38,7 @@ for HEMI in $HEMIS
 do
 	for SURF in $SURFS
 	do
-		VTPExtractAll --surf-volgeom=TissueSeg/${SUBJID}_all_labels.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractAll --surf-volgeom=TissueSeg/${SUBJID}_all_labels.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
 		rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
 		mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
 		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.curv
@@ -45,4 +48,4 @@ do
 done
 
 # make the pial surfaces by reordering the pial vertices in the VTP files
-DeformableReorderVertices --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
+`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID freesurfer/$SUBJID/surf

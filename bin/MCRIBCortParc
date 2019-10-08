@@ -24,11 +24,11 @@ fi
 
 P=`pwd`
 
-ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
+`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
 
 for CURHEMI in $HEMIS
 do
-	VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
+	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
 	#cp ../bonnie_mirtk/freesurfer/$SUBJID/label/$CURHEMI.cortex.label $FSDIR/label
 	for ATLAS in $ATLASES
 	do
@@ -38,7 +38,7 @@ do
 	#mris_ca_label -aseg ../mri/aseg.internal.mgz $SUBJID $CURHEMI sphere.reg2 $SUBJECTS_DIR/sphere_template/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.annot
 			mris_ca_label -t `dirname $0`/../lib/${CURHEMI}.aparcLUT.txt  -aseg ../mri/aseg.internal.mgz -L ../label/${CURHEMI}.cortex.label $SUBJID $CURHEMI sphere.reg2 `dirname $0`/../lib/sphere_templates/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.nomask.annot
 		cd $P
-		FSAnnotMaskCortexLabel $FSDIR/label/${CURHEMI}.${ATLAS}.auto.nomask.annot $FSDIR/label/${CURHEMI}.cortex.label $FSDIR/label/${CURHEMI}.${ATLAS}.annot
+		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/FSAnnotMaskCortexLabel $FSDIR/label/${CURHEMI}.${ATLAS}.auto.nomask.annot $FSDIR/label/${CURHEMI}.cortex.label $FSDIR/label/${CURHEMI}.${ATLAS}.annot
 		#FreesurferCorticalThickness $SUBJID $CURHEMI
 	done
 done

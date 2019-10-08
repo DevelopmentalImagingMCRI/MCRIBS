@@ -7,8 +7,23 @@ import subprocess
 import argparse
 import numpy
 
-def runCommand(CMD):
+def getScriptPath():
+    fullPath = os.path.realpath(__file__)
+    head, tail = os.path.split(fullPath)
+
+    return head
+
+def runCommand(CMD, isPython = False):
     print("Running command:")
+    
+    if isPython == True:
+        scriptPath = getScriptPath()
+        T = [os.path.join(scriptPath, '..', 'VTK', 'VTK-install', 'bin', "vtkpython"), os.path.join(scriptPath, CMD[0])]
+        #T = [os.path.join(scriptPath, "vtkpython"), os.path.join(scriptPath, CMD[0])]
+        T.extend(CMD[1:])
+        CMD = T[:]
+        del T
+    
     print("\t" + " ".join(CMD))
     try:
         subprocess.check_call(CMD)
@@ -104,6 +119,11 @@ def main():
     os.environ['OMP_NUM_THREADS'] = str(options.openmp)
     os.environ['SUBJECTS_DIR'] = os.path.join(os.getcwd(), 'freesurfer')
     
+    # set up for vtk and vtkpython 3 
+    scriptPath = getScriptPath()
+    
+    os.environ['LD_LIBRARY_PATH'] = os.path.join(scriptPath, '..', 'VTK', 'VTK-install', 'lib') + os.pathsep + os.environ['LD_LIBRARY_PATH']
+    
     if not options.hemi is None:
         Hemis = options.hemi
     else:
@@ -177,10 +197,9 @@ def main():
     if options.parcstats == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBParcStatsPython", options.subjectid, Hemis]
         for curAtlas in options.aparc2asegatlases:
-            print(curAtlas)
             curCmd = cmd[:]
             curCmd.extend([curAtlas])
-            runCommand(curCmd)
+            runCommand(curCmd, isPython = True)
         pass
     quit()
 #def main():
