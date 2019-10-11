@@ -25,7 +25,7 @@ This will install all of the dependencies for ubuntu:
 
 In centos, do this:
 
-`yum install zlib1g-devel boost-devel libglu1-mesa-devel libxt-devel python-devel python3-devel tbb-devel eigen3-devel python-contextlib2`
+`yum install zlib-devel boost-devel libglu1-mesa-devel libxt-devel python-devel python3-devel tbb-devel eigen3-devel python-contextlib2`
 
 The script build.sh will checkout VTK 8.2.0 and build it. TODO: get MIRTK and python to use bindings in the VTK 8.2.0 build directory.
 
@@ -39,8 +39,8 @@ The main script to run is MCRIBReconAll. To get usage run MCRIBReconAll --help
 
 ## TODO
 
-- [ ] Labels unmyelinated WM are myelinated PLIC and ALIC???
-- [ ] Make a MCRIB version of the ALBERTs?
+- [x] Labels unmyelinated WM are myelinated PLIC and ALIC???. The regions were correctly labelled as myelinated WM. The main WM labels are kept as "cerebral WM" despite them being unmyelinated. It makes it easier for display purposes.
+- [ ] Make a MCRIB version of the ALBERTs? Working on this.
 - [ ] Folding index
 - [ ] Try MANTIS as a stitching thing with DrawEM.
 - [ ] Make a CSH version of the setup script.
