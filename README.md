@@ -13,19 +13,19 @@ MIRTK was downloaded from https://github.com/BioMedIA/MIRTK. A customised versio
 The script build.sh will build VTK and MIRTK. Install the following dependencies prior to running:
 
 - For VTK
-  - zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libeigen3-dev
+  - zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python3-dev libeigen3-dev
 - For MIRTK
   - libtbb-dev libflann-dev python-contextlib2
-- For python
-  - python-vtk python3-vtk
-  
+- For Python
+  - python-contextlib2
+
 This will install all of the dependencies for ubuntu:
 
-`apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev libtbb-dev libflann-dev libeigen3-dev python-vtk python3-vtk python-contextlib2`
+`apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev python3-dev libtbb-dev libflann-dev libeigen3-dev python-contextlib2`
 
 In centos, do this:
 
-
+`yum install zlib1g-devel boost-devel libglu1-mesa-devel libxt-devel python-devel python3-devel tbb-devel eigen3-devel python-contextlib2`
 
 The script build.sh will checkout VTK 8.2.0 and build it. TODO: get MIRTK and python to use bindings in the VTK 8.2.0 build directory.
 
