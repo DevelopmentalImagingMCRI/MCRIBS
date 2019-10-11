@@ -35,7 +35,7 @@ def structN4DefaultOptions():
     return ['-v', '-c', '[100x100x100x100,0]', '-b', '[200]', '-s', '3']
 
 def main():
-    doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon', 'cortparc', 'surfreg', 'segstats', 'aparc2aseg', 'apas2aseg', 'parcstats', 'all'])
+    doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon', 'inflatesphere', 'cortparc', 'cortthickness', 'surfreg', 'segstats', 'aparc2aseg', 'apas2aseg', 'parcstats'])
     
     atlases = ['aparc', 'aparc+DKTatlas']
     defaultAtlas = atlases
@@ -90,6 +90,8 @@ def main():
     argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
     argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps after surface reconstruction", required = False, action = 'store_true')
     
+    argParser.add_argument('-steplist', '--steplist', help = "Prints out the processing step options in order", required = False, action = 'store_true')
+    
 
     argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
     argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -98,6 +100,11 @@ def main():
 
     options = argParser.parse_args()
     
+    if options.steplist == True:
+        T = ['--' + x for x in doProcessingSteps]
+        print(" ".join(T))
+        exit
+ 
     #argParser.print_help()
     #print(vars(options))
 #print(type(options.openmp))
@@ -115,7 +122,7 @@ def main():
     #    argParser.print_help()
     #    quit()
     
-    # export OMP_NUM_THREADS=options.openmp
+        # export OMP_NUM_THREADS=options.openmp
     os.environ['OMP_NUM_THREADS'] = str(options.openmp)
     os.environ['SUBJECTS_DIR'] = os.path.join(os.getcwd(), 'freesurfer')
     
