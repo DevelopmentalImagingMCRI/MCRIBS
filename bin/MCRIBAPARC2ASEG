@@ -24,4 +24,5 @@ for ANNOT in $ANNOTS
 do
 	mri_aparc2aseg --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
 	ASEGRibbonFix mri/${ANNOT}+aseg.mgz mri/ribbon.mgz ../../TissueSegDrawEM/$SUBJID/segmentations/${SUBJID}_all_labels.nii.gz mri/${ANNOT}+aseg.mgz
+    APARC2ASEGZeroToCSFFix mri/${ANNOT}+aseg.mgz mri/aseg.presurf.mgz mri/${ANNOT}+aseg.mgz
 done

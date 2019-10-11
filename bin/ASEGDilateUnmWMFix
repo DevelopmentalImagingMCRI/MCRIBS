@@ -29,10 +29,11 @@ RibbonIMG = RibbonNII.get_data()
 
 NewASEGIMG = numpy.array(ASEGIMG)
 
-CurUnWMIMG = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([85, 48, 9])), ASEGIMG.shape)
+#CurUnWMIMG = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([85, 48, 9])), ASEGIMG.shape)
+CurUnWMIMG = (ASEGIMG == 85)
 
-NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 2)] = 159
-NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 41)] = 160
+NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 2)] = 161
+NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 41)] = 162
 
 NumDilations = 5
 
