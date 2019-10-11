@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage.morphology
+
+if len(sys.argv) < 4:
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <aseg mgz> <aseg presurf mgz> <out mgz>")
+
+    print()
+    print("Fixes voxels that are erased by seg labels using the ribbon")
+
+    quit()
+
+ASEGFileName = sys.argv[1]
+ASEGPresurfFileName = sys.argv[2]
+OutFileName = sys.argv[3]
+
+if not os.path.isfile(ASEGFileName):
+    print("ASEG file not found")
+    quit()
+
+if not os.path.isfile(ASEGPresurfFileName):
+    print("ASEG Presurffile not found")
+
+ASEGNII = nibabel.load(ASEGFileName)
+ASEGPresurfNII = nibabel.load(ASEGPresurfFileName)
+
+ASEGIMG = ASEGNII.get_data()
+ASEGPresurfIMG = ASEGPresurfNII.get_data()
+
+NewASEGIMG = numpy.array(ASEGIMG)
+
+FSCSFLabel = 24
+
+NewASEGIMG[numpy.logical_and(ASEGIMG == 0, ASEGPresurfIMG > 0)] = FSCSFLabel
+
+NewASEGNII = nibabel.MGHImage(NewASEGIMG, ASEGNII.affine, ASEGNII.header)
+
+nibabel.save(NewASEGNII, OutFileName)

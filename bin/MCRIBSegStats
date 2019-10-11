@@ -14,9 +14,9 @@ cd $SUBJECTS_DIR/$SUBJID
 mkdir -p stats
 
 # change the unmyelinated WM labels to myelinated WM labels to fix negative volumes
-cp mri/aseg.presurf.mgz mri/aseg_tmp.mgz
-mri_binarize --i mri/aseg.mgz --o mri/aseg.presurf.mgz --replace 160 41 --replace 159 2
+#cp mri/aseg.mgz mri/aseg_tmp.mgz
+mri_binarize --i mri/aseg.mgz --o mri/aseg_tmp.mgz --replace 162 41 --replace 161 2 --replace 160 41 --replace 159 2
 
 # we can't use the etiv option since we dont have the talairach.xfm file
-mri_segstats --seg mri/aseg.mgz --sum stats/aseg.stats --empty --pv mri/T1.mgz --brainmask mri/brainmask.mgz --brain-vol-from-seg --excludeid 0 --excl-ctxgmwm --supratent --subcortgray --in mri/T1.mgz --in-intensity-name norm --in-intensity-units MR --surf-wm-vol --surf-ctx-vol --totalgray --ctab `dirname $0`/../lib/ASegStatsNeonateLUT.txt --subject $SUBJID
-mv -f mri/aseg_tmp.mgz mri/aseg.presurf.mgz
+mri_segstats --seg mri/aseg_tmp.mgz --sum stats/aseg.stats --empty --pv mri/T1.mgz --brainmask mri/brainmask.mgz --brain-vol-from-seg --excludeid 0 --excl-ctxgmwm --supratent --subcortgray --in mri/T1.mgz --in-intensity-name norm --in-intensity-units MR --surf-wm-vol --surf-ctx-vol --totalgray --ctab `dirname $0`/../lib/ASegStatsNeonateLUT.txt --subject $SUBJID
+rm -f mri/aseg_tmp.mgz
