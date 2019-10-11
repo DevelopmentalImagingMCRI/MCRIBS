@@ -13,12 +13,17 @@ SURFRECONDIR=SurfReconDeformable/$SUBJID
 
 VOLGEOM=TissueSeg/${SUBJID}_all_labels.nii.gz
 
-VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/temp/pial-4.vtp
+export LD_LIBRARY_PATH=`dirname $0`/../VTK/VTK-install/lib:$LD_LIBRARY_PATH
+
+VTKPYTHON=`dirname $0`/../VTK/VTK-install/bin/vtkpython
+`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/temp/pial-4.vtp
+`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/temp/pial-5.vtp
 #VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/temp/pial-5.vtp
 #VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/meshes/white.vtp
 #VTPExtractAll --surf-volgeom=$VOLGEOM $SURFRECONDIR/meshes/white+internal.vtp
+PIALDISPLAYCOLLISIONVERTICES=`dirname $0`/PialDisplayCollisionVertices
 
-W=`PialDisplayCollisionVertices $SURFRECONDIR/temp/pial-5.vtp`
+W=`$VTKPYTHON $PIALDISPLAYCOLLISIONVERTICES $SURFRECONDIR/temp/pial-5.vtp`
 freeview \
 	-v RawT2RadiologicalIsotropic/${SUBJID}.nii.gz \
 	-v $VOLGEOM:colormap=lut:lut=$HOME/AARNETownCloud/drawem/FS_all_labels.txt:opacity=0.3 \
