@@ -36,3 +36,12 @@ Set up the environment variable `MCRIBS_HOME` to the directory you checked out t
 `. $MCRIBS_HOME/SetUpMCRIBS.sh`
 
 The main script to run is MCRIBReconAll. To get usage run MCRIBReconAll --help
+
+## TODO
+
+- [ ] Labels unmyelinated WM are myelinated PLIC and ALIC???
+- [ ] Make a MCRIB version of the ALBERTs?
+- [ ] Folding index
+- [ ] Try MANTIS as a stitching thing with DrawEM.
+- [ ] Make a CSH version of the setup script.
+- [ ] Screenshot generators.
