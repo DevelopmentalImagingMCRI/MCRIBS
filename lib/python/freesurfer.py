@@ -464,7 +464,7 @@ curvMagicNumber = b'\xff\xff\xff'
 
 def readCurv(fileName):
     if not os.path.isfile(fileName):
-        return none
+        return None
     else:
         FID = open(fileName, 'rb')
 
