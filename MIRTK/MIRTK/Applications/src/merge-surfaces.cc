@@ -1879,8 +1879,12 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
            << ", alpha = " << setprecision(angle_precision) << setw(angle_precision+3) << best_rx
            << ", beta = "  << setprecision(angle_precision) << setw(angle_precision+3) << best_ry << endl;
     }
+    cout << "Debug: " << debug << endl;
+    cout << "CuttingPlane" << endl;
     plane  = CuttingPlane(attr, best_tn, best_rx, best_ry, margin);
+    cout << "cut" << endl;
     cut    = LargestClosedIntersection(surface, plane);
+    cout << "LargestClosedIntersection" << endl;
   }
 
   cout.precision(prev_cout_precision);
@@ -2075,17 +2079,21 @@ AddClosedIntersectionDivider(vtkPolyData *surface, vtkPolyData *cut, double tol 
   ptIds->Allocate(10);
   edge1->Allocate(2);
   edge2->Allocate(2);
-
+  
   // Determine edge length for tesselation of divider polygon
   const double mean_edge_length = AverageEdgeLength(surface);
-
+  
   // Build needed auxiliary structures
+  cout << "cut->BuildCells();" << endl;
   cut->BuildCells();
+
+  cout << "surface->BuildLinks();" << endl;
   surface->BuildLinks();
 
+  cout << "vtkPoints * const points = surface->GetPoints();" << endl;
   // Polygonal data set of intersected surface cells
   vtkPoints * const points = surface->GetPoints();
-
+  
   vtkSmartPointer<vtkPolyData>  split;
   vtkSmartPointer<vtkCellArray> polys;
 
@@ -2102,8 +2110,10 @@ AddClosedIntersectionDivider(vtkPolyData *surface, vtkPolyData *cut, double tol 
   // Map (intersected) surface cell ID to intersection line ID(s)
   UnorderedMap<vtkIdType, List<vtkIdType>> cellIdToLineIdsMap;
   vtkDataArray * const inputIds = cut->GetCellData()->GetArray("Input0CellID");
+  cout << "cut->GetNumberOfCells() = " << cut->GetNumberOfCells() << endl;
   for (lineId = 0; lineId < cut->GetNumberOfCells(); ++lineId) {
     cellId = static_cast<vtkIdType>(inputIds->GetComponent(lineId, 0));
+    
     cellIdToLineIdsMap[cellId].push_back(lineId);
   }
   cut->GetCellData()->RemoveArray("Input0CellID");
@@ -2292,7 +2302,10 @@ AddClosedIntersectionDivider(vtkPolyData *surface, vtkPolyData *cut, double tol 
     snprintf(fname, 64, "debug_split_surface_polygon_%d.vtp", callId);
     WritePolyData(fname, divider);
   }
+  
+  cout << "TesselateDivider" << endl;
   divider = TesselateDivider(divider, mean_edge_length);
+  cout << "end TesselateDivider" << endl;
 
   // Prepare point/cell data before appending polygonal data sets
   vtkCellData * const surfaceCD = surface->GetCellData();
@@ -2301,24 +2314,30 @@ AddClosedIntersectionDivider(vtkPolyData *surface, vtkPolyData *cut, double tol 
 
   arr = surfaceCD->GetArray(SOURCE_ARRAY_NAME);
   int divider_source_index = min(0, static_cast<int>(arr->GetRange(0)[0])) - 1;
-
+  
+  cout << "split->GetNumberOfCells()" << split->GetNumberOfCells() << endl;
   arr = splitCD->GetArray(SOURCE_ARRAY_NAME);
   if (!arr) {
     arr = NewVtkDataArray(VTK_SHORT, split->GetNumberOfCells(), 1, SOURCE_ARRAY_NAME);
     splitCD->AddArray(arr);
   }
   arr->FillComponent(0, 0.);
+  
+  cout << "divider->GetNumberOfCells()" << divider->GetNumberOfCells() << endl;
 
   arr = dividerCD->GetArray(SOURCE_ARRAY_NAME);
   if (arr == nullptr) {
     arr = NewVtkDataArray(VTK_SHORT, divider->GetNumberOfCells(), 1, SOURCE_ARRAY_NAME);
     dividerCD->AddArray(arr);
   }
+  cout << "arr->FillComponent" << endl;
   arr->FillComponent(0, static_cast<double>(divider_source_index));
 
+  cout << "CalculateNormals" << endl;
   divider = CalculateNormals(divider, surface->GetPointData()->GetNormals() != nullptr,
                                       surface->GetCellData ()->GetNormals() != nullptr);
 
+  cout << "CalculateNormals done" << endl;
   if (debug) {
     static int callId = 0; ++callId;
     char fname[64];
@@ -2332,27 +2351,46 @@ AddClosedIntersectionDivider(vtkPolyData *surface, vtkPolyData *cut, double tol 
   AddVTKInput(appender, split);
   // divider added as input below
 
+  cout << "merger" << endl;
+
   vtkNew<vtkCleanPolyData> merger;
   SetVTKConnection(merger, appender);
+  cout << "merger" << endl;
   merger->ConvertStripsToPolysOff();
   merger->ConvertPolysToLinesOff();
   merger->ConvertLinesToPointsOff();
   merger->PointMergingOn();
   merger->ToleranceIsAbsoluteOn();
   merger->SetAbsoluteTolerance(1e-12);
+  
+  cout << "surface->GetNumberOfPolys() = " << surface->GetNumberOfPolys() << endl;
+  cout << "surface->GetNumberOfPoints() = " << surface->GetNumberOfPoints() << endl;
+  cout << "surface->GetNumberOfCells() = " << surface->GetNumberOfCells() << endl;
+  cout << "split->GetNumberOfPolys() = " << split->GetNumberOfPolys() << endl;
+  cout << "split->GetNumberOfPoints() = " << split->GetNumberOfPoints() << endl;
+  cout << "split->GetNumberOfCells() = " << split->GetNumberOfCells() << endl;
+  
+  /*for (vtkIdType i = 0; i < split->GetNumberOfCells(); ++i) {
+      vtkPoints* pts = split->GetCell(i)->GetPoints();
+      double* val = pts-> ;
+      cout << pts->GetNumberOfPoints() << endl;
+  }*/
 
-  if (debug) {
+  if (0) {
     static int callId = 0; ++callId;
     char fname[64];
     snprintf(fname, 64, "debug_split_surface_interim_%d.vtp", callId);
     merger->Update();
     WritePolyData(fname, merger->GetOutput());
   }
-
+  
+  cout << "AddVTKInput" << endl;
   AddVTKInput(appender, divider);
+  cout << "AddVTKInput" << endl;
   merger->Update();
+  cout << "merger->Update();" << endl;
   vtkSmartPointer<vtkPolyData> output = merger->GetOutput();
-
+  
   // Remove those triangles from resulting mesh originating from the tesselated
   // divider whose three vertices are all on the divider boundary and that have
   // a corresponding cell in the split surface mesh, i.e., a duplicate triangle
@@ -2954,7 +2992,9 @@ int main(int argc, char *argv[])
       const EdgeTable edgeTable(output);
       const double ds = AverageEdgeLength(output->GetPoints(), edgeTable);
       vtkSmartPointer<vtkPolyData> plane, polygon, cut;
+
       for (int i = static_cast<int>(boundaries.size()-1); i >= 0; --i) {
+          cout << i << endl;
         string msg;
         if (verbose > 1) {
           const int n = i + 1;
@@ -2977,6 +3017,7 @@ int main(int argc, char *argv[])
             snprintf(fname, 64, "debug_cutting_polygon_%d.vtp", static_cast<int>(boundaries.size()) - i);
             WritePolyData(fname, cut);
           }
+          cout << "AddClosedIntersectionDivider" << endl;
           output = AddClosedIntersectionDivider(output, cut, snap_tolerance);
           if (debug > 0) {
             char fname[64];

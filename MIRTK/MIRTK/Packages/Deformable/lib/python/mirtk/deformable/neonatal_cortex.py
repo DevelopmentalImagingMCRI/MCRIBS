@@ -57,7 +57,7 @@ from mirtk.subprocess import run as _run
 # global settings
 # ==============================================================================
 
-verbose = 0	# verbosity of output messages
+verbose = 2	# verbosity of output messages
 showcmd = 0	# whether to print binary path and arguments of subprocesses
 threads = 0	# maximum number of allowed threads for subprocess execution
 			   # 0: use all available cores
@@ -1179,7 +1179,7 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
 			run('merge-surfaces',
 				opts={'input': surfaces, 'output': joined, 'labels': regions, 'source-array': region_id_array_name,
 					  'tolerance': join_tol, 'largest': True, 'dividers': (internal_mesh != None), 'snap-tolerance': .1,
-					  'smoothing-iterations': 100, 'smoothing-lambda': 1})
+					  'smoothing-iterations': 100, 'smoothing-lambda': 1, 'verbose': 2, 'debug': 2})
 			if bs_cb_mesh and join_bs_cb:
 				run('calculate-element-wise', args=[joined], opts=[('cell-data', region_id_array_name),
 																   ('map', (-1, -3), (-2, -1), (-3, -2), (3, 7)),
@@ -1210,7 +1210,7 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
 			joined_with_bscb = push_output(stack, nextname(joined))
 			run('merge-surfaces',
 				opts={'input': [joined, bs_cb_mesh], 'output': joined_with_bscb, 'labels': regions,
-					  'source-array': region_id_array_name, 'tolerance': .5, 'join': False})
+					  'source-array': region_id_array_name, 'tolerance': .5, 'join': False, 'verbose': 2})
 			run('calculate-element-wise', args=[joined_with_bscb], opts=[('cell-data', region_id_array_name), ('map', (3, 7)), ('out', joined_with_bscb)])
 			modified_bscb = push_output(stack, nextname(joined_with_bscb))
 			check_intersections(joined_with_bscb, modified_bscb)
