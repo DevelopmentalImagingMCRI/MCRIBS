@@ -92,7 +92,6 @@ def main():
 
     argParser.add_argument('-steplist', '--steplist', help = "Prints out the processing step options in order", required = False, action = 'store_true')
 
-
     argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
     argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
 
@@ -128,14 +127,25 @@ def main():
 
     # set up for vtk and vtkpython 3
     scriptPath = getScriptPath()
+    
+    if not 'LD_LIBRARY_PATH' in os.environ:
+        os.environ['LD_LIBRARY_PATH'] = ''
+
+    if not 'PATH' in os.environ:
+        os.environ['PATH'] = ''
+    
+    if not 'PYTHONPATH' in os.environ:
+        os.environ['PYTHONPATH'] = ''
 
     os.environ['LD_LIBRARY_PATH'] = os.path.join(scriptPath, '..', 'VTK', 'VTK-install', 'lib') + os.pathsep + os.environ['LD_LIBRARY_PATH']
     os.environ['LD_LIBRARY_PATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'lib') + os.pathsep + os.environ['LD_LIBRARY_PATH']
-    os.environ['LD_LIBRARY_PATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'lib', 'tools') + os.pathsep + os.environ['LD_LIBRARY_PATH']
+    
+    os.environ['PATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'lib', 'tools') + os.pathsep + os.environ['PATH']
+    os.environ['PATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'bin') + os.pathsep + os.environ['PATH']
 
     os.environ['PYTHONPATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'lib', 'python') + os.pathsep + os.environ['PYTHONPATH']
     os.environ['PYTHONPATH'] = os.path.join(scriptPath, '..', 'lib', 'python') + os.pathsep + os.environ['PYTHONPATH']
-    
+   
     if not options.hemi is None:
         Hemis = options.hemi
     else:
