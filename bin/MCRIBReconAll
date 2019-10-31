@@ -174,11 +174,6 @@ def main():
         runCommand(cmd)
         pass
 
-    if options.surfvol == True or options.all == True or options.autoreconaftersurf == True:
-        cmd = ["MCRIBSurfVol", options.subjectid, Hemis]
-        runCommand(cmd)
-        pass
-
     if options.cortribbon == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBVolMask", options.subjectid]
         runCommand(cmd)
@@ -213,6 +208,11 @@ def main():
 
     if options.segstats == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBSegStats", options.subjectid]
+        runCommand(cmd)
+        pass
+    
+    if options.surfvol == True or options.all == True or options.autoreconaftersurf == True:
+        cmd = ["MCRIBSurfVol", options.subjectid, Hemis]
         runCommand(cmd)
         pass
 
