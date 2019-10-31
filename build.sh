@@ -9,11 +9,11 @@ BUILDTYPE=Release
 case $ID in
 	ubuntu)
 		CMAKE=cmake
-		MIRTKVTKDEPENDS=$MCRIBSDIR/VTK/VTK-install/lib/cmake/vtk-8.2
+		MIRTKVTKDEPENDS=$MCRIBSDIR/VTK/VTK-install/lib/cmake/vtk-8.1
 	;;
 	centos)
 		CMAKE=cmake3
-		MIRTKVTKDEPENDS=$MCRIBSDIR/VTK/VTK-install/lib64/cmake/vtk-8.2
+		MIRTKVTKDEPENDS=$MCRIBSDIR/VTK/VTK-install/lib64/cmake/vtk-8.1
 		# boost-devel tbb-devel cmake3
 	;;
 esac
@@ -55,7 +55,7 @@ done
 	cd VTK
 	git clone https://github.com/Kitware/VTK.git
 	cd VTK
-	git checkout tags/v8.2.0
+	git checkout tags/v8.1.2
 	cd ..
 
 	
