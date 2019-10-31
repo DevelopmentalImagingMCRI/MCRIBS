@@ -45,3 +45,5 @@ The main script to run is MCRIBReconAll. To get usage run MCRIBReconAll --help
 - [ ] Try MANTIS as a stitching thing with DrawEM.
 - [ ] Make a CSH version of the setup script.
 - [ ] Screenshot generators.
+- [ ] Investigate warning message in VTK 8.2.0 during evaluate-mesh. vtkCleanPolyData causes an OOB lookup on one of the arrays.
+- [ ] Fix memory leak in gcc 8 and gcc 9.
