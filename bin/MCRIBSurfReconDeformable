@@ -15,6 +15,15 @@ else
 	J=$2
 fi
 
+echo $@
+
+if [ "$3" == "True" ]
+then
+    USEFASTCOLLISION=-use-fast-collision
+else
+    USEFASTCOLLISION=
+fi
+
 OUTDIR=SurfReconDeformable
 
 mkdir -p $OUTDIR/$SUBJID
@@ -22,7 +31,8 @@ mkdir -p $OUTDIR/$SUBJID
 #export LD_LIBRARY_PATH=`dirname $0`/../MIRTK/MIRTK-install/lib:$LD_LIBRARY_PATH
 #export PATH=`dirname $0`/../MIRTK/MIRTK-install/bin:$PATH
 
-recon-neonatal-cortex -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t $OMP_NUM_THREADS -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
+recon-neonatal-cortex -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION
+
 #recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
 #recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex.cfg -s $SUBJID -t 1 -v -d -f
 
@@ -43,7 +53,7 @@ do
 		mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
 		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.curv
 		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.surf
-			
+
 	done
 done
 
