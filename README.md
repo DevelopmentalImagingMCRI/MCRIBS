@@ -45,5 +45,5 @@ The main script to run is MCRIBReconAll. To get usage run MCRIBReconAll --help
 - [ ] Try MANTIS as a stitching thing with DrawEM.
 - [ ] Make a CSH version of the setup script.
 - [ ] Screenshot generators.
-- [ ] Investigate warning message in VTK 8.2.0 during evaluate-mesh. vtkCleanPolyData causes an OOB lookup on one of the arrays.
-- [ ] Fix memory leak in gcc 8 and gcc 9.
+- [x] Investigate warning message in VTK 8.2.0 during merge-surfaces. vtkCleanPolyData causes an OOB lookup on one of the arrays. I have checked this. It seems to be a warning message that is handled correctly. I have compared vtk-8.1 vs. vtk-8.2 outputs of merge-surface in 4 subjects and they are identical. So this error can be ignored.
+- [ ] Fix memory leak in gcc 8 and gcc 9. evaluate-mesh
