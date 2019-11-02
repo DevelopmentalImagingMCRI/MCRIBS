@@ -398,7 +398,8 @@ def recon_neonatal_cortex(config, section, config_vars,
 						  force=False,
 						  check=True,
 						  verbose=0,
-						  join_tol = 1):
+						  join_tol = 1,
+						  use_fast_collision=False):
 	"""Reconstruct surfaces of neonatal cortex."""
 
 	# working directory
@@ -545,14 +546,14 @@ def recon_neonatal_cortex(config, section, config_vars,
 					print("Reconstructing boundary of right cerebral hemisphere segmentation")
 				neoctx.recon_cortical_surface(name=right_cerebrum_mesh,
 											  regions=regions_mask, hemisphere=neoctx.Hemisphere.Right,
-											  corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir)
+											  corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir, use_fast_collision=use_fast_collision)
 			if force or not os.path.isfile(left_cerebrum_mesh):
 				corpus_callosum_mask = optional_corpus_callosum_mask(config, section, config_vars, stack, verbose)
 				if verbose > 0:
 					print("Reconstructing boundary of left cerebral hemisphere segmentation")
 				neoctx.recon_cortical_surface(name=left_cerebrum_mesh,
 											  regions=regions_mask, hemisphere=neoctx.Hemisphere.Left,
-											  corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir)
+											  corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir, use_fast_collision=use_fast_collision)
 
 			# join cortical surfaces of right and left hemispheres
 			if verbose > 0:
@@ -596,7 +597,7 @@ def recon_neonatal_cortex(config, section, config_vars,
 									   subcortex_mask=deep_gray_matter_mask,
 									   cortical_hull_dmap=cortical_hull_dmap,
 									   ventricles_dmap=ventricles_dmap,
-									   temp=temp_dir, check=check)
+									   temp=temp_dir, check=check, use_fast_collision=use_fast_collision)
 
 			# remove initial surface mesh
 			if not with_cerebrum_mesh:
@@ -632,7 +633,7 @@ def recon_neonatal_cortex(config, section, config_vars,
 									  wm_mask=wm_mask, gm_mask=gm_mask, brain_mask=brain_mask,
 									  white_mesh=white_mesh, bs_cb_mesh=bs_cb_mesh_2,
 									  outside_white_mesh=pial_outside_white_surface,
-									  temp=temp_dir, check=check)
+									  temp=temp_dir, check=check, use_fast_collision=use_fast_collision)
 
 			# remove inner-cortical surface
 			if not with_white_mesh:
@@ -777,6 +778,8 @@ parser.add_argument('-join-with-brainstem-and-cerebellum', '--join-with-brainste
 					help="Merge cerebrum surface mesh with brainstem and cerebellum surface mesh")
 parser.add_argument('-nocut', '-nosplit', '--nocut', '--nosplit', dest='cut', action='store_false',
 					help='Save individual (closed) genus-0 surfaces for each hemisphere')
+parser.add_argument('-use-fast-collision', dest='fastcollision', action='store_true',
+					help='Use the fast collision test')
 parser.add_argument('-nocheck', '--nocheck', action='store_false', dest='check',
 					help='Disable consistency and self-intersection checks of (intermediate) surface meshes')
 parser.add_argument('-keep-t1w-image', '--keep-t1w-image', action='store_true',
@@ -908,7 +911,8 @@ for session in sessions:
 								  join_bs_cb_mesh=args.join_bs_cb_mesh,
 								  verbose=args.verbose,
 								  check=args.check,
-								  join_tol = args.join_tol)
+								  join_tol = args.join_tol,
+								  use_fast_collision = args.fastcollision)
 	except Exception as e:
 		failed += 1
 		if args.queue:

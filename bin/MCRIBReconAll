@@ -55,6 +55,7 @@ def main():
     surfReconArgGroup.add_argument('--surfrecon', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--surfreconmethod', help = "Specify cortical surface extraction method", required = False, choices = ['Deformable'], default = 'Deformable')
     surfReconArgGroup.add_argument('--deformablejointhresh', help = "Join threshold parameter for Deformable", required = False, type = float, default = 1)
+    surfReconArgGroup.add_argument('--deformablefastcollision', help = "Use Deformable fast collision test", required = False, action = 'store_true')
 
     inflateSphereArgGroup = argParser.add_argument_group('inflatesphere', 'Perform inflation, spherical mapping, curv, area, depends --surfrecon')
     inflateSphereArgGroup.add_argument('--inflatesphere', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -163,9 +164,9 @@ def main():
             print(" ".join(cmd))
             runCommand(cmd)
         pass
-
+    
     if options.surfrecon == True or options.all == True:
-        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh)]
+        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision)]
         runCommand(cmd)
         pass
 
