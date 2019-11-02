@@ -48,6 +48,8 @@ do
 done
 
 BUILDTYPE=Debug
+export CFLAGS="-ggdb -fsanitize=address -fno-omit-frame-pointer"
+export CXXFLAGS="-ggdb -fsanitize=address -fno-omit-frame-pointer"
 export CFLAGS=-ggdb
 export CXXFLAGS=-ggdb
 export CC=gcc-8
@@ -80,14 +82,16 @@ export CXX=g++-8
 	#make install
 	#cd ..
 
-	rm -fr VTK-build VTK-install
+	rm -fr VTK-install
+	#rm -fr VTK-build VTK-install
 #rm -fr VTK-build VTK-install
 	mkdir -p VTK-build
 	cd VTK-build
 	#$CMAKE -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_C_FLAGS="-fPIC" -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/VTK/VTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DVTK_LEGACY_SILENT=ON -DVTK_WRAP_PYTHON=ON -DVTK_PYTHON_VERSION=3 -DVTK_Group_Rendering:BOOL=OFF ../VTK
 #eval $CMAKE $ARCHFLAGS -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/VTK/VTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DVTK_LEGACY_SILENT=ON -DVTK_WRAP_PYTHON=ON -DVTK_PYTHON_VERSION=3 -DVTK_Group_Rendering:BOOL=OFF ../VTK
 	eval $CMAKE $ARCHFLAGS -DCMAKE_CXX_FLAGS_DEBUG="-g -ggdb" -DCMAKE_C_FLAGS_DEBUG="-g -ggdb" -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/VTK/VTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DVTK_LEGACY_SILENT=ON -DVTK_WRAP_PYTHON=ON -DVTK_PYTHON_VERSION=3 $LIGHTWEIGHTPYTHON ../VTK
-	make -j`nproc`
+	#make -j`nproc`
+	make 2>&1 | tee build.log
 	make install
 	cd $MCRIBSDIR
 
@@ -108,7 +112,8 @@ rm -fr MIRTK/MIRTK-build MIRTK/MIRTK-install
 mkdir -p MIRTK/MIRTK-build
 cd MIRTK/MIRTK-build
 eval $CMAKE $ARCHFLAGS -DCMAKE_CXX_FLAGS_DEBUG="-g -ggdb" -DMODULE_Deformable=ON -DMODULE_Mapping=ON -DMODULE_PointSet=ON -DMODULE_Scripting=ON -DWITH_TBB=ON -DMODULE_DrawEM=ON -DWITH_VTK=ON -DDEPENDS_VTK_DIR=$MIRTKVTKDEPENDS -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/MIRTK/MIRTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DWITH_FLANN=OFF -DWITH_CCACHE=$WITHCCACHE ../MIRTK
-make -j`nproc`
+#make -j`nproc`
+make 2>&1 | tee build.log
 make install
 
 # the python 2 directories can be deleted since
