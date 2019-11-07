@@ -26,7 +26,7 @@ fi
 
 OUTDIR=SurfReconDeformable
 
-mkdir -p $OUTDIR/$SUBJID
+mkdir -p $OUTDIR/$SUBJID/{temp,meshes,recon}
 
 #export LD_LIBRARY_PATH=`dirname $0`/../MIRTK/MIRTK-install/lib:$LD_LIBRARY_PATH
 #export PATH=`dirname $0`/../MIRTK/MIRTK-install/bin:$PATH
