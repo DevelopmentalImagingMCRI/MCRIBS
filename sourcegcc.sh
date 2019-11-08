@@ -1,0 +1,5 @@
+
+export MCRIBS_HOME=`pwd`
+export LD_LIBRARY_PATH=$MCRIBS_HOME/MIRTK/MIRTK-install/lib:$MCRIBS_HOME/VTK/VTK-install/lib:$LD_LIBRARY_PATH
+export PATH=$MCRIBS_HOME/MIRTK/MIRTK-install/lib/tools:$MCRIBS_HOME/bin:$PATH
+
