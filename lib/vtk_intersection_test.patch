@@ -1,6 +1,6 @@
 --- ./VTK/VTK/Filters/General/vtkIntersectionPolyDataFilter.cxx	2019-11-07 13:18:31.143575760 +1100
 +++ ./b/Filters/General/vtkIntersectionPolyDataFilter.cxx	2019-11-07 18:32:01.999498634 +1100
-@@ -2095,46 +2095,91 @@
+@@ -2095,46 +2095,87 @@
    int index1 = 0, index2 = 0;
    double t1[3], t2[3];
    int ts1=50, ts2=50;
@@ -87,7 +87,7 @@
 +      {
 +	    cout << loopcount << " " << ts1 << " " << ts2 << endl;
 +      }
-+      if(index1 < 3 || index2 < 3 || ((index1 == 3 && ts1 < 50) && (index2 == 3 && ts2 < 50)))
++      if(!((index1 == 3 && ts1 == 50) || (index2 == 3 && ts2 == 50)))
 +      {
 +	      break;
 +      }
@@ -96,13 +96,9 @@
  
 +  if((index1 == 3 && ts1 == 50) || (index2 == 3 && ts2 == 50))
 +  {
-+	cout << "t1 = " << endl;
-+	cout << "[" << p1[0] << " " << p1[1] << " " << p1[2] << "; ..." << endl;
-+	cout << q1[0] << " " << q1[1] << " " << q1[2] << "; ..." << endl;
-+	cout << r1[0] << " " << r1[1] << " " << r1[2] << "; ..." << endl;
-+	cout << p2[0] << " " << p2[1] << " " << p2[2] << "; ..." << endl;
-+	cout << q2[0] << " " << q2[1] << " " << q2[2] << "; ..." << endl;
-+	cout << r2[0] << " " << r2[1] << " " << r2[2] << "]" << endl;
++        cout << "triangles = " << endl;
++        cout << "[" << p1[0] << " " << p1[1] << " " << p1[2] << "; " << q1[0] << " " << q1[1] << " " << q1[2] << "; " << r1[0] << " " << r1[1] << " " << r1[2] << "; ..." << endl;
++        cout <<        p2[0] << " " << p2[1] << " " << p2[2] << "; " << q2[0] << " " << q2[1] << " " << q2[2] << "; " << r2[0] << " " << r2[1] << " " << r2[2] << "];" << endl;
 +  }
    //If the value of the index is greater than 2, the intersecting point
    //actually is intersected by all three edges. In this case, set the two
