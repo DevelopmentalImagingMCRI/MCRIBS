@@ -26,7 +26,7 @@ then
 	echo "Input file not found"
 else
 	mkdir -p $DRAWEMOUTDIR
-	`dirname $0`/.././MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $DRAWEMOUTDIR -t $OMP_NUM_THREADS -c 0 -p 1 -v 1
+    `dirname $0`/.././MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $DRAWEMOUTDIR -t $OMP_NUM_THREADS -c 0 -p 1 -v 1
 
 # copy the brain mask and label files to the global tissue seg directory
 	cp $DRAWEMOUTDIR/segmentations/${SUBJID}_brain_mask.nii.gz $OUTDIR
@@ -46,7 +46,10 @@ else
 	DRAWEMIMAGE=$OUTDIR/${SUBJID}_all_labels.nii.gz
 # make a symbolic link from the manedit file
 # initially it is a link, if it is overwritten with a file then the manedit is used
-	ln -sf ${SUBJID}_all_labels.nii.gz $OUTDIR/${SUBJID}_all_labels_manedit.nii.gz
+	if [ ! -f "$OUTDIR/${SUBJID}_all_labels_manedit.nii.gz" ]
+    then
+        ln -sf ${SUBJID}_all_labels.nii.gz $OUTDIR/${SUBJID}_all_labels_manedit.nii.gz
+    fi
 	ASEGIMAGE=freesurfer/$SUBJID/mri/aseg.presurf.preunwmfix.mgz
 
 	CMD="mri_binarize --i $DRAWEMIMAGE --o $ASEGIMAGE"
