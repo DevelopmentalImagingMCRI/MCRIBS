@@ -38,5 +38,5 @@ fi
 
 freeview \
 			 -v RawT2RadiologicalIsotropic/${1}.nii.gz \
-			 -v TissueSeg/${1}_all_labels_manedit.nii.gz:colormap=lut:lut=`dirname $0`/../lib/FS_all_labels.txt:opacity=0.3 \
+			 -v TissueSeg/${1}_all_labels_manedit.nii.gz:colormap=lut:lut=`dirname $0`/../lib/drawem_labels_FSLUT.txt:opacity=0.3 \
 			 $SURFS
