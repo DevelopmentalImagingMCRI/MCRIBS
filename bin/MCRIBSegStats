@@ -27,4 +27,4 @@ mri_binarize --i mri/aseg.mgz --o mri/aseg_neo.mgz --replace 2 159 --replace 41 
 # therefore, this script is deprecated
 
 MCRIBSegStatsPython $SUBJID mri/aseg_neo.mgz `dirname $0`/../lib/ASegStatsNeonateLUT.txt stats/aseg.stats
-rm -f mri/aseg_neo.mgz
+#rm -f mri/aseg_neo.mgz

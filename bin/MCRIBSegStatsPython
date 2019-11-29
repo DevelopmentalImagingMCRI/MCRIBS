@@ -43,8 +43,10 @@ RHWhiteSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'rh.white')
 LHPialSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'lh.pial')
 RHPialSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'rh.pial')
 T2IMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'T1.mgz')
+RibbonIMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'ribbon.mgz')
+BrainmaskIMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'brainmask.mgz')
 
-R = checkFilesReturnNameOnFailure([ASEGFileName, CTABFileName, LHWhiteSurfFileName, RHWhiteSurfFileName, LHPialSurfFileName, RHPialSurfFileName, T2IMGFileName])
+R = checkFilesReturnNameOnFailure([ASEGFileName, CTABFileName, LHWhiteSurfFileName, RHWhiteSurfFileName, LHPialSurfFileName, RHPialSurfFileName, T2IMGFileName, RibbonIMGFileName, BrainmaskIMGFileName])
 
 if len(R) > 0:
     print("Could not find: ")
@@ -65,6 +67,12 @@ voxelSize = numpy.prod(ASEGNII.header.get_zooms())
 
 T2NII = nibabel.load(T2IMGFileName)
 T2IMG = T2NII.get_data()
+
+RibbonNII = nibabel.load(RibbonIMGFileName)
+RibbonIMG = RibbonNII.get_data()
+
+BrainmaskNII = nibabel.load(BrainmaskIMGFileName)
+BrainmaskIMG = BrainmaskNII.get_data()
 
 outDF = pandas.DataFrame(index = CTABTable.index, columns = ['SegId', 'NVoxels', 'Volume_mm3', 'StructName', 'normMean', 'normStdDev', 'normMin', 'normMax', 'normRange'])
 
@@ -141,7 +149,6 @@ def getFileTimeStampString(F):
     D = datetime.datetime.fromtimestamp(os.path.getmtime(F))
     return D.strftime("%Y/%m/%d %H:%M:%S")
 
-
 FID = open(OutFileName, 'w')
 
 FID.write("# Title Segmentation Statistics\n")
@@ -151,6 +158,36 @@ FID.write("# subjectname " + SubjectID + "\n")
 
 FID.write("# Measure lhCortex, lhCortexVol, Left hemisphere cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol) + ", mm^3\n")
 FID.write("# Measure rhCortex, rhCortexVol, Right hemisphere cortical gray matter volume, " + str(RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
+FID.write("# Measure Cortex, CortexVol, Total cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol + RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
+
+LHWMMask = numpy.in1d(ASEGIMG, numpy.array([2, 159, 161]))
+RHWMMask = numpy.in1d(ASEGIMG, numpy.array([41, 160, 162]))
+LHWMMaskVoxCount = numpy.count_nonzero(LHWMMask)
+RHWMMaskVoxCount = numpy.count_nonzero(RHWMMask)
+
+FID.write("# Measure lhCerebralWhiteMatter, lhCerebralWhiteMatterVol, Left hemisphere cerebral white matter volume, " + str(LHWMMaskVoxCount * voxelSize) + ", mm^3\n")
+FID.write("# Measure rhCerebralWhiteMatter, rhCerebralWhiteMatterVol, Right hemisphere cerebral white matter volume, " + str(RHWMMaskVoxCount * voxelSize) + ", mm^3\n")
+FID.write("# Measure CerebralWhiteMatter, CerebralWhiteMatterVol, Total cerebral white matter volume, " + str((LHWMMaskVoxCount + RHWMMaskVoxCount) * voxelSize) + ", mm^3\n")
+
+
+FID.write("# Measure SupraTentorial, SupraTentorialVol, Supratentorial volume, " + str(RHPialSurfVol + LHPialSurfVol) + ", mm^3\n")
+
+# SupraTentorialNotVent = RHPialSurfVol + LHPialSurfVol minus CSF voxels in WM ribbon
+CSFInASEGMask = numpy.in1d(ASEGIMG, numpy.array([0, 4, 43, 24]))
+WMInRibbonMask = numpy.in1d(RibbonIMG, numpy.array([2, 41]))
+VentVolInSupraTent = numpy.count_nonzero(numpy.logical_and(CSFInASEGMask, WMInRibbonMask))
+
+FID.write("# Measure SupraTentorialNotVent, SupraTentorialVolNotVentVol, Supratentorial volume, " + str(RHPialSurfVol + LHPialSurfVol - VentVolInSupraTent * voxelSize) + ", mm^3\n")
+FID.write("# Measure SupraTentorialNotVentVox, SupraTentorialVolNotVentVox, Supratentorial volume voxel count, " + str(VentVolInSupraTent) + ", voxels\n")
+
+FID.write("# Measure Mask, MaskVol, Mask Volume, " + str(numpy.count_nonzero(BrainmaskIMG) * voxelSize) + ", mm^3\n")
+
+# subcortical grey volume
+SubCortGMMask = numpy.in1d(ASEGIMG, numpy.array([11, 12, 13, 17, 18, 50, 51, 52, 53, 54]))
+
+FID.write("# Measure SubCortGray, SubCortGrayVol, Subcortical gray matter volume, " + str(numpy.count_nonzero(SubCortGMMask) * voxelSize) + ", mm^3\n")
+
+# stuff in segstats that I can't do yet
 
 FID.write("# ColorTable " + CTABFileName + "\n")
 FID.write("# ColorTableTimeStamp " + getFileTimeStampString(CTABFileName) + "\n")
