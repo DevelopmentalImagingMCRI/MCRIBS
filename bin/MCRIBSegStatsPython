@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import pandas
+
+import freesurfer
+import GraphUtils
+
+if len(sys.argv) < 5:
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <subject id> <seg file> <ctab file> <output file>")
+    print("Performs segstats on the subject <subject id>, label file is <seg file> ")
+    quit()
+
+# ColHeaders  Index SegId NVoxels Volume_mm3 StructName normMean normStdDev normMin normMax normRange
+
+try:
+    SubjectsDir = os.environ['SUBJECTS_DIR']
+except Exception:
+    print("Could not find the SUBJECTS_DIR environment variable")
+    exit()
+
+SubjectID = sys.argv[1]
+ASEGFileName = sys.argv[2]
+CTABFileName = sys.argv[3]
+OutFileName = sys.argv[4]
+
+# check for all the files
+
+def checkFilesReturnNameOnFailure(fileList):
+    outList = []
+    for curFile in fileList:
+        if not os.path.isfile(curFile):
+            outList.append(curFile)
+    return outList
+
+LHWhiteSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'lh.white')
+RHWhiteSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'rh.white')
+LHPialSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'lh.pial')
+RHPialSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'rh.pial')
+T2IMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'T1.mgz')
+
+R = checkFilesReturnNameOnFailure([ASEGFileName, CTABFileName, LHWhiteSurfFileName, RHWhiteSurfFileName, LHPialSurfFileName, RHPialSurfFileName, T2IMGFileName])
+
+if len(R) > 0:
+    print("Could not find: ")
+    print("\n".join(R))
+    quit()
+
+CTABTable = pandas.read_table(CTABFileName, comment = '#', header = None, delim_whitespace = True, index_col = 0)
+CTABTable.columns = ['Name', 'R', 'G', 'B', 'A']
+CTABTable.index.name = 'SegId'
+# remove the 0 row 
+
+CTABTable = CTABTable.loc[CTABTable.index > 0]
+
+ASEGNII = nibabel.load(ASEGFileName)
+ASEGIMG = ASEGNII.get_data()
+
+voxelSize = numpy.prod(ASEGNII.header.get_zooms())
+
+T2NII = nibabel.load(T2IMGFileName)
+T2IMG = T2NII.get_data()
+
+outDF = pandas.DataFrame(index = CTABTable.index, columns = ['SegId', 'NVoxels', 'Volume_mm3', 'StructName', 'normMean', 'normStdDev', 'normMin', 'normMax', 'normRange'])
+
+outDF.StructName = CTABTable.Name
+outDF.SegId = CTABTable.index
+
+for curSegId in outDF.index:
+    I = numpy.where(ASEGIMG == curSegId)
+    outDF.loc[curSegId, 'NVoxels'] = I[0].size
+    if outDF.loc[curSegId, 'NVoxels'] == 0:
+        outDF.loc[curSegId, 'normMean'] = 0
+        outDF.loc[curSegId, 'normStdDev'] = 0
+        outDF.loc[curSegId, 'normMin'] = 0
+        outDF.loc[curSegId, 'normMax'] = 0
+    else:
+        normVoxels = T2IMG[I]
+        outDF.loc[curSegId, 'normMean'] = numpy.mean(normVoxels)
+        outDF.loc[curSegId, 'normStdDev'] = numpy.std(normVoxels)
+        outDF.loc[curSegId, 'normMin'] = numpy.min(normVoxels)
+        outDF.loc[curSegId, 'normMax'] = numpy.max(normVoxels)
+
+outDF.Volume_mm3 = outDF.NVoxels * voxelSize
+outDF.normRange = outDF.normMax - outDF.normMin
+
+# do the surf volumes
+
+def surfVolume(S):
+    """
+    Returns the volume of the surface according to https://stackoverflow.com/questions/1406029/how-to-calculate-the-volume-of-a-3d-mesh-object-the-surface-of-which-is-made-up
+
+    Parameters
+    ----------
+    S : dict
+        Surface dictionary.
+    S.vertices : `numpy.ndarray`
+        3xNumVertices array with the vertex coordinates.
+    S.faces : `numpy.ndarray`
+        3xNumFaces array with the vertex index tuples that form the faces.
+
+    Returns
+    -------
+    float :
+        Surface volume
+
+    """
+
+    VA = numpy.take(S['vertices'], S['faces'][0], axis = 1)
+    VB = numpy.take(S['vertices'], S['faces'][1], axis = 1)
+    VC = numpy.take(S['vertices'], S['faces'][2], axis = 1)
+
+    AB = VB - VA
+    AC = VC - VA
+
+    VN = numpy.cross(AB, AC, axis = 0)
+    VNMAG = numpy.sqrt(numpy.sum(VN * VN, axis = 0))
+    FaceAreas = VNMAG / 2
+    VN = VN / numpy.atleast_2d(VNMAG)
+    FaceCentroids = (VA + VB + VC) / 3
+    return numpy.sum(numpy.sum(FaceCentroids * VN, axis = 0) * FaceAreas)
+
+LHWhiteSurf = freesurfer.readSurf(LHWhiteSurfFileName)
+RHWhiteSurf = freesurfer.readSurf(RHWhiteSurfFileName)
+LHPialSurf = freesurfer.readSurf(LHPialSurfFileName)
+RHPialSurf = freesurfer.readSurf(RHPialSurfFileName)
+
+LHWhiteSurfVol = surfVolume(LHWhiteSurf)
+RHWhiteSurfVol = surfVolume(RHWhiteSurf)
+LHPialSurfVol = surfVolume(LHPialSurf)
+RHPialSurfVol = surfVolume(RHPialSurf)
+
+import datetime
+
+def getFileTimeStampString(F):
+    D = datetime.datetime.fromtimestamp(os.path.getmtime(F))
+    return D.strftime("%Y/%m/%d %H:%M:%S")
+
+
+FID = open(OutFileName, 'w')
+
+FID.write("# Title Segmentation Statistics\n")
+FID.write("#\n")
+FID.write("# SUBJECTS_DIR " + SubjectsDir + "\n")
+FID.write("# subjectname " + SubjectID + "\n")
+
+FID.write("# Measure lhCortex, lhCortexVol, Left hemisphere cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol) + ", mm^3\n")
+FID.write("# Measure rhCortex, rhCortexVol, Right hemisphere cortical gray matter volume, " + str(RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
+
+FID.write("# ColorTable " + CTABFileName + "\n")
+FID.write("# ColorTableTimeStamp " + getFileTimeStampString(CTABFileName) + "\n")
+FID.write("# SegVolFile " + ASEGFileName + "\n")
+FID.write("# SegVolFileTimeStamp " + getFileTimeStampString(ASEGFileName) + "\n")
+FID.write("# InVolFile " + T2IMGFileName + "\n")
+FID.write("# InVolFileTimeStamp " + getFileTimeStampString(T2IMGFileName) + "\n")
+
+FID.write(outDF.to_string(index = False, index_names = False) + "\n")
+FID.close()
