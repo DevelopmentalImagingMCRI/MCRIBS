@@ -6,7 +6,6 @@
 #
 
   0  Unknown                                 0    0    0    0
-  2  Left-Cerebral-White-Matter            245  245  245    0
   3  Left-Cerebral-Cortex                  205   62   78    0
   4  Left-Lateral-Ventricle                120   18  134    0
  11  Left-Caudate                          122  186  220    0
@@ -16,7 +15,6 @@
  17  Left-Hippocampus                      220  216   20    0
  18  Left-Amygdala                         103  255  255    0
  24  CSF                                    60   60   60    0
- 41  Right-Cerebral-White-Matter           245  245  245    0
  42  Right-Cerebral-Cortex                 205   62   78    0
  43  Right-Lateral-Ventricle               120   18  134    0
  50  Right-Caudate                         122  186  220    0
@@ -24,20 +22,8 @@
  52  Right-Subthalamic-Nucleus              13   48  255    0
  53  Right-Hippocampus                     220  216   20    0
  54  Right-Amygdala                        103  255  255    0
- 72  5th-Ventricle                         120  190  150    0
- 77  WM-hypointensities                    200   70  255    0
- 78  Left-WM-hypointensities               255  148   10    0
- 79  Right-WM-hypointensities              255  148   10    0
- 80  non-WM-hypointensities                164  108  226    0
- 81  Left-non-WM-hypointensities           164  108  226    0
- 82  Right-non-WM-hypointensities          164  108  226    0
- 85  Optic-Chiasm                          234  169   30    0
 159 Left-Cerebral-WM-unmyelinated           0   118 14  0
 160 Right-Cerebral-WM-unmyelinated          0   118 14  0
 161 Left-Cerebral-WM-myelinated             220 216 21  0
 162 Right-Cerebral-WM-myelinated            220 216 21  0
-251 CC_Posterior                             0    0   64    0
-252 CC_Mid_Posterior                         0    0  112    0
-253 CC_Central                               0    0  160    0
-254 CC_Mid_Anterior                          0    0  208    0
-255 CC_Anterior                              0    0  255    0
+253 CC                               0    0  160    0
