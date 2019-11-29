@@ -29,18 +29,18 @@ RibbonIMG = RibbonNII.get_data()
 
 NewASEGIMG = numpy.array(ASEGIMG)
 
-#CurUnWMIMG = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([85, 48, 9])), ASEGIMG.shape)
-CurUnWMIMG = (ASEGIMG == 85)
+#CurMyelinatedWMIMG = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([85, 48, 9])), ASEGIMG.shape)
+CurMyelinatedWMIMG = (ASEGIMG == 85)
 
-NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 2)] = 161
-NewASEGIMG[numpy.logical_and(CurUnWMIMG, RibbonIMG == 41)] = 162
+NewASEGIMG[numpy.logical_and(CurMyelinatedWMIMG, RibbonIMG == 2)] = 161
+NewASEGIMG[numpy.logical_and(CurMyelinatedWMIMG, RibbonIMG == 41)] = 162
 
 NumDilations = 5
 
 for z in range(NumDilations):
-    CurUnWMIMG = numpy.logical_and(numpy.logical_or(ASEGIMG == 85, ASEGIMG == 0), scipy.ndimage.morphology.binary_dilation(CurUnWMIMG))
+    CurMyelinatedWMIMG = numpy.logical_and(numpy.logical_or(ASEGIMG == 85, ASEGIMG == 0), scipy.ndimage.morphology.binary_dilation(CurMyelinatedWMIMG))
 
-NewASEGIMG[numpy.logical_and(CurUnWMIMG, ASEGIMG == 0)] = 24
+NewASEGIMG[numpy.logical_and(CurMyelinatedWMIMG, ASEGIMG == 0)] = 24
 
 #CSFOverlap = numpy.logical_and(ASEGIMG == 24, WMSEGIMG)
 #if numpy.any(CSFOverlap):
