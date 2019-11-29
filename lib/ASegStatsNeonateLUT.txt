@@ -32,6 +32,8 @@
  81  Left-non-WM-hypointensities           164  108  226    0
  82  Right-non-WM-hypointensities          164  108  226    0
  85  Optic-Chiasm                          234  169   30    0
+159 Left-Cerebral-WM-unmyelinated           0   118 14  0
+160 Right-Cerebral-WM-unmyelinated          0   118 14  0
 161 Left-Cerebral-WM-myelinated             220 216 21  0
 162 Right-Cerebral-WM-myelinated            220 216 21  0
 251 CC_Posterior                             0    0   64    0
