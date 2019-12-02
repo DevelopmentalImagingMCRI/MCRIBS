@@ -56,7 +56,7 @@ if len(R) > 0:
 CTABTable = pandas.read_table(CTABFileName, comment = '#', header = None, delim_whitespace = True, index_col = 0)
 CTABTable.columns = ['Name', 'R', 'G', 'B', 'A']
 CTABTable.index.name = 'SegId'
-# remove the 0 row 
+# remove the 0 row
 
 CTABTable = CTABTable.loc[CTABTable.index > 0]
 
@@ -195,6 +195,7 @@ FID.write("# SegVolFile " + ASEGFileName + "\n")
 FID.write("# SegVolFileTimeStamp " + getFileTimeStampString(ASEGFileName) + "\n")
 FID.write("# InVolFile " + T2IMGFileName + "\n")
 FID.write("# InVolFileTimeStamp " + getFileTimeStampString(T2IMGFileName) + "\n")
+FID.write("# VoxelVolume_mm3 " + str(voxelSize) + "\n")
 
 FID.write(outDF.to_string(index = False, index_names = False) + "\n")
 FID.close()
