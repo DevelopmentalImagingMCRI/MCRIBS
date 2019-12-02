@@ -195,6 +195,7 @@ FID.write("# SegVolFile " + ASEGFileName + "\n")
 FID.write("# SegVolFileTimeStamp " + getFileTimeStampString(ASEGFileName) + "\n")
 FID.write("# InVolFile " + T2IMGFileName + "\n")
 FID.write("# InVolFileTimeStamp " + getFileTimeStampString(T2IMGFileName) + "\n")
+FID.write("# VoxelVolume_mm3 " + str(voxelSize) + "\n")
 
 FID.write(outDF.to_string(index = False, index_names = False) + "\n")
 FID.close()
