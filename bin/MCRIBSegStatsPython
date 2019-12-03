@@ -131,7 +131,7 @@ def surfVolume(S):
     FaceAreas = VNMAG / 2
     VN = VN / numpy.atleast_2d(VNMAG)
     FaceCentroids = (VA + VB + VC) / 3
-    return numpy.sum(numpy.sum(FaceCentroids * VN, axis = 0) * FaceAreas)
+    return numpy.sum(numpy.sum(FaceCentroids * VN, axis = 0) * FaceAreas) / 3.0
 
 LHWhiteSurf = freesurfer.readSurf(LHWhiteSurfFileName)
 RHWhiteSurf = freesurfer.readSurf(RHWhiteSurfFileName)
