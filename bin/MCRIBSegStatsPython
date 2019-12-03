@@ -9,11 +9,11 @@ import pandas
 import freesurfer
 import GraphUtils
 
-if len(sys.argv) < 5:
+if len(sys.argv) < 6:
     print("Incorrect number of arguments")
     print()
-    print("Usage: " + sys.argv[0] + " <subject id> <seg file> <ctab file> <output file>")
-    print("Performs segstats on the subject <subject id>, label file is <seg file> ")
+    print("Usage: " + sys.argv[0] + " <subject id> <seg file> <ctab file> <segstats stats file> <output file>")
+    print("Performs segstats on the subject <subject id>, label file is <seg file>, <segstats stats file> is the segstats output that is used for partial volume correction")
     quit()
 
 # ColHeaders  Index SegId NVoxels Volume_mm3 StructName normMean normStdDev normMin normMax normRange
@@ -27,7 +27,8 @@ except Exception:
 SubjectID = sys.argv[1]
 ASEGFileName = sys.argv[2]
 CTABFileName = sys.argv[3]
-OutFileName = sys.argv[4]
+SegStatsFileName = sys.argv[4]
+OutFileName = sys.argv[5]
 
 # check for all the files
 
@@ -74,28 +75,34 @@ RibbonIMG = RibbonNII.get_data()
 BrainmaskNII = nibabel.load(BrainmaskIMGFileName)
 BrainmaskIMG = BrainmaskNII.get_data()
 
-outDF = pandas.DataFrame(index = CTABTable.index, columns = ['SegId', 'NVoxels', 'Volume_mm3', 'StructName', 'normMean', 'normStdDev', 'normMin', 'normMax', 'normRange'])
+doingLabelTable = False
 
-outDF.StructName = CTABTable.Name
-outDF.SegId = CTABTable.index
+if doingLabelTable == True:
+    outDF = pandas.DataFrame(index = CTABTable.index, columns = ['SegId', 'NVoxels', 'Volume_mm3', 'StructName', 'normMean', 'normStdDev', 'normMin', 'normMax', 'normRange'])
 
-for curSegId in outDF.index:
-    I = numpy.where(ASEGIMG == curSegId)
-    outDF.loc[curSegId, 'NVoxels'] = I[0].size
-    if outDF.loc[curSegId, 'NVoxels'] == 0:
-        outDF.loc[curSegId, 'normMean'] = 0
-        outDF.loc[curSegId, 'normStdDev'] = 0
-        outDF.loc[curSegId, 'normMin'] = 0
-        outDF.loc[curSegId, 'normMax'] = 0
-    else:
-        normVoxels = T2IMG[I]
-        outDF.loc[curSegId, 'normMean'] = numpy.mean(normVoxels)
-        outDF.loc[curSegId, 'normStdDev'] = numpy.std(normVoxels)
-        outDF.loc[curSegId, 'normMin'] = numpy.min(normVoxels)
-        outDF.loc[curSegId, 'normMax'] = numpy.max(normVoxels)
+    outDF.StructName = CTABTable.Name
+    outDF.SegId = CTABTable.index
 
-outDF.Volume_mm3 = outDF.NVoxels * voxelSize
-outDF.normRange = outDF.normMax - outDF.normMin
+    for curSegId in outDF.index:
+        I = numpy.where(ASEGIMG == curSegId)
+        outDF.loc[curSegId, 'NVoxels'] = I[0].size
+        if outDF.loc[curSegId, 'NVoxels'] == 0:
+            outDF.loc[curSegId, 'normMean'] = 0
+            outDF.loc[curSegId, 'normStdDev'] = 0
+            outDF.loc[curSegId, 'normMin'] = 0
+            outDF.loc[curSegId, 'normMax'] = 0
+        else:
+            normVoxels = T2IMG[I]
+            outDF.loc[curSegId, 'normMean'] = numpy.mean(normVoxels)
+            outDF.loc[curSegId, 'normStdDev'] = numpy.std(normVoxels)
+            outDF.loc[curSegId, 'normMin'] = numpy.min(normVoxels)
+            outDF.loc[curSegId, 'normMax'] = numpy.max(normVoxels)
+
+    outDF.Volume_mm3 = outDF.NVoxels * voxelSize
+    outDF.normRange = outDF.normMax - outDF.normMin
+else:
+    outDF = pandas.read_table(SegStatsFileName, comment = '#', header = None, delim_whitespace = True)
+    outDF.columns = ['Index', 'SegId', 'NVoxels', 'Volume_mm3', 'StructName', 'normMean', 'normStdDev', 'normMin', 'normMax', 'normRange']
 
 # do the surf volumes
 
@@ -195,7 +202,14 @@ FID.write("# SegVolFile " + ASEGFileName + "\n")
 FID.write("# SegVolFileTimeStamp " + getFileTimeStampString(ASEGFileName) + "\n")
 FID.write("# InVolFile " + T2IMGFileName + "\n")
 FID.write("# InVolFileTimeStamp " + getFileTimeStampString(T2IMGFileName) + "\n")
+FID.write("# Excluding Cortical Gray and White Matter\n")
+FID.write("# ExcludeSegId 0 2 3 41 42\n")
 FID.write("# VoxelVolume_mm3 " + str(voxelSize) + "\n")
 
-FID.write(outDF.to_string(index = False, index_names = False) + "\n")
+FID.write("# NRows " + str(outDF.shape[0]) + "\n")
+FID.write("# NTableCols " + str(outDF.shape[1]) + "\n")
+FID.write("# ColHeaders  " + " ".join(outDF.columns) + "\n")
+
+FID.write(" " + outDF.to_string(index = False, index_names = False, header = False) + "\n")
+
 FID.close()
