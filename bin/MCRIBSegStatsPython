@@ -167,15 +167,18 @@ FID.write("# Measure lhCortex, lhCortexVol, Left hemisphere cortical gray matter
 FID.write("# Measure rhCortex, rhCortexVol, Right hemisphere cortical gray matter volume, " + str(RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
 FID.write("# Measure Cortex, CortexVol, Total cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol + RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
 
-LHWMMask = numpy.in1d(ASEGIMG, numpy.array([2, 159, 161]))
-RHWMMask = numpy.in1d(ASEGIMG, numpy.array([41, 160, 162]))
-LHWMMaskVoxCount = numpy.count_nonzero(LHWMMask)
-RHWMMaskVoxCount = numpy.count_nonzero(RHWMMask)
+LHWMMask = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([2, 159, 161])), ASEGIMG.shape)
+RHWMMask = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([41, 160, 162])), ASEGIMG.shape)
 
-FID.write("# Measure lhCerebralWhiteMatter, lhCerebralWhiteMatterVol, Left hemisphere cerebral white matter volume, " + str(LHWMMaskVoxCount * voxelSize) + ", mm^3\n")
-FID.write("# Measure rhCerebralWhiteMatter, rhCerebralWhiteMatterVol, Right hemisphere cerebral white matter volume, " + str(RHWMMaskVoxCount * voxelSize) + ", mm^3\n")
-FID.write("# Measure CerebralWhiteMatter, CerebralWhiteMatterVol, Total cerebral white matter volume, " + str((LHWMMaskVoxCount + RHWMMaskVoxCount) * voxelSize) + ", mm^3\n")
+LHNonWMInRibbon = numpy.logical_and(numpy.logical_not(LHWMMask), RibbonIMG == 2)
+RHNonWMInRibbon = numpy.logical_and(numpy.logical_not(RHWMMask), RibbonIMG == 41)
 
+LHCerebralWMVol = LHWhiteSurfVol - numpy.count_nonzero(LHNonWMInRibbon) * voxelSize
+RHCerebralWMVol = RHWhiteSurfVol - numpy.count_nonzero(RHNonWMInRibbon) * voxelSize
+
+FID.write("# Measure lhCerebralWhiteMatter, lhCerebralWhiteMatterVol, Left hemisphere cerebral white matter volume, " + str(LHCerebralWMVol) + ", mm^3\n")
+FID.write("# Measure rhCerebralWhiteMatter, rhCerebralWhiteMatterVol, Right hemisphere cerebral white matter volume, " + str(RHCerebralWMVol) + ", mm^3\n")
+FID.write("# Measure CerebralWhiteMatter, CerebralWhiteMatterVol, Total cerebral white matter volume, " + str(LHCerebralWMVol + RHCerebralWMVol) + ", mm^3\n")
 
 FID.write("# Measure SupraTentorial, SupraTentorialVol, Supratentorial volume, " + str(RHPialSurfVol + LHPialSurfVol) + ", mm^3\n")
 
