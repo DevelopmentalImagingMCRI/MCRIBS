@@ -167,8 +167,8 @@ FID.write("# Measure lhCortex, lhCortexVol, Left hemisphere cortical gray matter
 FID.write("# Measure rhCortex, rhCortexVol, Right hemisphere cortical gray matter volume, " + str(RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
 FID.write("# Measure Cortex, CortexVol, Total cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol + RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
 
-LHWMMask = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([2, 159, 161])), ASEGIMG.shape)
-RHWMMask = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([41, 160, 162])), ASEGIMG.shape)
+LHWMMask = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([2, 159, 161, 253])), ASEGIMG.shape)
+RHWMMask = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([41, 160, 162, 253])), ASEGIMG.shape)
 
 LHNonWMInRibbon = numpy.logical_and(numpy.logical_not(LHWMMask), RibbonIMG == 2)
 RHNonWMInRibbon = numpy.logical_and(numpy.logical_not(RHWMMask), RibbonIMG == 41)
