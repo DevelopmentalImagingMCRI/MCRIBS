@@ -33,9 +33,9 @@ do
 	cd $FSDIR/surf
 
 	mkdir -p ../stats
-	cp ${CURHEMI}.white ${CURHEMI}.smoothwm
+	#cp ${CURHEMI}.white ${CURHEMI}.smoothwm
 	cp ${CURHEMI}.white ${CURHEMI}.orig
-
+	mris_smooth -n 3 -nw -seed 1234 ../surf/$CURHEMI.white ../surf/$CURHEMI.smoothwm
 	DOINFLATE=YES
 
 	if [ "$DOINFLATE" == "YES" ]
