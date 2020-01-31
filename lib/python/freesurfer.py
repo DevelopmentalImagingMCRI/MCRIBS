@@ -247,10 +247,10 @@ def readSurf(fileName):
 
                 numVertices = struct.unpack('>I', FID.read(4))[0]
                 numFaces = struct.unpack('>I', FID.read(4))[0]
-                
+
                 surfOut['vertices'] = numpy.array(struct.unpack('>' + 'f' * numVertices * 3, FID.read(numVertices * 3 * 4)))
                 surfOut['faces'] = numpy.array(struct.unpack('>' + 'i' * numFaces * 3, FID.read(numFaces * 3 * 4)))
-                
+
                 surfOut['vertices'] = numpy.reshape(surfOut['vertices'], [3, numVertices], order = 'F')
                 surfOut['faces'] = numpy.reshape(surfOut['faces'], [3, numFaces], order = 'F')
             #    except IOError e:
@@ -266,15 +266,15 @@ def readSurf(fileName):
                 #print("ascii mode")
                 surfOut['description'] = FID.readline().decode().rstrip()
                 #print(surfOut['description'])
-                
+
                 numVertices, numFaces = FID.readline().decode().rstrip().split()
-                
+
                 numVertices = int(numVertices)
                 numFaces = int(numFaces)
 
                 #print(numVertices)
                 #print(numFaces)
-                
+
                 surfOut['vertices'] = numpy.zeros((3, numVertices), dtype = numpy.float)
                 surfOut['faces'] = numpy.zeros((3, numFaces), dtype = numpy.int32)
 
@@ -286,7 +286,7 @@ def readSurf(fileName):
                     surfOut['vertices'][0, z] = float(T[0])
                     surfOut['vertices'][1, z] = float(T[1])
                     surfOut['vertices'][2, z] = float(T[2])
-                
+
                 for z in range(numFaces):
                     T = FID.readline().decode().rstrip().split()[:3]
                     #T = [int(T[i]) for i in range(len(T))]
@@ -310,20 +310,20 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
 
     if not 'vertices' in surfStruct or not 'faces' in surfStruct:
         raise("surfStruct must contain 'vertices' and 'faces'")
-    
+
     if fileFormat == 'binary':
         try:
             FID = open(fileName, 'wb')
         except Exception:
             print(("Could not open: " + fileName))
             return
-    
+
         FID.write(surfaceMagicNumber)
         if 'description' in surfStruct:
             FID.write((surfStruct['description'].rstrip() + "\n\n").encode())
         else:
             FID.write(("Freesurfer surface\n\n").encode())
-        
+
         numVertices = int(surfStruct['vertices'].shape[1])
         if surfStruct['faces'] is None:
             numFaces = 0
@@ -331,7 +331,7 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
             numFaces = int(surfStruct['faces'].shape[1])
 
         FID.write(struct.pack('>II', numVertices, numFaces))
-        
+
         blockSize = 1000
 
         T = surfStruct['vertices'].flatten(order = 'F')
@@ -344,7 +344,7 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
             FID.write(struct.pack('>' + 'f' * len(S), *S))
             del S
         del T
-        
+
         if not surfStruct['faces'] is None:
             T = surfStruct['faces'].flatten(order = 'F')
             for leftIDX in range(0, numpy.size(T), blockSize):
@@ -362,12 +362,12 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
         except Exception:
             print(("Could not open: " + fileName))
             return
-        
+
         if 'description' in surfStruct:
             FID.write(("#!" + surfStruct['description'].rstrip() + "\n"))
         else:
             FID.write("#!Freesurfer surface\n")
-        
+
         FID.write(("%d %d\n" % (int(surfStruct['vertices'].shape[1]), int(surfStruct['faces'].shape[1]))))
 
         for z in range(surfStruct['vertices'].shape[1]):
@@ -379,31 +379,31 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
     if not geometryNIIFile is None:
         #geometryNII = nibabel.load(geometryNIIFile)
         # /* write whether vertex data was using the
-        #      real RAS rather than conformed RAS */
-        #   fwriteInt(TAG_OLD_USEREALRAS, fp);
+        #        real RAS rather than conformed RAS */
+        #     fwriteInt(TAG_OLD_USEREALRAS, fp);
         #FID.write(struct.pack('>I', 2)) # TAG_OLD_USEREALRAS
-        
+
         #fwriteInt(mris->useRealRAS, fp);
         #FID.write(struct.pack('>I', 1))
         #volume info
 #fwriteInt(TAG_OLD_SURF_GEOM, fp);
         #FID.write(struct.pack('>I', 20)) # TAG_OLD_USEREALRAS
-        
-
-        #2846   S = vg_i_to_r(&mris->vg);
-
-        #2847   T = TkrVox2RASfromVolGeom(&mris->vg);
-        #2848   Tinv = MatrixInverse(T,NULL);
-        #2849   M = MatrixMultiply(S,Tinv,NULL);
-        #2850   MRISmatrixMultiply(mris,M);
-        #2851   mris->useRealRAS = 1;
-        #2852   MatrixFree(&S);
-        #2853   MatrixFree(&T);
-        #2854   MatrixFree(&Tinv);
-        #2855   MatrixFree(&M);
 
 
-#        FID.write("valid = 1  # volume info valid\n")
+        #2846     S = vg_i_to_r(&mris->vg);
+
+        #2847     T = TkrVox2RASfromVolGeom(&mris->vg);
+        #2848     Tinv = MatrixInverse(T,NULL);
+        #2849     M = MatrixMultiply(S,Tinv,NULL);
+        #2850     MRISmatrixMultiply(mris,M);
+        #2851     mris->useRealRAS = 1;
+        #2852     MatrixFree(&S);
+        #2853     MatrixFree(&T);
+        #2854     MatrixFree(&Tinv);
+        #2855     MatrixFree(&M);
+
+
+#        FID.write("valid = 1    # volume info valid\n")
 #        FID.write("filename = " + geometryNIIFile + "\n")
 #        FID.write("volume = " + str(geometryNII.shape[0]) + " " + str(geometryNII.shape[1]) + " " + str(geometryNII.shape[2]) + "\n")
 #        #FID.write("voxelsize = " + str(geometryNII.header.get_zooms()[0]) + " " + str(geometryNII.header.get_zooms()[1]) + " " + str(geometryNII.header.get_zooms()[2]) + "\n")
@@ -420,18 +420,18 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
 #        #print T
 #        #T[1, 3] = geometryNII.shape[2] - T[1, 3]
 #        #print T
-#        
+#
 #        IMGCentre = numpy.matrix((geometryNII.shape[1], geometryNII.shape[2], geometryNII.shape[0])).T / 2.0
 #        IMGCentre = numpy.matrix(geometryNII.shape).T / 2.0
 #
 #        IMGCentre = numpy.concatenate((IMGCentre, numpy.matrix(1)))
 #        CRAS = numpy.matrix(A) * IMGCentre
 #
-#        FID.write(("xras   = %.15e %.15e %.15e\n" % (T[0, 0], T[0, 1], T[0, 2])))
-#        FID.write(("yras   = %.15e %.15e %.15e\n" % (T[1, 0], T[1, 1], T[1, 2])))
-#        FID.write(("zras   = %.15e %.15e %.15e\n" % (T[2, 0], T[2, 1], T[2, 2])))
-#        FID.write(("cras   = %.15e %.15e %.15e\n" % (CRAS[0, 0], CRAS[1, 0], CRAS[2, 0])))
-#        
+#        FID.write(("xras     = %.15e %.15e %.15e\n" % (T[0, 0], T[0, 1], T[0, 2])))
+#        FID.write(("yras     = %.15e %.15e %.15e\n" % (T[1, 0], T[1, 1], T[1, 2])))
+#        FID.write(("zras     = %.15e %.15e %.15e\n" % (T[2, 0], T[2, 1], T[2, 2])))
+#        FID.write(("cras     = %.15e %.15e %.15e\n" % (CRAS[0, 0], CRAS[1, 0], CRAS[2, 0])))
+#
         # use mris_convert to convert the surface to RAS format
         # put orientation information into the original file
         d1 = tempfile.NamedTemporaryFile(delete = False)
@@ -458,7 +458,7 @@ def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = Non
         else:
             shutil.copyfile(d1.name, fileName)
             os.unlink(d1.name)
-    
+
 # 24-bit -1
 curvMagicNumber = b'\xff\xff\xff'
 
@@ -477,24 +477,49 @@ def readCurv(fileName):
             valuesOut = dict()
             valuesOut['numVertices'] = struct.unpack('>I', FID.read(4))[0]
             valuesOut['numFaces'] = struct.unpack('>I', FID.read(4))[0]
-            
+
             numValuesPerVertex = struct.unpack('>I', FID.read(4))[0]
             valuesOut['values'] = numpy.array(struct.unpack('>' + 'f' * numValuesPerVertex * valuesOut['numVertices'], FID.read(numValuesPerVertex * valuesOut['numVertices'] * 4)))
             FID.close()
             return valuesOut
 
-#def writeLabel(values, fileName):
-#       if not isinstance(values, dict):
-#        raise("values should be a dict")
-#
-#    if not 'numVertices' in values or not 'numFaces' in values or not 'values' in values:
-#        raise("values must contain 'numVertices' and 'numFaces' and 'values'")
-#    
-#    try:
-#        FID = open(fileName, 'wb')
-#    except Exception:
-#        print("Could not open: " + fileName)
-#        return
+def writeLabel(values, fileName):
+    if not isinstance(values, dict):
+        raise("values should be a dict")
+
+    if not 'index' in values or not 'RAS' in values:
+        raise("values must contain 'index' and 'RAS' at minimum")
+
+    if values['RAS'].shape[0] != 3:
+        raise ValueError('RAS must have 3 rows')
+
+    if values['index'].size != values['RAS'].shape[1]:
+        raise ValueError('index and RAS have inconsistent sizes')
+
+    try:
+        FID = open(fileName, 'w')
+    except Exception:
+        print("Could not open: " + fileName)
+        return
+
+    if not 'comment' in values:
+        FID.write("comment\n")
+    else:
+        FID.write("%s\n" % (values['comment'].rstrip()))
+
+    if not 'numElements' in values:
+        numElements = values['index'].size
+    else:
+        numElements = values['numElements']
+
+    FID.write("%d\n" % (numElements))
+
+    for z in range(values['index'].size):
+        FID.write("%d\t%f\t%f\t%f\t%f\n" % (values['index'][z], values['RAS'][0, z], values['RAS'][1, z], values['RAS'][2, z], 0))
+
+    FID.close()
+
+
 
 def readLabel(fileName):
 
@@ -502,7 +527,7 @@ def readLabel(fileName):
         return None
     else:
         FID = open(fileName, 'r')
-        
+
         outL = dict()
         outL['comment'] = FID.readline()
         outL['numElements'] = int(FID.readline())
@@ -519,12 +544,28 @@ def readLabel(fileName):
         return outL
 
 def writeCurv(values, fileName):
+    """
+    Writes data to a freesurfer curv format file.
+
+    Parameters
+    ----------
+    values: dict
+        Curvature data.
+    values.numVertices: int
+        Number of vertices.
+    values.numFaces: int
+        Number of faces
+    values.values: numpy.ndarray
+        Vector of values
+    fileName: str
+        File to save to.
+    """
     if not isinstance(values, dict):
         raise("values should be a dict")
 
     if not 'numVertices' in values or not 'numFaces' in values or not 'values' in values:
         raise("values must contain 'numVertices' and 'numFaces' and 'values'")
-    
+
     try:
         FID = open(fileName, 'wb')
     except Exception:
@@ -532,7 +573,7 @@ def writeCurv(values, fileName):
         return
 
     FID.write(curvMagicNumber)
-    
+
     FID.write(struct.pack('>II', int(values['numVertices']), int(values['numFaces'])))
     numValuesPerVertex = int(numpy.size(values['values']) / values['numVertices'])
 
@@ -560,12 +601,12 @@ def ismember(A, B):
     sortedBIDX = numpy.argsort(flatB)
 
     outIDX = numpy.zeros((numpy.size(flatA)), dtype = numpy.int64)
-    
+
     outIDX.fill(-1)
 
     curAIDX = 0
     curBIDX = 0
-    
+
     while curAIDX < numpy.size(sortedAIDX) and curBIDX < numpy.size(sortedBIDX):
         if flatA[sortedAIDX[curAIDX]] == flatB[sortedBIDX[curBIDX]]:
             outIDX[sortedAIDX[curAIDX]] = sortedBIDX[curBIDX]
@@ -586,21 +627,21 @@ def readAnnot(fileName):
         annotOut = dict()
 
         FID = open(fileName, 'rb')
-        
+
         numElements = struct.unpack('>i', FID.read(4))[0]
-        
+
         T = struct.unpack('>' + 'i' * numElements * 2, FID.read(numElements * 2 * 4))
         T = numpy.reshape(numpy.array(T), (2, numElements), order = 'F')
 
         annotOut['vertices'] = T[0]
         annotOut['label'] = T[1]
-        
+
         #print(annotOut['vertices'].shape)
         #print(annotOut['label'].shape)
-        
+
         del T
         isThereAColorTable = FID.read(4)
-        
+
         if len(isThereAColorTable) == 0:
             annotOut['colortable'] = None
         else:
@@ -615,13 +656,13 @@ def readAnnot(fileName):
                     # original version
                     annotOut['colortable'] = dict()
                     annotOut['colortable']['numEntries'] = numEntries
-                    
+
                     L = struct.unpack('>i', FID.read(4))[0]
                     annotOut['colortable']['orig_tab'] = FID.read(L).decode()
                     for z in range(numEntries):
                         L = struct.unpack('>i', FID.read(4))[0]
                         annotOut['colortable']['struct_names'][structureIDX] = FID.read(L).decode()[:-1]
-                                
+
                         structureIndices = struct.unpack('>iiii', FID.read(4 * 4))
                         annotOut['colortable']['labels'][structureIDX] = (structureIndices[0] & 0xFF) | ((structureIndices[1] & 0xFF) << 8)| ((structureIndices[2] & 0xFF) << 16) | ((structureIndices[3] & 0xFF) << 24)
                 else:
@@ -643,7 +684,7 @@ def readAnnot(fileName):
                         numEntriesToRead = struct.unpack('>i', FID.read(4))[0]
                         for z in range(numEntriesToRead):
                             structureIDX = struct.unpack('>i', FID.read(4))[0]
-                            
+
                             if structureIDX < 0:
                                 print("Warning: invalid structure index")
                                 L = struct.unpack('>i', FID.read(4))[0]
@@ -654,7 +695,7 @@ def readAnnot(fileName):
                                     print("Warning: duplicate structure, overwriting")
                                 L = struct.unpack('>i', FID.read(4))[0]
                                 annotOut['colortable']['struct_names'][structureIDX] = FID.read(L).decode()[:-1]
-                                
+
                                 structureIndices = struct.unpack('>iiii', FID.read(4 * 4))
                                 annotOut['colortable']['labels'][structureIDX] = (structureIndices[0] & 0xFF) | ((structureIndices[1] & 0xFF) << 8)| ((structureIndices[2] & 0xFF) << 16) | ((structureIndices[3] & 0xFF) << 24)
                                 annotOut['colortable']['table'][structureIDX] = numpy.array(structureIndices)
@@ -676,7 +717,7 @@ def readAnnot(fileName):
         #print(annotOut['colortable']['struct_names'])
         FID.close()
     #if not os.path.isfile(fileName):
-    
+
     return annotOut
 
 def writeAnnot(annotDict, fileName):
@@ -691,12 +732,12 @@ def writeAnnot(annotDict, fileName):
         print(("Could not open: " + fileName))
         return
     FID.write(struct.pack('>I', annotDict['vertices'].size))
-    
+
 # write the vertices and labels interleaved
 #fwrite(fp, [vertices(:), label(:)]', 'int');
     for z in range(annotDict['vertices'].size):
         FID.write(struct.pack('>II', annotDict['vertices'][z], annotDict['label'][z]))
-    
+
     if not "colortable" in annotDict:
         FID.write(0)
     else:
@@ -704,7 +745,7 @@ def writeAnnot(annotDict, fileName):
         FID.write(struct.pack('>I', 1))
 #fwrite(fp, -2, 'int');
         FID.write(struct.pack('>i', int(-2)))
-            
+
         #colortable.table(z,1) + colortable.table(z,2)*2^8 + colortable.table(z,3)*2^16 + colortable.table(z,4)*2^24;
 #% writing version 2 tables only
 #fwrite(fp, colortable.numEntries, 'int');
@@ -755,13 +796,13 @@ def readICO(order):
     surface = dict()
     surface['vertices'] = numpy.zeros((nvertices, 3))
     curLine = 1
-    
+
     n = 0
     while True:
         curLine = FID.readline()
         if curLine is None:
             break
-        
+
         s = curLine.split()
         if len(s) == 4:
             vno = int(s[0]) - 1
@@ -784,7 +825,7 @@ def readICO(order):
         curLine = FID.readline()
         if curLine is None:
             break
-        
+
         s = curLine.split()
         if len(s) == 3:
             vno3 = int(s[2])
@@ -804,36 +845,36 @@ def readICO(order):
     surface['faces'] = surface['faces'].T
 
     FID.close()
-    
+
     return surface
 
 def faceTest(inputSurface, z, refFaceAreas, refPlaneABC, refPlaneD, refA, refB, refC, BBoxIDX):
-    
+
     C = numpy.dot(numpy.take(refPlaneABC, BBoxIDX, axis = 0), numpy.atleast_2d(inputSurface['vertices'][:, z]).T)
     NormalDotV = C.ravel()
-        
+
     intersectionTime = refPlaneD[BBoxIDX] / NormalDotV + 1
     intersectionPoints = numpy.atleast_2d(inputSurface['vertices'][:, z]).T * (1 - intersectionTime)
-    
+
     VA = numpy.take(refA, BBoxIDX, axis = 1) - intersectionPoints
     VB = numpy.take(refB, BBoxIDX, axis = 1) - intersectionPoints
     VC = numpy.take(refC, BBoxIDX, axis = 1) - intersectionPoints
 
     # get the areas of the triangles VAB, VAC, VBC
-    VABAreas = numpy.cross(VA, VB, axis = 0) 
+    VABAreas = numpy.cross(VA, VB, axis = 0)
     VABAreas = numpy.sqrt(numpy.sum(VABAreas * VABAreas, axis = 0)) / 2.0
     #VABAreas = numpy.linalg.norm(VABAreas, axis = 0) / 2.0
-    VACAreas = numpy.cross(VA, VC, axis = 0) 
+    VACAreas = numpy.cross(VA, VC, axis = 0)
     VACAreas = numpy.sqrt(numpy.sum(VACAreas * VACAreas, axis = 0)) / 2.0
     #VACAreas = numpy.linalg.norm(VACAreas, axis = 0) / 2.0
-    VBCAreas = numpy.cross(VB, VC, axis = 0) 
+    VBCAreas = numpy.cross(VB, VC, axis = 0)
     VBCAreas = numpy.sqrt(numpy.sum(VBCAreas * VBCAreas, axis = 0)) / 2.0
     #VBCAreas = numpy.linalg.norm(VBCAreas, axis = 0) / 2.0
-    
-# find the face whose area is closest to VAB + VAC + VBC 
-            
+
+# find the face whose area is closest to VAB + VAC + VBC
+
     facesIn = numpy.where((VABAreas + VACAreas + VBCAreas - refFaceAreas[BBoxIDX]) < 1e-6)[0]
-    
+
     return (facesIn, VABAreas, VACAreas, VBCAreas, intersectionTime)
 
 # for each point in inputSurface, gives barycentric coordinates for faces in refSurface
@@ -853,17 +894,17 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
 
     refAB = refB - refA
     refAC = refC - refA
-    
+
     #print(refAB.shape)
     refPlaneABC = numpy.cross(refAB, refAC, axis = 0)
 
     refFaceAreas = numpy.sqrt(numpy.sum(refPlaneABC * refPlaneABC, axis = 0)) / 2.0
     refPlaneABC = refPlaneABC / (refFaceAreas * 2.0)
-    
+
     del refAB
     del refAC
     refPlaneD = -numpy.sum(refPlaneABC * refA, axis = 0)
-    
+
     refPlaneABC = refPlaneABC.T
     #refBoundingBoxes = dict()
     #T = numpy.stack((refA, refB, refC), axis = 2)
@@ -877,24 +918,24 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
     B['FaceIDX'] = numpy.zeros((inputSurface['vertices'].shape[1]), dtype = numpy.int32)
     B['BaryCoords'] = numpy.zeros((3, inputSurface['vertices'].shape[1]))
     #B['Intersections'] = numpy.zeros((3, inputSurface['vertices'].shape[1]))
-    
+
     # vertex neighbours
 #RefVertexNeighbours = list()
-#    
+#
 #    # for each vertex, an array indicating which faces it belong to
     RefVertexFaceIDX = list()
-#    # faces 
+#    # faces
     RefFaceNeighboursIDX = list()
-#    
+#
     for z in range(refSurface['vertices'].shape[1]):
         RefVertexFaceIDX.append(list())
-    
+
     for z in range(refSurface['faces'].shape[1]):
         RefFaceNeighboursIDX.append(list())
         RefVertexFaceIDX[refSurface['faces'][0, z]].append(z)
         RefVertexFaceIDX[refSurface['faces'][1, z]].append(z)
         RefVertexFaceIDX[refSurface['faces'][2, z]].append(z)
-    
+
     for z in range(refSurface['faces'].shape[1]):
         # append the faces that each vertex in the current face belongs to
         RefFaceNeighboursIDX[z].append(RefVertexFaceIDX[refSurface['faces'][0, z]])
@@ -909,8 +950,8 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
 #        RefVertexNeighbours[refSurface['faces'][2, z]].append(refSurface['faces'][0, z])
 #        RefVertexNeighbours[refSurface['faces'][1, z]].append(refSurface['faces'][2, z])
 #        RefVertexNeighbours[refSurface['faces'][2, z]].append(refSurface['faces'][1, z])
-#        
-    
+#
+
 #    for z in range(refSurface['vertices'].shape[1]):
 #        RefVertexNeighbours[z] = numpy.unique(numpy.array(RefVertexNeighbours[z]))
 #
@@ -921,9 +962,9 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
 #            RefVertexNeighboursFaceIDX[z].append(RefVertexFaceIDX[RefVertexNeighbours[z][k]])
 #        RefVertexNeighboursFaceIDX[z] = numpy.unique(numpy.concatenate(RefVertexNeighboursFaceIDX[z]))
 #        RefVertexFaceIDX[z] = numpy.array(RefVertexFaceIDX[z])
-#    
+#
     #for z in range(refSurface['vertices'].shape[1]):
-        
+
 
 #    blockSize = 1000
 #    minDistanceIDX = numpy.zeros((inputSurface['vertices'].shape[0]), dtype = numpy.int64)
@@ -932,19 +973,19 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
 #        rightIDX = numpy.minimum(leftIDX + blockSize, inputSurface['vertices'].shape[0])
 #
 #        IDX = numpy.arange(leftIDX, rightIDX)
-#        
+#
 #        VX = numpy.atleast_2d(inputSurface['vertices'][IDX, 0])
 #        VY = numpy.atleast_2d(inputSurface['vertices'][IDX, 1])
 #        VZ = numpy.atleast_2d(inputSurface['vertices'][IDX, 2])
-#        
+#
 ##XC = VX - numpy.atleast_2d(refSurface['vertices'][:, 0]).T
 ##YC = VY - numpy.atleast_2d(refSurface['vertices'][:, 1]).T
 ##ZC = VZ - numpy.atleast_2d(refSurface['vertices'][:, 2]).T
-#        
+#
 #        XC = numpy.abs(VX - numpy.atleast_2d(refSurface['vertices'][:, 0]).T)
 #        YC = numpy.abs(VY - numpy.atleast_2d(refSurface['vertices'][:, 1]).T)
 #        ZC = numpy.abs(VZ - numpy.atleast_2d(refSurface['vertices'][:, 2]).T)
-#        
+#
 ##D = numpy.argmin(numpy.sqrt(XC * XC + YC * YC + ZC * ZC), axis = 0)
 #        D = numpy.argmin(XC + YC + ZC, axis = 0)
 #        D = numpy.argmin(numexpr.evaluate('XC + YC + ZC', {'XC': XC, 'YC': YC, 'ZC': ZC}), axis = 0)
@@ -963,14 +1004,14 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
 
         #E = numpy.argmin(numpy.sqrt(numpy.sum(XC * XC, axis = 0)))
         #D = numpy.argmin(numpy.sum(numpy.abs(XC), axis = 0))
-        
+
         #D = numpy.argmax(numpy.dot(numpy.atleast_2d(inputSurface['vertices'][:, z]), refSurface['vertices']))
         numpy.dot(numpy.atleast_2d(inputSurface['vertices'][:, z]), faceCentroids, out = D)
         #D = numpy.
         BBoxIDX = RefFaceNeighboursIDX[numpy.argmax(D)]
         #BBoxIDX = RefFaceNeighboursIDX[E]
         #C = numpy.dot(numpy.atleast_2d(inputSurface['vertices'][:, z]), numpy.take(refPlaneABC, BBoxIDX, axis = 1))
-        
+
         facesIn, VABAreas, VACAreas, VBCAreas, intersectionTime = faceTest(inputSurface, z, refFaceAreas, refPlaneABC, refPlaneD, refA, refB, refC, BBoxIDX)
 
         if facesIn.size == 0:
@@ -991,7 +1032,7 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
 #            TrefA = numpy.take(refA, BBoxIDX, axis = 1)
 #            TrefB = numpy.take(refB, BBoxIDX, axis = 1)
 #            TrefC = numpy.take(refC, BBoxIDX, axis = 1)
-#            
+#
 #            #rint(TrefA.shape)
 #            T = numpy.concatenate((TrefA, TrefB, TrefC), axis = 1)
 #            print(T.shape)
@@ -1019,7 +1060,7 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
 ##
         minFaceIDX = facesIn[numpy.argmin(intersectionTime[facesIn])]
         #print(minFaceIDX)
-        
+
         B['BaryCoords'][:, z] = numpy.array((VBCAreas[minFaceIDX], VACAreas[minFaceIDX], VABAreas[minFaceIDX]))
         B['FaceIDX'][z] = BBoxIDX[minFaceIDX]
         #B['Intersections'][:, z] = intersectionPoints[:, minFaceIDX]
@@ -1030,12 +1071,12 @@ def sphericalBarycentricCoords(inputSurface, refSurface):
 
 def sphericalNearestNeighbour(inputSurface, refSurface):
     B = numpy.zeros((inputSurface['vertices'].shape[1]), dtype = numpy.int32)
-    
+
     D = numpy.zeros((1, refSurface['vertices'].shape[1]))
     for z in range(inputSurface['vertices'].shape[1]):
         numpy.dot(numpy.atleast_2d(inputSurface['vertices'][:, z]), refSurface['vertices'], out = D)
         B[z] = numpy.argmax(D)
-    
+
     return B
 
 def surfaceCentreNorm(S):
@@ -1052,13 +1093,13 @@ def resampleSurfaceValuesICO(inputSphereSurface, inputValues, icoOrder = 7):
     normInputSphereSurface = surfaceCentreNorm(inputSphereSurface)
 
     B = sphericalBarycentricCoords(ICO, normInputSphereSurface)
-    
+
     outputValues = numpy.zeros(ICO['vertices'].shape[1])
-    
+
     F = numpy.take(inputSurface['faces'], B['FaceIDX'], axis = 1)
-    
+
     outputValues = numpy.sum(B['BaryCoords'] * inputValues[F], axis = 0)
-    
+
     return outputValues
 
 
@@ -1078,12 +1119,12 @@ def resampleSurfaceXYZICO(inputSphereSurface, inputSurface, icoOrder = 7, return
         FID.close()
     else:
         B = sphericalBarycentricCoords(ICO, normInputSphereSurface)
-    
+
     outputSurface = copy.deepcopy(ICO)
 
     for z in numpy.arange(outputSurface['vertices'].shape[1]):
-        F = inputSurface['faces'][:,  B['FaceIDX'][z]]
-        
+        F = inputSurface['faces'][:,    B['FaceIDX'][z]]
+
         outputSurface['vertices'][:, z] = ( \
         inputSurface['vertices'][:, F[0]] * B['BaryCoords'][0, z] + \
         inputSurface['vertices'][:, F[1]] * B['BaryCoords'][1, z] + \
@@ -1102,7 +1143,7 @@ def resampleSurfaceLabelICO(inputSphereSurface, inputLabels, icoOrder = 7):
 
     B = sphericalNearestNeighbour(ICO, normInputSphereSurface)
     return inputLabels[B]
-        
+
 #
 #import matplotlib.pyplot as plt
 #from mpl_toolkits.mplot3d import Axes3D
@@ -1130,7 +1171,7 @@ def resampleSurfaceLabelICO(inputSphereSurface, inputLabels, icoOrder = 7):
 ##
 ###oly3d = [[tupleList[vertices[ix][iy]] for iy in range(len(vertices[0]))] for ix in range(len(vertices))]
 ##
-### poly3d is a list of tuples 
+### poly3d is a list of tuples
 ### face 1 [(vertex1), (vertex2), (vertex3)]
 ### face 2 [(vertex1), (vertex2), (vertex3)]
 ### ...
@@ -1146,7 +1187,7 @@ def resampleSurfaceLabelICO(inputSphereSurface, inputLabels, icoOrder = 7):
 #    VA = tuple(ICO0['vertices'][:, ICO0['faces'][0, z]].tolist())
 #    VB = tuple(ICO0['vertices'][:, ICO0['faces'][1, z]].tolist())
 #    VC = tuple(ICO0['vertices'][:, ICO0['faces'][2, z]].tolist())
-#    
+#
 ##if z == FaceIDX[0]:
 ##        ax.scatter(VA[0], VA[1], VA[2], color = 'r')
 ##        ax.scatter(VB[0], VB[1], VB[2], color = 'g')
@@ -1160,16 +1201,16 @@ def resampleSurfaceLabelICO(inputSphereSurface, inputLabels, icoOrder = 7):
 #refA = numpy.take(refSurface['vertices'], refSurface['faces'][0], axis = 1)
 #refB = numpy.take(refSurface['vertices'], refSurface['faces'][1], axis = 1)
 #refC = numpy.take(refSurface['vertices'], refSurface['faces'][2], axis = 1)
-#    
+#
 #faceCentroids = (refA + refB + refC) / 3.0
 #
 #refAB = refB - refA
 #refAC = refC - refA
-#    
+#
 ##print(refAB.shape)
 #refPlaneABC = -numpy.cross(refAB, refAC, axis = 0)
 #refFaceAreas = numpy.sqrt(numpy.sum(refPlaneABC * refPlaneABC, axis = 0))
-#    
+#
 #refPlaneD = -numpy.sum(refPlaneABC * refA, axis = 0)
 #
 ##print(refA)
@@ -1180,11 +1221,11 @@ def resampleSurfaceLabelICO(inputSphereSurface, inputLabels, icoOrder = 7):
 ##ax.scatter(refB[0, 0], refB[1, 0], refB[2, 0], color = 'y')
 ##ax.scatter(refC[0, 0], refC[1, 0], refC[2, 0], color = 'g')
 ##ax.scatter(faceCentroids[0, 0], faceCentroids[1, 0], faceCentroids[2, 0])
-##ax.quiver(faceCentroids[0, 0], faceCentroids[1, 0], faceCentroids[2, 0], refPlaneABC[0, 0], refPlaneABC[1, 0], refPlaneABC[2, 0], pivot = 'tail') 
+##ax.quiver(faceCentroids[0, 0], faceCentroids[1, 0], faceCentroids[2, 0], refPlaneABC[0, 0], refPlaneABC[1, 0], refPlaneABC[2, 0], pivot = 'tail')
 #
 #C = 0
 #ax.scatter(B['Intersections'][0], B['Intersections'][1], B['Intersections'][2], color = 'g')
-#ax.scatter(ICO1['vertices'][0, C], ICO1['vertices'][1, C],  ICO1['vertices'][2, C], color = 'r')
+#ax.scatter(ICO1['vertices'][0, C], ICO1['vertices'][1, C],    ICO1['vertices'][2, C], color = 'r')
 ##ax.scatter(B[0][0], B[0][1], B[0][2], color = 'k')
 #
 #ax.set_xlim(-1, 1)

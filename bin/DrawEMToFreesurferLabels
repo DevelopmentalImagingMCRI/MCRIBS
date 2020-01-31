@@ -1,0 +1,87 @@
+#!/bin/bash
+
+
+if [ -z "$1" -o -z "$2" ]
+then
+    echo
+    echo "usage: $9 <drawem image> <freesurfer image>"
+    echo
+    echo "Translates the label numbers of the <drawem image> to freesurfer equivalents and saves as <freesurfer image>"
+    exit
+fi
+
+DRAWEMIMAGE=$1
+ASEGIMAGE=$2
+
+if [ ! -f "$DRAWEMIMAGE" ]
+then
+    echo "couldnt find the drawem image given: $DRAWEMIMAGE"
+    exit
+fi
+
+
+CMD="mri_binarize --i $DRAWEMIMAGE --o $ASEGIMAGE"
+
+# wm
+for i in `seq 51 2 81`
+do
+    CMD="$CMD --replace $i 2"
+    CMD="$CMD --replace `expr $i + 1` 41"
+done
+
+# gm
+for i in `seq 5 2 15`
+do
+    CMD="$CMD --replace $i 3"
+    CMD="$CMD --replace `expr $i + 1` 42"
+done
+
+for i in `seq 20 2 38`
+do
+    CMD="$CMD --replace $i 3"
+    CMD="$CMD --replace `expr $i + 1` 42"
+done
+
+#outside the brain
+CMD="$CMD --replace 84 0"
+
+# brainstem
+CMD="$CMD --replace 19 16"
+
+# cerebellum
+CMD="$CMD --replace 18 47 --replace 17 8"
+
+# CSF
+CMD="$CMD --replace 83 0"
+
+# Corpus Callosum
+CMD="$CMD --replace 48 253"
+
+# ventricles
+CMD="$CMD --replace 49 4 --replace 50 43"
+
+# hippocampus
+CMD="$CMD --replace 2 53 --replace 1 17"
+
+# caudate
+CMD="$CMD --replace 40 50 --replace 41 11"
+
+# putamen/lentiform nucleus
+CMD="$CMD --replace 46 51 --replace 47 12"
+
+# thalamus
+CMD="$CMD --replace 42 48 --replace 87 9 --replace 86 48 --replace 43 9"
+# subthalamic nuclei
+CMD="$CMD --replace 44 52 --replace 45 13"
+#CSF
+#CMD="$CMD --replace 83 24"
+# remove the CSF label due to aparc2aseg issues later on
+CMD="$CMD --replace 84 0"
+
+# cranial background? this is going to be unmyelinated white matter
+#CMD="$CMD --replace 85 0"
+
+# amygdala
+CMD="$CMD --replace 4 54 --replace 3 18"
+
+$CMD 2>/dev/null
