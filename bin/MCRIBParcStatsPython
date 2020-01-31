@@ -90,8 +90,16 @@ for Hemi in Hemis:
     outDF = outDF[outDF.StructName != 'ctx-' + Hemi + '-unknown']
     outDF = outDF[outDF.StructName != 'unknown']
 
+    pd = pandas.DataFrame(columns = outDF.columns)
+    pd['StructName'] = pandas.Series('Medial_Wall')
+    outDF = outDF.append(pd)
+
     for curStructIDX in outDF.index:
-        I = numpy.where(numpy.logical_and(Annot['seg'] == curStructIDX, CortexLabelMask))[0]
+        if outDF.loc[curStructIDX, 'StructName'] == 'Medial_Wall':
+            I = numpy.where(numpy.logical_not(CortexLabelMask))[0]
+        else:
+            I = numpy.where(numpy.logical_and(Annot['seg'] == curStructIDX, CortexLabelMask))[0]
+
         if I.size > 0:
             outDF.loc[curStructIDX, 'NumVert'] = I.size
             outDF.loc[curStructIDX, 'GrayVol'] = numpy.sum(SurfVolValues[I])
