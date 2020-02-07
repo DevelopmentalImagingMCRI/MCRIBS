@@ -88,8 +88,8 @@ The parameter `<subj id>` is the subject id of a subject that has been processed
  - ?h.thickness
  - ?h.sulc
  - ?h.curv
-
-As yet the annot parcellation labels are not exported.
+ - ?h.aparc.annot (DK parcellation)
+ - ?h.aparc+DKTatlas.annot (DKT parcellation)
 
 ## TODO
 

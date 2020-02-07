@@ -37,6 +37,9 @@ do
     mris_convert --to-scanner freesurfer/$SUBJID/surf/${CURHEMI}.inflated $DHCPDIR/${SUBJID}.${CURHEMI}.inflated.surf.gii
     mris_convert --to-scanner freesurfer/$SUBJID/surf/${CURHEMI}.sphere $DHCPDIR/${SUBJID}.${CURHEMI}.sphere.surf.gii
 
+    mris_convert --annot freesurfer/$SUBJID/label/${CURHEMI}.aparc.annot freesurfer/$SUBJID/surf/${CURHEMI}.white $DHCPDIR/${SUBJID}.${CURHEMI}.aparc.label.gii
+    mris_convert --annot freesurfer/$SUBJID/label/${CURHEMI}.aparc+DKTatlas.annot freesurfer/$SUBJID/surf/${CURHEMI}.white $DHCPDIR/${SUBJID}.${CURHEMI}.DKT.label.gii
+
     case $CURHEMI in
         lh)
         CIFTIHEMI=LEFT
@@ -50,6 +53,8 @@ do
 
     `dirname $0`/FSCurvToGIFTIShape freesurfer/$SUBJID/surf/${CURHEMI}.sulc $DHCPDIR/${SUBJID}.${CURHEMI}.sulc.shape.gii
     `dirname $0`/FSCurvToGIFTIShape freesurfer/$SUBJID/surf/${CURHEMI}.curv $DHCPDIR/${SUBJID}.${CURHEMI}.curvature.shape.gii
+
+
     #if [ "$ISFROMDHCP" == "NO" ]
     #then
         `dirname $0`/FSCurvToGIFTIShape freesurfer/$SUBJID/surf/${CURHEMI}.thickness $DHCPDIR/${SUBJID}.${CURHEMI}.thickness.shape.gii
