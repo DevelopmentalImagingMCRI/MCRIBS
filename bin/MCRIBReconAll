@@ -88,6 +88,11 @@ def main():
 
     parcstatsArgGroup = argParser.add_argument_group('parcstats', 'Perform stats on the cortical surfaces, depends on --apas2aseg')
     parcstatsArgGroup.add_argument('--parcstats', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+
+    dhcpImportArgGroup = argParser.add_argument_group('dhcpimport', 'Perform import of completed dHCP run, directory containing data required --dhcpanatdir')
+    dhcpImportArgGroup.add_argument('--dhcpimport', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+    dhcpImportArgGroup.add_argument('--dhcpanatdir', help = "", required = False, action = 'store_true')
+
     argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
     argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps after surface reconstruction", required = False, action = 'store_true')
 
@@ -128,44 +133,46 @@ def main():
 
     # set up for vtk and vtkpython 3
     scriptPath = getScriptPath()
-    
+
     if not 'LD_LIBRARY_PATH' in os.environ:
         os.environ['LD_LIBRARY_PATH'] = ''
 
     if not 'PATH' in os.environ:
         os.environ['PATH'] = ''
-    
+
     if not 'PYTHONPATH' in os.environ:
         os.environ['PYTHONPATH'] = ''
 
     os.environ['LD_LIBRARY_PATH'] = os.path.join(scriptPath, '..', 'VTK', 'VTK-install', 'lib') + os.pathsep + os.environ['LD_LIBRARY_PATH']
     os.environ['LD_LIBRARY_PATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'lib') + os.pathsep + os.environ['LD_LIBRARY_PATH']
-    
+
     os.environ['PATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'lib', 'tools') + os.pathsep + os.environ['PATH']
     os.environ['PATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'bin') + os.pathsep + os.environ['PATH']
 
     os.environ['PYTHONPATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'lib', 'python') + os.pathsep + os.environ['PYTHONPATH']
     os.environ['PYTHONPATH'] = os.path.join(scriptPath, '..', 'lib', 'python') + os.pathsep + os.environ['PYTHONPATH']
-   
+
     if not options.hemi is None:
         Hemis = options.hemi
     else:
         Hemis = 'both'
 
-    if options.conform == True or options.all == True:
+    isFromDHCP = os.path.isfile(os.path.join('freesurfer', options.subjectid, '.isFromDHCP'))
+    print("isFromDHCP: " + str(isFromDHCP))
+    if (options.conform == True or options.all == True) and not isFromDHCP:
         cmd = ["MCRIBConform", os.path.join('RawT2', options.subjectid + ".nii.gz"), options.voxelsize, os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz")]
         runCommand(cmd)
         #rint("--struct-reorient no longer needed, ignoring")
         pass
 
-    if options.tissueseg == True or options.all == True:
+    if (options.tissueseg == True or options.all == True) and not isFromDHCP:
         if options.tissuesegmethod == 'DrawEM':
             cmd = ["MCRIBTissueSegDrawEM", options.subjectid, str(options.subjectage)]
             print(" ".join(cmd))
             runCommand(cmd)
         pass
-    
-    if options.surfrecon == True or options.all == True:
+
+    if (options.surfrecon == True or options.all == True) and not isFromDHCP:
         cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision)]
         runCommand(cmd)
         pass
@@ -191,7 +198,7 @@ def main():
         runCommand(cmd)
         pass
 
-    if options.cortthickness == True or options.all == True or options.autoreconaftersurf == True:
+    if (options.cortthickness == True or options.all == True or options.autoreconaftersurf == True) and not isFromDHCP:
         cmd = ["MCRIBCortThickness", options.subjectid, Hemis]
         runCommand(cmd)
         pass
@@ -211,7 +218,7 @@ def main():
         cmd = ["MCRIBSegStats", options.subjectid]
         runCommand(cmd)
         pass
-    
+
     if options.surfvol == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBSurfVol", options.subjectid, Hemis]
         runCommand(cmd)

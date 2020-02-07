@@ -9,32 +9,32 @@ import nibabel
 if len(sys.argv) < 4:
     print("Incorrect number of arguments")
     print()
-    print("Usage: " + sys.argv[0] + " <cifti file> <surface file> <fs curv>")
+    print("Usage: " + sys.argv[0] + " <GIFti file> <surface file> <fs curv>")
     quit()
 
-CIFTIFileName = sys.argv[1]
+GIFTIFileName = sys.argv[1]
 surfFileName = sys.argv[2]
 outFileName = sys.argv[3]
 
-if not os.path.isfile(CIFTIFileName):
-    print("CIFTI file not found")
+if not os.path.isfile(GIFTIFileName):
+    print("GIFTI file not found")
     quit()
 if not os.path.isfile(surfFileName):
     print("Surface file not found")
     quit()
 
-CIFTIData = nibabel.load(CIFTIFileName)
+GIFTIData = nibabel.load(GIFTIFileName)
 SurfData = freesurfer.readSurf(surfFileName)
 
 outData = dict()
 outData['numVertices'] = SurfData['vertices'].shape[1]
 outData['numFaces'] = SurfData['faces'].shape[1]
 
-if CIFTIFileName.endswith('shape.gii'):
-    D = CIFTIData.darrays
+if GIFTIFileName.endswith('shape.gii'):
+    D = GIFTIData.darrays
     if not len(D) == 1:
         print("expecting only one data array")
         exit()
-    outData['values'] = numpy.array(CIFTIData.darrays[0].data)
+    outData['values'] = numpy.array(GIFTIData.darrays[0].data)
 
 freesurfer.writeCurv(outData, outFileName)

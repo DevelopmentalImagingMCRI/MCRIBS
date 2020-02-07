@@ -84,10 +84,10 @@ convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_sphere.surf.gii freesurfer/$S
 # inflated surface is not the same, will need to redo it
 # the _roi is the lh.cotex.label data
 # the RAS values in the label file are just the vertex locations in the white file
-`dirname $0`/CIFTILabelToFSLabel $DHCPDIR/Native/${DHCPPREFIX}_left_roi.shape.gii freesurfer/$SUBJID/surf/lh.white freesurfer/$SUBJID/label/lh.cortex.label
-`dirname $0`/CIFTILabelToFSLabel $DHCPDIR/Native/${DHCPPREFIX}_right_roi.shape.gii freesurfer/$SUBJID/surf/rh.white freesurfer/$SUBJID/label/rh.cortex.label
+`dirname $0`/GIFTILabelToFSLabel $DHCPDIR/Native/${DHCPPREFIX}_left_roi.shape.gii freesurfer/$SUBJID/surf/lh.white freesurfer/$SUBJID/label/lh.cortex.label
+`dirname $0`/GIFTILabelToFSLabel $DHCPDIR/Native/${DHCPPREFIX}_right_roi.shape.gii freesurfer/$SUBJID/surf/rh.white freesurfer/$SUBJID/label/rh.cortex.label
 
-`dirname $0`/CIFTIScalarToFSCurv $DHCPDIR/Native/${DHCPPREFIX}_left_thickness.shape.gii freesurfer/$SUBJID/surf/lh.white freesurfer/$SUBJID/surf/lh.thickness
-`dirname $0`/CIFTIScalarToFSCurv $DHCPDIR/Native/${DHCPPREFIX}_right_thickness.shape.gii freesurfer/$SUBJID/surf/rh.white freesurfer/$SUBJID/surf/rh.thickness
+`dirname $0`/GIFTIScalarToFSCurv $DHCPDIR/Native/${DHCPPREFIX}_left_thickness.shape.gii freesurfer/$SUBJID/surf/lh.white freesurfer/$SUBJID/surf/lh.thickness
+`dirname $0`/GIFTIScalarToFSCurv $DHCPDIR/Native/${DHCPPREFIX}_right_thickness.shape.gii freesurfer/$SUBJID/surf/rh.white freesurfer/$SUBJID/surf/rh.thickness
 
 touch freesurfer/$SUBJID/.isFromDHCP

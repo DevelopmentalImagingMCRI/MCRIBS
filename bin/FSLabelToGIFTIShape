@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import freesurfer
+import nibabel
+
+if len(sys.argv) < 4:
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <fs label file> <fs surf file> <fs curv>")
+    quit()
+
+FSLabelFileName = sys.argv[1]
+surfFileName = sys.argv[2]
+outFileName = sys.argv[3]
+
+if not os.path.isfile(FSLabelFileName):
+    print("Label file not found")
+    quit()
+if not os.path.isfile(surfFileName):
+    print("Surface file not found")
+    quit()
+
+FSLabelData = freesurfer.readLabel(FSLabelFileName)
+SurfData = freesurfer.readSurf(surfFileName)
+
+LabelMask = numpy.zeros((SurfData['vertices'].shape[1]), dtype = numpy.uint8)
+LabelMask[FSLabelData['index']] = 1
+
+GIFTIImage = nibabel.gifti.gifti.GiftiImage()
+GIFTIImage.add_gifti_data_array(nibabel.gifti.gifti.GiftiDataArray(data = LabelMask))
+nibabel.save(GIFTIImage, outFileName)

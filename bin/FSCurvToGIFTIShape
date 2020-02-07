@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import freesurfer
+import nibabel
+
+if len(sys.argv) < 3:
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <fs curv file> <fs curv>")
+    quit()
+
+FSCurvFileName = sys.argv[1]
+outFileName = sys.argv[2]
+
+if not os.path.isfile(FSCurvFileName):
+    print("Curv file not found")
+    quit()
+
+FSCurvData = freesurfer.readCurv(FSCurvFileName)
+
+GIFTIImage = nibabel.gifti.gifti.GiftiImage()
+GIFTIImage.add_gifti_data_array(nibabel.gifti.gifti.GiftiDataArray(data = FSCurvData['values']))
+nibabel.save(GIFTIImage, outFileName)

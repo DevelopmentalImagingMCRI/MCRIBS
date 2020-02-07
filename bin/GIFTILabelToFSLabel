@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+GIF#!/usr/bin/env python3
 
 import numpy
 import sys
@@ -16,14 +16,14 @@ CIFTIFileName = sys.argv[1]
 surfFileName = sys.argv[2]
 outFileName = sys.argv[3]
 
-if not os.path.isfile(CIFTIFileName):
-    print("CIFTI file not found")
+if not os.path.isfile(GIFTIFileName):
+    print("GIFTI file not found")
     quit()
 if not os.path.isfile(surfFileName):
     print("Surface file not found")
     quit()
 
-CIFTIData = nibabel.load(CIFTIFileName)
+GIFTIData = nibabel.load(GIFTIFileName)
 SurfData = freesurfer.readSurf(surfFileName)
 
 outData = dict()

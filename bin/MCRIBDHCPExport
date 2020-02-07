@@ -1,0 +1,61 @@
+#!/bin/bash
+# need freesurfer 6 or higher in path for mris_convert --to-scanner option
+
+
+if [ -z "$1" -o -z "$2" ]
+then
+	echo "Usage: $0 <subject id> <dHCP dir>"
+
+    echo "Exports MCRIBS output to dHCP format. The subject id <subject id> is required to have been run through the MCRIBReconAll pipeline. Outputs are placed in <DHCP dir>"
+    echo
+    echo "OUTPUT FILES"
+    echo -e "\tSubject was not imported from dHCP"
+    echo "TODO"
+
+	exit
+fi
+
+SUBJID=$1
+DHCPDIR=$2
+
+mkdir -p $DHCPDIR
+
+if [ -f "freesurfer/$SUBJID/.isFronDHCP" ]
+then
+    ISFROMDHCP=YES
+else
+    ISFROMDHCP=NO
+fi
+
+HEMIS="lh
+rh"
+
+for CURHEMI in $HEMIS
+do
+    mris_convert --to-scanner freesurfer/$SUBJID/surf/${CURHEMI}.pial $DHCPDIR/${SUBJID}.${CURHEMI}.pial.surf.gii
+    mris_convert --to-scanner freesurfer/$SUBJID/surf/${CURHEMI}.white $DHCPDIR/${SUBJID}.${CURHEMI}.white.surf.gii
+    mris_convert --to-scanner freesurfer/$SUBJID/surf/${CURHEMI}.inflated $DHCPDIR/${SUBJID}.${CURHEMI}.inflated.surf.gii
+    mris_convert --to-scanner freesurfer/$SUBJID/surf/${CURHEMI}.sphere $DHCPDIR/${SUBJID}.${CURHEMI}.sphere.surf.gii
+
+    case $CURHEMI in
+        lh)
+        CIFTIHEMI=LEFT
+        ;;
+        rh)
+        CIFTIHEMI=RIGHT
+        ;;
+    esac
+
+    `dirname $0`/FSLabelToGIFTIShape freesurfer/$SUBJID/label/${CURHEMI}.cortex.label freesurfer/$SUBJID/surf/${CURHEMI}.white $DHCPDIR/${SUBJID}.${CURHEMI}.roi.shape.gii
+
+    `dirname $0`/FSCurvToGIFTIShape freesurfer/$SUBJID/surf/${CURHEMI}.sulc $DHCPDIR/${SUBJID}.${CURHEMI}.sulc.shape.gii
+    `dirname $0`/FSCurvToGIFTIShape freesurfer/$SUBJID/surf/${CURHEMI}.curv $DHCPDIR/${SUBJID}.${CURHEMI}.curvature.shape.gii
+    #if [ "$ISFROMDHCP" == "NO" ]
+    #then
+        `dirname $0`/FSCurvToGIFTIShape freesurfer/$SUBJID/surf/${CURHEMI}.thickness $DHCPDIR/${SUBJID}.${CURHEMI}.thickness.shape.gii
+        #`dirname $0`/FSCurvToCIFTIDScalar freesurfer/$SUBJID/surf/${CURHEMI}.thickness CORTEX_$CIFTIHEMI $DHCPDIR/${SUBJID}.${CURHEMI}.thickness.dscalar.nii
+    #fi
+done
+
+cp TissueSeg/${SUBJID}_all_labels.nii.gz ${SUBJID}_all_labels.nii.gz
+cp TissueSeg/${SUBJID}_brain_mask.nii.gz ${SUBJID}_brain_mask.nii.gz
