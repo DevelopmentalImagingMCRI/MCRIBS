@@ -31,9 +31,14 @@ The script build.sh will checkout VTK 8.2.0 and build it. TODO: get MIRTK and py
 
 # Setting up
 
-Set up the environment variable `MCRIBS_HOME` to the directory you checked out the git repo. Then source the file SetUpMCRIBS.sh in the root directory as follows:
+Assuming you have just executed the `git checkout` command:
 
-`. $MCRIBS_HOME/SetUpMCRIBS.sh`
+`git checkout https://github.com/DevelopmentalImagingMCRI/MCRIBS.git`
+
+Then depending on the shell you are using source the configuration files as follows:
+
+- Bash: `. MCRIBS/SetUpMCRIBS.sh`
+- TCSH shell: `source MCRIBS/SetUpMCRIBS.csh`
 
 The main script to run is MCRIBReconAll. To get usage run MCRIBReconAll --help
 
