@@ -1,6 +1,4 @@
+export MCRIBS_HOME=`dirname $BASH_SOURCE`
+echo "MCRIBS_HOME set to $MCRIBS_HOME"
 
-export PATH=$PATH:$MCRIBS_HOME/bin
-
-#$MCRIBS_HOME/MIRTK/MIRTK-install/bin:$MCRIBS_HOME/MIRTK/MIRTK-install/lib/tools
-#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MCRIBS_HOME/MIRTK/MIRTK-install/lib
-#export PYTHONPATH=$PYTHONPATH:$MCRIBS_HOME/MIRTK/MIRTK-install/lib/python:$MCRIBS_HOME/lib/python
+export PATH=$PATH:${MCRIBS_HOME}/bin
