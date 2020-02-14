@@ -1,5 +1,6 @@
 import numpy
-import pylab
+
+import imageio
 
 import os
 
@@ -11,14 +12,14 @@ import errno
 import math
 import numexpr
 
-# for the label image V, return a dict() whose keys are IDX and for each key, return a tuple of indices for 
+# for the label image V, return a dict() whose keys are IDX and for each key, return a tuple of indices for
 
 def labelIDXList(V, IDX):
-    
+
     In1D = numpy.in1d(V, IDX)
-    
+
     In1DIDX = numpy.where(In1D)[0]
-    
+
     # get label voxels that are in1D
     In1DV = V[In1D.reshape(V.shape)]
 
@@ -31,7 +32,7 @@ def labelIDXList(V, IDX):
     outIDX = dict.fromkeys(IDX.tolist())
 
     curIDX = 0
-    
+
     for curLabelIDX in range(LabelCounts.size):
         if LabelCounts[curLabelIDX] > 0:
                 curLabel = SortedIn1DV[curIDX]
@@ -53,10 +54,10 @@ T = labelIDXList(V, IDX)
 # 'pixelList' (list): numpy.where() for each label
 # 'centroid' (list): mean of pixel coordinates for each label
 def regionProps(labelImage, properties):
-    
+
     numLabels = numpy.max(labelImage)
     regionProps = dict()
-    
+
     pixelLists = list()
 
     if numLabels >= 1:
@@ -123,7 +124,7 @@ def mostCentralComponent(CCSeg):
     else:
         newCCSeg = numpy.array(CCSeg)
     return newCCSeg
-        
+
 def ismember(a, b):
     tf = numpy.in1d(a,b) # for newer versions of numpy
     #f = numpy.array([i in b for i in a])
@@ -159,11 +160,11 @@ def imglob(fileName):
             if fileName.endswith("." + curExtension):
                 filePrefix = filePrefix[0:-(len(curExtension) + 1)]
                 break
-        
+
         for curExtension in supportedExtensions:
             if os.path.isfile(filePrefix + '.' + curExtension):
                 return filePrefix
-        
+
         return None
 
 def gaussianFWHM2D(SIGMA):
@@ -171,7 +172,7 @@ def gaussianFWHM2D(SIGMA):
     assert(isinstance(SIGMA, numpy.ndarray)),"SIGMA must be an array"
 
     DetSIGMA = SIGMA[0, 0] * SIGMA[1, 1] - SIGMA[1, 0] * SIGMA[1, 0]
-    
+
     assert(DetSIGMA > 0),"SIGMA must be positive-definite"
 
     precisionMatrix = numpy.array([[SIGMA[1, 1], -SIGMA[0, 1]], [-SIGMA[1, 0], SIGMA[0, 0]]]) / DetSIGMA
@@ -214,17 +215,17 @@ def gaussianFWHM2D(SIGMA):
 #F = exp(F) .* Maximum;
 
 def parcellationStats(labelImage, pixelArea, arcLengths, arcLengthLabels):
-    
+
     assert(numpy.size(arcLengthLabels) == numpy.size(arcLengths)),"arcLengths and labels must be the same size"
     numLabels = numpy.max(arcLengthLabels)
-    
+
     statsToCompute = ['min', 'max', 'mean', 'median', 'std', 'var', 'area']
 
     STATS = dict()
 
     for z in range(len(statsToCompute)):
         STATS[statsToCompute[z]] = numpy.zeros(numLabels)
-    
+
     for z in range(1, numLabels + 1):
         I = numpy.where(arcLengthLabels == z)
         if numpy.size(I) > 0:
@@ -236,24 +237,6 @@ def parcellationStats(labelImage, pixelArea, arcLengths, arcLengthLabels):
             STATS['var'][z - 1] = numpy.var(arcLengths[I])
         STATS['area'][z - 1] = numpy.count_nonzero(labelImage == z) * pixelArea
     return STATS
-
-def plotStreamlines(C, lineProps = None):
-    for z in range(len(C)):
-        plotContour(C[z], lineProps = lineProps, closed = False)
-
-def plotContour(C, lineProps = None, closed = True):
-    
-    if closed == True:
-        AX = numpy.concatenate([C[0], numpy.array([C[0, 0]])])
-        AY = numpy.concatenate([C[1], numpy.array([C[1, 0]])])
-    else:
-        AX = numpy.array(C[0])
-        AY = numpy.array(C[1])
-
-    if lineProps != None:
-        pylab.plot(AX, AY, **lineProps)
-    else:
-        pylab.plot(AX, AY)
 
 def normPDF(X, MU, SIGMA):
     XC = X - MU
@@ -272,8 +255,8 @@ def empty2DList(SZ):
 def removeWhiteRowsColsPNG(IMGFileName, padding = (10, 10), blackImage = False):
     assert(os.path.isfile(IMGFileName)),"PNG file does not exist"
 
-    IMG = pylab.imread(IMGFileName)
-    
+    IMG = imageio.imread(IMGFileName)
+
     if blackImage == True:
         IMG = 1 - IMG
 
@@ -286,13 +269,13 @@ def removeWhiteRowsColsPNG(IMGFileName, padding = (10, 10), blackImage = False):
         T = numpy.any(IMG < 1, axis = 2)
 
     I = numpy.where(T)
-    
+
     croppedIMG = numpy.array(IMG)
 
     for z in range(2):
         H = numpy.bincount(I[z])
         croppedIMG = numpy.take(croppedIMG, numpy.where(H > 0)[0], axis = z)
-    
+
     if IMG.ndim < 3:
         cornerPadding = numpy.ones((padding[0], padding[1]))
         topBottomPadding = numpy.ones((padding[0], croppedIMG.shape[1]))
@@ -306,7 +289,7 @@ def removeWhiteRowsColsPNG(IMGFileName, padding = (10, 10), blackImage = False):
     numpy.concatenate((cornerPadding, topBottomPadding, cornerPadding), axis = 1),
     numpy.concatenate((leftRightPadding, croppedIMG, leftRightPadding), axis = 1),
     numpy.concatenate((cornerPadding, topBottomPadding, cornerPadding), axis = 1)), axis = 0)
-    
+
     if blackImage == True:
         T = 1 - T
 
@@ -315,8 +298,8 @@ def removeWhiteRowsColsPNG(IMGFileName, padding = (10, 10), blackImage = False):
 def cropAutoWhitePNG(IMGFileName, padding = (10, 10)):
     assert(os.path.isfile(IMGFileName)),"PNG file does not exist"
 
-    IMG = pylab.imread(IMGFileName)
-    
+    IMG = imageio.imread(IMGFileName)
+
     if IMG.shape[2] == 4:
         T = numpy.squeeze(numpy.take(IMG, [0, 1, 2], axis = 2))
         T = numpy.any(T < 1, axis = 2)
@@ -326,12 +309,12 @@ def cropAutoWhitePNG(IMGFileName, padding = (10, 10)):
         T = (IMG < 1)
 
     I = numpy.where(T)
-    
+
     croppedIMG = numpy.array(IMG)
 
     for z in range(2):
         croppedIMG = numpy.take(croppedIMG, numpy.arange(numpy.min(I[z]), numpy.max(I[z]) + 1), axis = z)
-    
+
     cornerPadding = numpy.ones((padding[0], padding[1], croppedIMG.shape[2]))
     topBottomPadding = numpy.ones((padding[0], croppedIMG.shape[1], croppedIMG.shape[2]))
     leftRightPadding = numpy.ones((croppedIMG.shape[0], padding[1], croppedIMG.shape[2]))
@@ -341,47 +324,12 @@ def cropAutoWhitePNG(IMGFileName, padding = (10, 10)):
     numpy.concatenate((leftRightPadding, croppedIMG, leftRightPadding), axis = 1),
     numpy.concatenate((cornerPadding, topBottomPadding, cornerPadding), axis = 1)), axis = 0)
 
-    scipy.misc.imsave(IMGFileName, T)
-
-    #pylab.clf()
-
-    #pylab.imshow(T)
-    #pylab.gcf().set_size_inches((20, 10), forward = True)
-    #pylab.show()
-    
-    #pass    
-
-def imshow(IMG, extent = None, ticks = False):
-    showIMG(IMG, extent = extent, ticks = ticks)
-
-def showIMG(IMG, extent = None, ticks = False):
-    pylab.imshow(IMG, origin = 'lower', extent = extent)
-
-    pylab.set_cmap(pylab.cm.gray)
-    
-    if extent == None:
-        pylab.ylim((0, IMG.shape[0] - 1))
-        pylab.xlim((0, IMG.shape[1] - 1))
-    else:
-        pylab.ylim((extent[2], extent[3]))
-        pylab.xlim((extent[0], extent[1]))
-    
-    if not ticks:
-        pylab.gca().get_xaxis().set_ticks([])
-        pylab.gca().get_yaxis().set_ticks([])
-    pylab.gca().invert_yaxis()
-
-def imshow(IMG, extent = None, ticks = False):
-    showIMG(IMG, extent = extent, ticks = ticks)
-
-def pylabShow():
-    pylab.gcf().set_size_inches((20, 10), forward = True)
-    pylab.show()
+    imageio.imwrite(IMGFileName, T)
 
 def MNI152FLIRTSymNeckCropTemplate(skullStripped = False):
     scriptPath = os.path.realpath(__file__)
     (head, tail) = os.path.split(scriptPath)
-    
+
     if skullStripped == False:
         T = 'MNI152_T1_2mm_centered'
     else:
@@ -389,14 +337,14 @@ def MNI152FLIRTSymNeckCropTemplate(skullStripped = False):
 
     return os.path.join(head, 'data', T)
 
-# if we are using the MNI template, 
+# if we are using the MNI template,
 # this is done by detecting three asterisks
 # if there is no asterisks, just return the file name without modification
 
 def MNI152FLIRTTemplate(skullStripped = False):
     scriptPath = os.path.realpath(__file__)
     (head, tail) = os.path.split(scriptPath)
-    
+
     if skullStripped == False:
         T = 'MNI152_T1_1mm_centered.nii.gz'
     else:
@@ -407,22 +355,22 @@ def MNI152FLIRTTemplate(skullStripped = False):
 
 #@profile
 def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = numpy.nan):
-    
+
     assert(numpy.size(xx) == V.shape[1] and numpy.size(yy) == V.shape[0] and numpy.size(zz) == V.shape[2]),"numpy.size(xx) == V.shape[1] and numpy.size(yy) == V.shape[0] and numpy.size(zz) == V.shape[2]"
     assert(numpy.array_equal(xi.shape, yi.shape)),"(numpy.array_equal(xi.shape, yi.shape)"
     assert(numpy.array_equal(xi.shape, zi.shape)),"(numpy.array_equal(xi.shape, zi.shape)"
-    
+
     #outV = numpy.zeros_like(xi)
     outV = numpy.empty_like(xi)
     outV.fill(extrapval)
 
     #outOfMask = numpy.logical_or(numpy.logical_or(numpy.logical_or(numpy.logical_or(numpy.logical_or(xi < xx[0], xi > xx[-1]), yi < yy[0]), yi > yy[-1]), zi < zz[0]), zi > zz[-1])
-    
+
     #minxx = numpy.min(xx)
     #maxxx = numpy.max(xx)
 
     #outOfMask = numpy.logical_or(numpy.logical_or(numpy.logical_or(numpy.logical_or(numpy.logical_or(xi < numpy.min(xx), xi > numpy.max(xx)), yi < numpy.min(yy)), yi > numpy.max(yy)), zi < numpy.min(zz)), zi > numpy.max(zz))
-    
+
     inMaskIDX = numpy.logical_and(xi >= numpy.min(xx), xi <= numpy.max(xx))
     inMaskIDX = numpy.logical_and(inMaskIDX, yi >= numpy.min(yy))
     inMaskIDX = numpy.logical_and(inMaskIDX, yi <= numpy.max(yy))
@@ -449,16 +397,16 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 
 
         if interpmethod == 'linear':
-            
+
             numInSlice = V.shape[0] * V.shape[1]
-            
+
             XI = (xi[inMaskIDX] - xx[0]) / float(xx[1] - xx[0])
             XIDX = numpy.uint32(XI)
             XFrac = XI - XIDX
             del XI
             #I = numpy.where(XI == xx.size - 1)
             I = (XIDX == xx.size - 1)
-            
+
             #if not numpy.size(I) == 0:
             if numpy.any(I):
                 XFrac[I] = 1.0
@@ -473,7 +421,7 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
             del YI
             #I = numpy.where(YI == yy.size - 1)
             I = (YIDX == yy.size - 1)
-            
+
             #if not numpy.size(I) == 0:
             if numpy.any(I):
                 YFrac[I] = 1.0
@@ -488,7 +436,7 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
             del ZI
             #I = numpy.where(YI == yy.size - 1)
             I = (ZIDX == zz.size - 1)
-            
+
             #if not numpy.size(I) == 0:
             if numpy.any(I):
                 ZFrac[I] = 1.0
@@ -515,9 +463,9 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
             #outV[inMaskIDX] = (1 - YFrac) * (1 - XFrac) * (1 - ZFrac) * flatV[linearIDX] + (1 - YFrac) * (1 - XFrac) * (    ZFrac) * flatV[linearIDX + numInSlice] + (1 - YFrac) * (    XFrac) * (1 - ZFrac) * flatV[linearIDX + V.shape[0]] + (1 - YFrac) * (    XFrac) * (    ZFrac) * flatV[linearIDX + V.shape[0] + numInSlice] + (    YFrac) * (1 - XFrac) * (1 - ZFrac) * flatV[linearIDX + 1] + (    YFrac) * (1 - XFrac) * (    ZFrac) * flatV[linearIDX + 1 + numInSlice] + (    YFrac) * (    XFrac) * (1 - ZFrac) * flatV[linearIDX + 1 + V.shape[0]] + (    YFrac) * (    XFrac) * (    ZFrac) * flatV[linearIDX + 1 + V.shape[0] + numInSlice]
 #
             outV[inMaskIDX] = numexpr.evaluate('(1 - YFrac) * (1 - XFrac) * (1 - ZFrac) * a + (1 - YFrac) * (1 - XFrac) * (    ZFrac) * b + (1 - YFrac) * (    XFrac) * (1 - ZFrac) * c + (1 - YFrac) * (    XFrac) * (    ZFrac) * d + (    YFrac) * (1 - XFrac) * (1 - ZFrac) * e + (    YFrac) * (1 - XFrac) * (    ZFrac) * f + (    YFrac) * (    XFrac) * (1 - ZFrac) * g + (    YFrac) * (    XFrac) * (    ZFrac) * h', {'a': flatV[linearIDX], 'b': flatV[linearIDX + numInSlice], 'c': flatV[linearIDX + V.shape[0]], 'd': flatV[linearIDX + V.shape[0] + numInSlice], 'e': flatV[linearIDX + 1], 'f': flatV[linearIDX + 1 + numInSlice], 'g': flatV[linearIDX + 1 + V.shape[0]], 'h': flatV[linearIDX + 1 + V.shape[0] + numInSlice], 'XFrac': XFrac, 'YFrac': YFrac, 'ZFrac': ZFrac})
-            
+
             #I = YIDX + XIDX * V.shape[0] + ZIDX * numInSlice
-            
+
 #            outV[inMaskIDX] =  (1 - YFrac) * (1 - XFrac) * (1 - ZFrac) * flatV[linearIDX]
 #            outV[inMaskIDX] += (1 - YFrac) * (1 - XFrac) * (    ZFrac) * flatV[linearIDX + numInSlice] # V[(YIDX    , XIDX    , ZIDX + 1)]
 #            outV[inMaskIDX] += (1 - YFrac) * (    XFrac) * (1 - ZFrac) * flatV[linearIDX + V.shape[0]] # V[(YIDX    , XIDX + 1, ZIDX    )]
@@ -526,7 +474,7 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 #            outV[inMaskIDX] += (    YFrac) * (1 - XFrac) * (    ZFrac) * flatV[linearIDX + 1 + numInSlice] # V[(YIDX + 1, XIDX    , ZIDX + 1)]
 #            outV[inMaskIDX] += (    YFrac) * (    XFrac) * (1 - ZFrac) * flatV[linearIDX + 1 + V.shape[0]] # V[(YIDX + 1, XIDX + 1, ZIDX    )]
 #            outV[inMaskIDX] += (    YFrac) * (    XFrac) * (    ZFrac) * flatV[linearIDX + 1 + V.shape[0] + numInSlice] # V[(YIDX + 1, XIDX + 1, ZIDX + 1)]
-            
+
 #            T =  (1 - YFrac) * (1 - XFrac) * (1 - ZFrac) * flatV[linearIDX]
 #            T += (1 - YFrac) * (1 - XFrac) * (    ZFrac) * flatV[linearIDX + numInSlice] # V[(YIDX    , XIDX    , ZIDX + 1)]
 #            T += (1 - YFrac) * (    XFrac) * (1 - ZFrac) * flatV[linearIDX + V.shape[0]] # V[(YIDX    , XIDX + 1, ZIDX    )]
@@ -536,7 +484,7 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 #            T += (    YFrac) * (    XFrac) * (1 - ZFrac) * flatV[linearIDX + 1 + V.shape[0]] # V[(YIDX + 1, XIDX + 1, ZIDX    )]
 #            T += (    YFrac) * (    XFrac) * (    ZFrac) * flatV[linearIDX + 1 + V.shape[0] + numInSlice] # V[(YIDX + 1, XIDX + 1, ZIDX + 1)]
 #            outV[inMaskIDX] = T
-#            
+#
 
             #T = outV[inMaskIDX]
             #outV[inMaskIDX] =  (1 - YFrac) * (1 - XFrac) * (1 - ZFrac) * V[(YIDX    , XIDX    , ZIDX    )]
@@ -558,20 +506,20 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 
 #@profile
 #def interp3q2D(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = numpy.nan):
-#    
+#
 #    assert(numpy.size(xx) == V.shape[1] and numpy.size(yy) == V.shape[0] and numpy.size(zz) == V.shape[2]),"numpy.size(xx) == V.shape[1] and numpy.size(yy) == V.shape[0] and numpy.size(zz) == V.shape[2]"
 #    assert(numpy.array_equal(xi.shape, yi.shape)),"(numpy.array_equal(xi.shape, yi.shape)"
 #    assert(numpy.array_equal(xi.shape, zi.shape)),"(numpy.array_equal(xi.shape, zi.shape)"
-#    
+#
 #    outV = numpy.zeros_like(xi)
 #
 #    #outOfMask = numpy.logical_or(numpy.logical_or(numpy.logical_or(numpy.logical_or(numpy.logical_or(xi < xx[0], xi > xx[-1]), yi < yy[0]), yi > yy[-1]), zi < zz[0]), zi > zz[-1])
-#    
+#
 #    #minxx = numpy.min(xx)
 #    #maxxx = numpy.max(xx)
 #
 #    outOfMask = numpy.logical_or(numpy.logical_or(numpy.logical_or(numpy.logical_or(numpy.logical_or(xi < numpy.min(xx), xi > numpy.max(xx)), yi < numpy.min(yy)), yi > numpy.max(yy)), zi < numpy.min(zz)), zi > numpy.max(zz))
-#    
+#
 #    #outV[numpy.where(outOfMask)] = extrapval
 #    if numpy.any(outOfMask):
 #        outV[outOfMask] = extrapval
@@ -597,16 +545,16 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 #            ZI = numpy.int32(numpy.round((zi[inMaskIDX] - zz[0]) / (zz[1] - zz[0])))
 #            outV[inMaskIDX] = V[(YI, XI, ZI)]
 #        elif interpmethod == 'linear':
-#            
+#
 #            numInSlice = V.shape[0] * V.shape[1]
-#            
+#
 #            XI = (xi[inMaskIDX] - xx[0]) / (xx[1] - xx[0])
 #            XIDX = numpy.uint32(XI)
 #            XFrac = XI - XIDX
 #            del XI
 #            #I = numpy.where(XI == xx.size - 1)
 #            I = (XIDX == xx.size - 1)
-#            
+#
 #            #if not numpy.size(I) == 0:
 #            if numpy.any(I):
 #                XFrac[I] = 1.0
@@ -621,7 +569,7 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 #            del YI
 #            #I = numpy.where(YI == yy.size - 1)
 #            I = (YIDX == yy.size - 1)
-#            
+#
 #            #if not numpy.size(I) == 0:
 #            if numpy.any(I):
 #                YFrac[I] = 1.0
@@ -636,7 +584,7 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 #            del ZI
 #            #I = numpy.where(YI == yy.size - 1)
 #            I = (ZIDX == zz.size - 1)
-#            
+#
 #            #if not numpy.size(I) == 0:
 #            if numpy.any(I):
 #                ZFrac[I] = 1.0
@@ -659,9 +607,9 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 #            #    (    YFrac) * (    XFrac) * (    ZFrac) * V[(YIDX + 1, XIDX + 1, ZIDX + 1)]
 #
 #            flatV = numpy.ravel(V, order = 'F')
-#            
+#
 #            #I = YIDX + XIDX * V.shape[0] + ZIDX * numInSlice
-#            
+#
 #            outV[inMaskIDX] =  (1 - YFrac) * (1 - XFrac) * (1 - ZFrac) * flatV[linearIDX]
 #            outV[inMaskIDX] += (1 - YFrac) * (1 - XFrac) * (    ZFrac) * flatV[linearIDX + numInSlice] # V[(YIDX    , XIDX    , ZIDX + 1)]
 #            outV[inMaskIDX] += (1 - YFrac) * (    XFrac) * (1 - ZFrac) * flatV[linearIDX + V.shape[0]] # V[(YIDX    , XIDX + 1, ZIDX    )]
@@ -684,7 +632,7 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 #    return outV
 #
 
-#if 
+#if
 #V = numpy.random.uniform(size = (4, 6, 7))
 
 #xx = numpy.arange(V.shape[1])
@@ -701,7 +649,7 @@ def interp3q(xx, yy, zz, V, xi, yi, zi, interpmethod = 'linear', extrapval = num
 #G = interp3q(xx, yy, zz, V, xi, yi, zi)
 #@profile
 def interp2q(xx, yy, V, xi, yi, interpmethod = 'linear', extrapval = numpy.nan):
-    
+
     assert(numpy.size(xx) == V.shape[1] and numpy.size(yy) == V.shape[0]),"numpy.size(xx) == V.shape[1] and numpy.size(yy) == V.shape[0]"
     assert(numpy.array_equal(xi.shape, yi.shape)),"(numpy.array_equal(xi.shape, yi.shape)"
 #    print "xx = "
@@ -719,7 +667,7 @@ def interp2q(xx, yy, V, xi, yi, interpmethod = 'linear', extrapval = numpy.nan):
     inMaskIDX = numpy.logical_and(xi >= numpy.min(xx), xi <= numpy.max(xx))
     inMaskIDX = numpy.logical_and(inMaskIDX, yi >= numpy.min(yy))
     inMaskIDX = numpy.logical_and(inMaskIDX, yi <= numpy.max(yy))
-    
+
     #outV[numpy.where(outOfMask)] = extrapval
     #f numpy.any(outOfMask):
     #outV[outOfMask] = extrapval
@@ -743,7 +691,7 @@ def interp2q(xx, yy, V, xi, yi, interpmethod = 'linear', extrapval = numpy.nan):
             XFrac = XI - numpy.floor(XI)
             #I = numpy.where(XI == xx.size - 1)
             I = (XI == xx.size - 1)
-            
+
             #if not numpy.size(I) == 0:
             if numpy.any(I):
                 XFrac[I] = 1.0
@@ -753,18 +701,18 @@ def interp2q(xx, yy, V, xi, yi, interpmethod = 'linear', extrapval = numpy.nan):
             YFrac = YI - numpy.floor(YI)
             #I = numpy.where(YI == yy.size - 1)
             I = (YI == yy.size - 1)
-            
+
             #if not numpy.size(I) == 0:
             if numpy.any(I):
                 YFrac[I] = 1.0
                 YI[I] = yy.size - 2
-            
+
             XI = numpy.int32(XI)
             YI = numpy.int32(YI)
             #linearIDX = YI * V.shape[0] + XI
 
             #flatV = numpy.ravel(V, order = 'F')
-            
+
             outV[inMaskIDX] =    (1 - YFrac) * (1 - XFrac) * V[(YI    , XI    )] + (1 - YFrac) * (    XFrac) * V[(YI    , XI + 1)] + (    YFrac) * (1 - XFrac) * V[(YI + 1, XI    )] + (    YFrac) * (    XFrac) * V[(YI + 1, XI + 1)]
             #outV[inMaskIDX] =    numexpr.evaluate('(1 - YFrac) * (1 - XFrac) * a + (1 - YFrac) * (    XFrac) * b + (    YFrac) * (1 - XFrac) * c + (    YFrac) * (    XFrac) * d', {'a': flatV[linearIDX], 'b': flatV[linearIDX + 1], 'c': flatV[linearIDX + V.shape[1]], 'd': flatV[linearIDX + V.shape[1] + 1], 'XFrac': XFrac, 'YFrac': YFrac})
     return outV
@@ -780,15 +728,15 @@ def maxGaussian1D(SIGMA, Derivative = 0):
 
     #MaxWidth = find(FirstGaussian > GaussianDieOff, 1, 'last');
     MaxWidth = numpy.where(FirstGaussian > GaussianDieOff);
-    
+
     if(numpy.size(MaxWidth) == 0):
         MaxWidth = 1;
     else:
         MaxWidth = numpy.size(MaxWidth)
-    
+
     X = numpy.arange(-MaxWidth, MaxWidth + 1)
     Exponential = numpy.exp(-(X * X) / (2 * SIGMASQ))
-    
+
     if Derivative == 0:
         return Exponential / (numpy.sqrt(2 * numpy.pi) * SIGMA)
     elif Derivative == 1:
@@ -806,7 +754,7 @@ def mkdirSafe(D):
 def parasagittalSlicesAndGradients(TIMG, axialNIIPixdims, numSlices = 3):
 
     midSlice = int(math.floor(TIMG.shape[0] / 2))
-    
+
     # store the parasagittal slices
     parasagittalIDX = list(range(numpy.maximum(0, midSlice - numSlices), numpy.minimum(TIMG.shape[0], midSlice + numSlices + 1)))
     #print parasagittalIDX
@@ -815,23 +763,23 @@ def parasagittalSlicesAndGradients(TIMG, axialNIIPixdims, numSlices = 3):
     # get gradients
     SIGMA = 0.5 / numpy.array(axialNIIPixdims)
     STIMG = scipy.ndimage.filters.gaussian_filter(TIMG, SIGMA, mode = 'constant', cval = 0)
-    
+
     gaussianFilterDeriv = numpy.atleast_3d(maxGaussian1D(SIGMA[0], Derivative = 1))
     T = numpy.reshape(gaussianFilterDeriv, (gaussianFilterDeriv.size, 1, 1))
     STIMGFX = scipy.ndimage.convolve(STIMG, T, mode = 'nearest')
-    
+
     gaussianFilterDeriv = numpy.atleast_3d(maxGaussian1D(SIGMA[1], Derivative = 1))
     T = numpy.reshape(gaussianFilterDeriv, (1, gaussianFilterDeriv.size, 1))
     STIMGFY = scipy.ndimage.convolve(STIMG, T, mode = 'nearest')
-    
+
     gaussianFilterDeriv = numpy.atleast_3d(maxGaussian1D(SIGMA[2], Derivative = 1))
     T = numpy.reshape(gaussianFilterDeriv, (1, 1, gaussianFilterDeriv.size))
     STIMGFZ = scipy.ndimage.convolve(STIMG, T, mode = 'nearest')
-    
+
     parasagittalFX = numpy.take(STIMGFX, parasagittalIDX, axis = 0)
     parasagittalFY = numpy.take(STIMGFY, parasagittalIDX, axis = 0)
     parasagittalFZ = numpy.take(STIMGFZ, parasagittalIDX, axis = 0)
-    
+
     P = [1, 2, 0]
     parasagittalSlices = numpy.transpose(parasagittalSlices, P)
     parasagittalFX = numpy.transpose(parasagittalFX, P)
