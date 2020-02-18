@@ -4,10 +4,19 @@ import vtk
 import numpy
 import sys
 import os
-import freesurfer
 import nibabel
 import getopt
 
+# append python paths
+P = os.path.realpath(__file__)
+head, tail = os.path.split(P)
+sys.path.append(os.path.join(head, '..', 'lib', 'python'))
+
+del P
+del head
+del tail
+
+import freesurfer
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 1:

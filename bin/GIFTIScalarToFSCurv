@@ -3,8 +3,18 @@
 import numpy
 import sys
 import os
-import freesurfer
 import nibabel
+
+# append python paths
+P = os.path.realpath(__file__)
+head, tail = os.path.split(P)
+sys.path.append(os.path.join(head, '..', 'lib', 'python'))
+
+del P
+del head
+del tail
+
+import freesurfer
 
 if len(sys.argv) < 4:
     print("Incorrect number of arguments")

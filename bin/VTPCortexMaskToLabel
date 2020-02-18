@@ -4,13 +4,22 @@ import vtk
 import numpy
 import sys
 import os
-import freesurfer
 import nibabel
 import getopt
-
 import scipy.ndimage.morphology
-import VTPUtils
 
+# append python paths
+P = os.path.realpath(__file__)
+head, tail = os.path.split(P)
+sys.path.append(os.path.join(head, '..', 'lib', 'python'))
+
+del P
+del head
+del tail
+
+
+import VTPUtils
+import freesurfer
 import GraphUtils
 #import matplotlib.pyplot as plt
 
