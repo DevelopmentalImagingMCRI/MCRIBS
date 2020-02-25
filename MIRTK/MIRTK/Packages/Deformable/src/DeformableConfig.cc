@@ -33,7 +33,6 @@
   // Internal forces
   #include "mirtk/CurvatureConstraint.h"
   #include "mirtk/InflationForce.h"
-  #include "mirtk/NormalForce.h"
   #include "mirtk/MetricDistortion.h"
   #include "mirtk/NonSelfIntersectionConstraint.h"
   #include "mirtk/QuadraticCurvatureConstraint.h"

@@ -230,6 +230,9 @@ list(APPEND _TBB_LIB_PATH_SUFFIXES lib)
 
 if (WIN32 AND MSVC AND CMAKE_GENERATOR MATCHES "Visual Studio ([0-9]+)")
   set(_TBB_MSVS_VERSION ${CMAKE_MATCH_1})
+  if (_TBB_MSVS_VERSION EQUAL 15)
+    set(_TBB_MSVS_VERSION 14)
+  endif ()
   if (CMAKE_CL_64)
     list(APPEND _TBB_LIB_PATH_SUFFIXES lib/intel64/vc${_TBB_MSVS_VERSION})
     list(APPEND _TBB_LIB_PATH_SUFFIXES intel64/vc${_TBB_MSVS_VERSION}/lib)
@@ -383,7 +386,13 @@ foreach (_TBB_COMPONENT IN LISTS _TBB_FIND_COMPONENTS)
     # Add TBB::<C> import target
     string(TOLOWER ${_TBB_COMPONENT} _TBB_TARGET_NAME)
     set(_TBB_TARGET_NAME "TBB::${_TBB_TARGET_NAME}")
-    add_library(${_TBB_TARGET_NAME} SHARED IMPORTED)
+    if (TARGET ${_TBB_TARGET_NAME})
+      if (TBB_DEBUG)
+        message("** FindTBB: Updating existing target ${_TBB_TARGET_NAME}")
+      endif ()
+    else ()
+      add_library(${_TBB_TARGET_NAME} SHARED IMPORTED)
+    endif ()
 
     set_target_properties(${_TBB_TARGET_NAME} PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES     "${TBB_${_TBB_COMPONENT}_INCLUDE_DIRS}"

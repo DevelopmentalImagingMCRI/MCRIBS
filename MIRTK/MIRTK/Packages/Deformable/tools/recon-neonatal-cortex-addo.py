@@ -398,7 +398,8 @@ def recon_neonatal_cortex(config, section, config_vars,
 						  force=False,
 						  check=True,
 						  verbose=0,
-						  join_tol=1):
+						  join_tol = 1,
+						  use_fast_collision=False):
 	"""Reconstruct surfaces of neonatal cortex."""
 
 	# working directory
@@ -460,6 +461,9 @@ def recon_neonatal_cortex(config, section, config_vars,
 		if recon_brain or recon_bs_cb_mesh or recon_cerebrum or recon_white or recon_pial:
 			require_brain_mask(config, section, config_vars, stack, verbose,
 							   keep_regions_mask=keep_regions_mask)
+		elif keep_regions_mask:
+			# create regions mask only, skip surface reconstruction
+			require_regions_mask(config, section, config_vars, None, verbose)
 
 		if recon_white or recon_pial:
 			if not os.path.isfile(t2w_image):
@@ -542,24 +546,24 @@ def recon_neonatal_cortex(config, section, config_vars,
 					print("Reconstructing boundary of right cerebral hemisphere segmentation")
 				neoctx.recon_cortical_surface(name=right_cerebrum_mesh,
 											  regions=regions_mask, hemisphere=neoctx.Hemisphere.Right,
-											  corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir)
+											  corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir, use_fast_collision=use_fast_collision)
 			if force or not os.path.isfile(left_cerebrum_mesh):
 				corpus_callosum_mask = optional_corpus_callosum_mask(config, section, config_vars, stack, verbose)
 				if verbose > 0:
 					print("Reconstructing boundary of left cerebral hemisphere segmentation")
 				neoctx.recon_cortical_surface(name=left_cerebrum_mesh,
 											  regions=regions_mask, hemisphere=neoctx.Hemisphere.Left,
-											  corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir)
+											  corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir, use_fast_collision=use_fast_collision)
 
 			# join cortical surfaces of right and left hemispheres
 			if verbose > 0:
-				print("Joining surfaces of right and left cerebral hemispheres, join tolerance: " + str(join_tol))
+				print("Joining surfaces of right and left cerebral hemispheres")
 			neoctx.join_cortical_surfaces(name=cerebrum_mesh, regions=regions_mask,
 										  right_mesh=right_cerebrum_mesh,
 										  left_mesh=left_cerebrum_mesh,
 										  bs_cb_mesh=bs_cb_mesh_1,
 										  internal_mesh=internal_mesh,
-										  temp=temp_dir, check=check,join_tol = join_tol)
+										  temp=temp_dir, check=check, join_tol = join_tol)
 
 			# remove cortical surfaces of right and left hemispheres
 			if not with_cerebrum_mesh:
@@ -593,7 +597,7 @@ def recon_neonatal_cortex(config, section, config_vars,
 									   subcortex_mask=deep_gray_matter_mask,
 									   cortical_hull_dmap=cortical_hull_dmap,
 									   ventricles_dmap=ventricles_dmap,
-									   temp=temp_dir, check=check)
+									   temp=temp_dir, check=check, use_fast_collision=use_fast_collision)
 
 			# remove initial surface mesh
 			if not with_cerebrum_mesh:
@@ -629,7 +633,7 @@ def recon_neonatal_cortex(config, section, config_vars,
 									  wm_mask=wm_mask, gm_mask=gm_mask, brain_mask=brain_mask,
 									  white_mesh=white_mesh, bs_cb_mesh=bs_cb_mesh_2,
 									  outside_white_mesh=pial_outside_white_surface,
-									  temp=temp_dir, check=check)
+									  temp=temp_dir, check=check, use_fast_collision=use_fast_collision)
 
 			# remove inner-cortical surface
 			if not with_white_mesh:
@@ -774,6 +778,8 @@ parser.add_argument('-join-with-brainstem-and-cerebellum', '--join-with-brainste
 					help="Merge cerebrum surface mesh with brainstem and cerebellum surface mesh")
 parser.add_argument('-nocut', '-nosplit', '--nocut', '--nosplit', dest='cut', action='store_false',
 					help='Save individual (closed) genus-0 surfaces for each hemisphere')
+parser.add_argument('-use-fast-collision', dest='fastcollision', action='store_true',
+					help='Use the fast collision test')
 parser.add_argument('-nocheck', '--nocheck', action='store_false', dest='check',
 					help='Disable consistency and self-intersection checks of (intermediate) surface meshes')
 parser.add_argument('-keep-t1w-image', '--keep-t1w-image', action='store_true',
@@ -788,16 +794,18 @@ parser.add_argument('-v', '-verbose', '--verbose', action='count', default=0,
 					help='Increase verbosity of output messages')
 parser.add_argument('-d', '-debug', '--debug', action='count', default=0,
 					help='Keep/write debug output in temp_dir')
-parser.add_argument('-j', '-jointol', '--jointol', dest='join_tol', default=1,
-					help='Join tolerance')
 parser.add_argument('-t', '-threads', '--threads', default=0,
 					help='No. of cores to use for multi-threading')
+parser.add_argument('-j', '-jointol', '--jointol', dest='join_tol', default=1, type = float,
+					help='Join tolerance')
 parser.add_argument('-q', '-queue', '--queue', default='',
 					help='SLURM partition/queue')
 
 [args, config_args] = parser.parse_known_args()
+#print config_args
+#print args
 args.work_dir = os.path.abspath(args.work_dir)
-if not args.cerebrum and not args.white and not args.pial:
+if not args.cerebrum and not args.white and not args.pial and not args.keep_regions_mask:
 	args.white = True
 	args.pial = True
 elif args.pial:
@@ -857,10 +865,10 @@ failed = 0
 for session in sessions:
 	match = re.match('^(.*)-([^-]+)$', session)
 	if match:
-		subject_id = match.group(1)
+		subject_id = str(match.group(1))
 		session_id = match.group(2)
 	else:
-		subject_id = session
+		subject_id = str(session)
 		session_id = '0'
 		session = session + '-0'
 	info = {
@@ -887,6 +895,9 @@ for session in sessions:
 		else:
 			sys.stdout.write("\nReconstructing cortical surfaces of {SubjectId} session {SessionId}\n".format(**info))
 			config_vars.update(info)
+			#print list(config.options('recon-neonatal-cortex'))
+			#print config_vars
+
 			recon_neonatal_cortex(config=config, section=args.section, config_vars=config_vars,
 								  with_brain_mesh=args.brain,
 								  with_cerebrum_mesh=args.cerebrum,
@@ -900,7 +911,8 @@ for session in sessions:
 								  join_bs_cb_mesh=args.join_bs_cb_mesh,
 								  verbose=args.verbose,
 								  check=args.check,
-								  join_tol=float(args.join_tol))
+								  join_tol = args.join_tol,
+								  use_fast_collision = args.fastcollision)
 	except Exception as e:
 		failed += 1
 		if args.queue:

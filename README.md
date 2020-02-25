@@ -10,7 +10,7 @@ MIRTK was downloaded from https://github.com/BioMedIA/MIRTK. A customised versio
 
 # Installation
 
-The script build.sh will build VTK and MIRTK. Install the following dependencies prior to running:
+The script build.sh will build ITK, VTK and MIRTK. Install the following dependencies prior to running:
 
 - For VTK
   - zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python3-dev libeigen3-dev

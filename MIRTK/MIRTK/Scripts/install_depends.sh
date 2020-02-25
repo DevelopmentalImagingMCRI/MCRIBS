@@ -13,10 +13,12 @@ norm_option_value()
   fi
 }
 
+CXX_STANDARD=c++14
 TRAVIS=`norm_option_value "$TRAVIS" OFF`
 TESTING=`norm_option_value "$TESTING" OFF`
 WITH_ARPACK=`norm_option_value "$WITH_ARPACK" OFF`
 WITH_UMFPACK=`norm_option_value "$WITH_UMFPACK" OFF`
+WITH_ITK=`norm_option_value "$WITH_ITK" OFF`
 WITH_VTK=`norm_option_value "$WITH_VTK" OFF`
 WITH_TBB=`norm_option_value "$WITH_TBB" ON`
 WITH_FLANN=`norm_option_value "$WITH_FLANN" ON`
@@ -51,13 +53,43 @@ run()
 if [ $os = linux ] || [ $os = Linux ]; then
   cpu_cores=$(grep -c ^processor /proc/cpuinfo)
 
+  if [ -f /etc/lsb-release ]; then
+    source /etc/lsb-release
+  else
+    echo "Script works on Ubuntu only" 1>&2
+    exit 1
+  fi
+  if [ "$DISTRIB_ID" != "Ubuntu" ]; then
+    echo "Script requires Ubuntu 14.04, 16.04, or 18.04" 1>&2
+    exit 1
+  fi
+
+  cmake_cmd="$(which cmake)"
+  if [ -n "$cmake_cmd" ]; then
+    cmake_version="$("$cmake_cmd" --version | grep 'cmake version' | cut -d' ' -f3)"
+    echo "Found CMake version $cmake_version"
+    cmake_version_major="${cmake_version/.*}"
+    [ $? -eq 0 -a -n "$cmake_version_major" ] || cmake_version_major=0
+  else
+    cmake_version_major=0
+  fi
+  if [ ${cmake_version_major} -lt 3 ]; then
+    cmake_version=3.12.4
+    echo "Installing CMake version $cmake_version"
+    wget --quiet https://cmake.org/files/v${cmake_version%.*}/cmake-${cmake_version}-Linux-x86_64.tar.gz -O /tmp/cmake.tar.gz
+    mkdir /opt/cmake-${cmake_version}
+    tar xf /tmp/cmake.tar.gz -C /opt/cmake-${cmake_version} --strip-components=1 -h
+    rm -f /tmp/cmake.tar.gz
+    cmake_cmd="/opt/cmake-${cmake_version}/bin/cmake"
+  fi
+
   deps=( \
     freeglut3-dev \
     libboost-math-dev \
     libboost-random-dev \
     libeigen3-dev \
     libnifti-dev \
-    libpng12-dev \
+    libpng-dev \
   )
 
   [ $TESTING = OFF ] || deps=(${deps[@]} libgtest-dev)
@@ -75,13 +107,34 @@ if [ $os = linux ] || [ $os = Linux ]; then
     if [ -n "$LINUX_VTK_VERSION" ]; then
       VTK_VERSION="$LINUX_VTK_VERSION"
     fi
-    if [ -z "$VTK_VERSION" ] || [ $VTK_VERSION = '6.0.0' ]; then
-      deps=(${deps[@]} libvtk6-dev)
-      VTK_VERSION=''
+    if [ "$DISTRIB_CODENAME" = "trusty" ]; then
+      if [ -z "$VTK_VERSION" ] || [ $VTK_VERSION = '6.0.0' ]; then
+        deps=(${deps[@]} libvtk6-dev)
+        VTK_VERSION=''
+      fi
+    elif [ "$DISTRIB_CODENAME" = "xenial" ]; then
+      if [ -z "$VTK_VERSION" ] || [ $VTK_VERSION = '6.2.0' ]; then
+        deps=(${deps[@]} libvtk6-dev python-vtk6)
+        VTK_VERSION=''
+      fi
+    elif [ "$DISTRIB_CODENAME" = "bionic" ]; then
+      if [ $VTK_VERSION = '6.3.0' ]; then
+        deps=(${deps[@]} libvtk6-dev)
+        VTK_VERSION=''
+      elif [ -z "$VTK_VERSION" ] || [ $VTK_VERSION = '7.1.1' ]; then
+        deps=(${deps[@]} libvtk7-dev)
+        VTK_VERSION=''
+      fi
+    elif [ -z "$VTK_VERSION" ]; then
+      deps=(${deps[@]} libvtk7-dev)
     fi
     if [ $WITH_FLTK = ON ]; then
       deps=(${deps[@]} libxi-dev libxmu-dev libxinerama-dev libxcursor-dev libcairo-dev libfltk1.3-dev)
     fi
+  fi
+
+  if [ $WITH_ITK = ON ]; then
+    deps=(${deps[@]} libinsighttoolkit4-dev libfftw3-dev uuid-dev)
   fi
 
   sudo apt-get update -qq || exit 1
@@ -90,7 +143,7 @@ if [ $os = linux ] || [ $os = Linux ]; then
   if [ $TESTING = ON ]; then
     # libgtest-dev only install source files
     mkdir /tmp/gtest-build && cd /tmp/gtest-build
-    run cmake /usr/src/gtest
+    run "$cmake_cmd" /usr/src/gtest
     run make -j $cpu_cores
     run sudo mv -f libgtest.a libgtest_main.a /usr/lib
     cd || exit 1
@@ -137,13 +190,16 @@ if [ $os = osx ] || [ $os = Darwin ]; then
       brew_install fltk
     fi
   fi
+  if [ $WITH_ITK = ON ]; then
+    brew_install itk fftw libuuid
+  fi
 
   # download, build, and install gtest
   if [ $TESTING = ON ]; then
     run git clone --depth=1 https://github.com/google/googletest.git /tmp/gtest-source
     mkdir /tmp/gtest-build && cd /tmp/gtest-build
     [ $? -eq 0 ] || exit 1
-    run cmake -DCMAKE_CXX_FLAGS=-std=c++11 -DBUILD_GMOCK=OFF -DBUILD_GTEST=ON ../gtest-source
+    run "$cmake_cmd" -DCMAKE_CXX_STANDARD=$CXX_STANDARD -DBUILD_GMOCK=OFF -DBUILD_GTEST=ON ../gtest-source
     run make -j $cpu_cores
     run sudo make install
     cd || exit 1
@@ -195,6 +251,7 @@ if [ $WITH_VTK = ON ] && [ -n "$VTK_VERSION" ]; then
     [ $? -eq 0 ] || exit 1
     echo "Configuring VTK $VTK_VERSION..."
     cmake_args=("${cmake_args[@]}"
+      -DCMAKE_CXX_STANDARD=$CXX_STANDARD
       -DVTK_Group_StandAlone=OFF
       -DVTK_Group_Rendering=OFF
       -DModule_vtkCommonCore=ON
@@ -233,7 +290,7 @@ if [ $WITH_VTK = ON ] && [ -n "$VTK_VERSION" ]; then
         )
       fi
     fi
-    run cmake "${cmake_args[@]}" ..
+    run "$cmake_cmd" "${cmake_args[@]}" ..
     echo "Configuring VTK $VTK_VERSION... done"
     echo "Building VTK $VTK_VERSION..."
     run make -j $cpu_cores

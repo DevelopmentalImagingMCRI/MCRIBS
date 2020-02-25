@@ -258,7 +258,7 @@ void AreaWeightedLaplacianSmoothing(vtkPolyData *input, vtkDataArray *mask,
   double E_H2, area;
 
   double currPos[3];
-  unsigned short noOfCells = 0;
+  vtkPolyDataGetPointCellsNumCellsType noOfCells = 0;
   vtkIdType* cells = NULL;
   vtkTriangle* triangle = NULL;
   double totalArea = 0;
@@ -296,6 +296,9 @@ void AreaWeightedLaplacianSmoothing(vtkPolyData *input, vtkDataArray *mask,
     dists->FillComponent(0, 0.);
     input->GetPointData()->AddArray(dists);
   }
+
+  // Build links (required by GetPointCells)
+  input->BuildLinks();
 
   // Smoothing iterations
   for (i = 0; i <= noOfIterations; ++i) {

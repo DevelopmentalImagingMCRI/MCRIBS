@@ -1,8 +1,8 @@
 # ============================================================================
 # Medical Image Registration ToolKit (MIRTK)
 #
-# Copyright 2013-2016 Imperial College London
-# Copyright 2013-2016 Andreas Schuh
+# Copyright 2013-2019 Imperial College London
+# Copyright 2013-2019 Andreas Schuh
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 
 # ----------------------------------------------------------------------------
 # Minimum required CMake version
-cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
 
 # ----------------------------------------------------------------------------
 # Include BASIS policies, settings, macros, and functions
@@ -84,18 +84,20 @@ if (WITH_CCACHE)
   if (CMAKE_CXX_COMPILER MATCHES "ccache")
     message(STATUS "Detected C++ compiler is in ccache path, ignoring WITH_CCACHE option")
   else ()
-    find_program(CCACHE_COMMAND "ccache")
+    find_program(CCACHE_COMMAND
+      NAMES
+        "ccache"
+      HINTS
+        "/usr/bin"
+        "/usr/local/bin"
+    )
     if (NOT CCACHE_COMMAND)
       message(FATAL_ERROR "Use of ccache requested, but CCACHE_COMMAND not found!")
     endif ()
     message(STATUS "Using ccache for compilation of C++ code")
     mark_as_advanced(CCACHE_COMMAND)
     # For Unix Makefiles and Ninja generators
-    if (CMAKE_VERSION VERSION_LESS 3.4)
-      set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_COMMAND}")
-    else ()
-      set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_COMMAND}")
-    endif ()
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_COMMAND}")
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       add_compile_options("-Qunused-arguments")
     endif ()
@@ -106,6 +108,11 @@ endif ()
 
 # ----------------------------------------------------------------------------
 # Configure build system
+
+# CMake >=3.15 warns if top-level CMakeLists.txt contains no project command
+basis_project_args(ARGS)
+project(${ARGS})
+unset(ARGS)
 
 # Initialize project
 mirtk_project_begin()

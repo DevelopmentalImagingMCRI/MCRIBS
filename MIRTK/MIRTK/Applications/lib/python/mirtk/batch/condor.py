@@ -23,7 +23,10 @@ import re
 import os
 import sys
 import subprocess
+import time
+import datetime
 from xml.etree import ElementTree
+import mirtk.utils
 
 
 # ----------------------------------------------------------------------------
@@ -43,8 +46,10 @@ def submit(name, command=None, args=[], opts={}, script=None, tasks=0, deps=[],
                 log = os.path.join(logdir, name + "_$(Cluster).$(Process).log")
             else:
                 log = os.path.join(logdir, name + "_$(Cluster).log")
-        os.makedirs(logdir)
+        mirtk.utils.makedirs(logdir)
     jobdesc = "universe = vanilla\n"
+    if logdir:
+        jobdesc += "log = {0}\n".format(os.path.join(logdir, name + ".condor.log"))
     if threads > 0:
         jobdesc += "request_cpus = {0}\n".format(threads)
     if memory > 0:
@@ -210,14 +215,14 @@ def wait(jobs, max_time=0, max_error=5, interval=60, verbose=0):
                             raise Exception("Unknown job status: {}".format(status))
             num_wait = num_running + num_pending + num_held + num_suspended
             if verbose > 0 and (num_wait <= 0 or iterations % verbose == 0):
-                sys.stdout.write("{:%Y-%b-%d %H:%M:%S}".format(datetime.now()))
+                sys.stdout.write("{:%Y-%b-%d %H:%M:%S}".format(datetime.datetime.now()))
                 sys.stdout.write(" WAIT {p} pending, {r} running, {s} suspended, {h} held, {d} completed\n".format(
                     p=num_pending, r=num_running, s=num_suspended, h=num_held, d=num_done
                 ))
                 sys.stdout.flush()
             num_error = 0
         except subprocess.CalledProcessError:
-            sys.stdout.write("{:%Y-%b-%d %H:%M:%S}".format(datetime.now()))
+            sys.stdout.write("{:%Y-%b-%d %H:%M:%S}".format(datetime.datetime.now()))
             sys.stdout.write(" WAIT Failed to retrieve job status, will retry {0} more times!\n".format(max_error - num_error))
             sys.stdout.flush()
             num_error += 1
@@ -259,14 +264,14 @@ def wait(jobs, max_time=0, max_error=5, interval=60, verbose=0):
                                 raise Exception("Could not retrieve exit code of job {}.{} for the past {} attempts!".format(cluster, process, unknown[cluster][process]))
                             num_unknown += 1
                 if verbose > 0:
-                    sys.stdout.write("{:%Y-%b-%d %H:%M:%S}".format(datetime.now()))
+                    sys.stdout.write("{:%Y-%b-%d %H:%M:%S}".format(datetime.datetime.now()))
                     sys.stdout.write(" DONE {0} succeeded, {1} failed".format(num_jobs - num_fail - num_unknown, num_fail))
                     if num_unknown > 0:
                         sys.stdout.write(", {} unknown, will retry".format(num_unknown))
                     sys.stdout.write("\n")
                     sys.stdout.flush()
             except subprocess.CalledProcessError:
-                sys.stdout.write("{:%Y-%b-%d %H:%M:%S}".format(datetime.now()))
+                sys.stdout.write("{:%Y-%b-%d %H:%M:%S}".format(datetime.datetime.now()))
                 sys.stdout.write(" WAIT Failed to retrieve exit codes, will retry {0} more times!\n".format(max_error - num_error))
                 sys.stdout.flush()
                 num_error += 1

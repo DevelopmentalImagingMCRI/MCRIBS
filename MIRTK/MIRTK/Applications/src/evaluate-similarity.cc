@@ -327,19 +327,13 @@ int main(int argc, char **argv)
     if (verbose > 1) cout << " done" << endl;
   }
 
-  // Initialize (transformed) images
-  if (verbose > 1) cout << "Initializing registered images...", cout.flush();
+  // Initialize target image
+  if (verbose > 1) cout << "Initializing target image...", cout.flush();
   target.Initialize(target_region);
-  source.Initialize(target_region);
   if (IsNaN(target_padding)) {
     target.ClearBackgroundValue();
   } else {
     target.PutBackgroundValueAsDouble(target_padding);
-  }
-  if (IsNaN(source_padding)) {
-    source.ClearBackgroundValue();
-  } else {
-    source.PutBackgroundValueAsDouble(source_padding);
   }
   target.Recompute();
   if (verbose > 1) cout << " done" << endl;
@@ -385,7 +379,19 @@ int main(int argc, char **argv)
       }
     }
   }
-
+  int mask_size = 0;
+  for (int idx = 0; idx < nvox; ++idx) {
+    if (mask(idx) != 0) {
+      mask_size += 1;
+    }
+  }
+  if (verbose > 0 && mask_size == 0) {
+    cerr << "Warning: Target image domain is empty!";
+    if (mask_name) {
+      cerr << " Ensure mask image '" << mask_name << "' overlaps with target image domain.";
+    }
+    cerr << "\n";
+  }
   target.PutMask(&mask);
 
   // Target intensity range in region of interest
@@ -448,11 +454,22 @@ int main(int argc, char **argv)
     source_image.Read(source_name[n]);
     source_image.PutBackgroundValueAsDouble(source_padding, true);
     if (verbose > 1) {
-      cout << " done" << endl;
+      cout << " done\n";
+      cout << "Initializing source image...";
+      cout.flush();
+    }
+    source.Initialize(target_region);
+    if (IsNaN(source_padding)) {
+      source.ClearBackgroundValue();
+    } else {
+      source.PutBackgroundValueAsDouble(source_padding);
+    }
+    if (verbose > 1) {
+      cout << " done\n";
       if (source.Transformation()) {
         cout << "Transforming source image...";
-        cout.flush();
       }
+      cout.flush();
     }
     source.Recompute();
     if (verbose > 1 && source.Transformation()) {
@@ -482,8 +499,16 @@ int main(int argc, char **argv)
 
     // Compute overlap mask
     overlap = mask;
+    int overlap_size = 0;
     for (int idx = 0; idx < nvox; ++idx) {
-      overlap(idx) = (overlap(idx) && source.IsForeground(idx) ? 1 : 0);
+      if (overlap(idx) != 0 && source.IsForeground(idx)) {
+        overlap_size += 1;
+      } else {
+        overlap(idx) = 0;
+      }
+    }
+    if (verbose > 0 && overlap_size == 0) {
+      cerr << "Warning: Source image '" << source_name[n] << "' has no overlap with the target image domain!\n";
     }
 
     // Fill joint histogram

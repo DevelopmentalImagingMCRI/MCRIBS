@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
   const char *input_name  = POSARG(1);
   const char *output_name = (NUM_POSARGS == 2 ? POSARG(2) : nullptr);
   verbose = (output_name ? 0 : 1);
-  //std::cerr << "output name: " << output_name << std::endl;
+
   const char *redundant_cells_mask = nullptr;
   const char *boundary_point_mask  = nullptr;
   const char *boundary_cell_mask   = nullptr;
@@ -602,13 +602,13 @@ int main(int argc, char *argv[])
 
         if (output_name) {
           vtkIdType *cells;
-          unsigned short ncells;
+          vtkPolyDataGetPointCellsNumCellsType ncells;
           vtkSmartPointer<vtkDataArray> mask;
           mask = NewVtkDataArray(VTK_UNSIGNED_CHAR, surface->GetNumberOfPoints(), 1, "CollisionMask");
           for (vtkIdType ptId = 0; ptId < surface->GetNumberOfPoints(); ++ptId) {
             mask->SetComponent(ptId, 0, 0.);
             surface->GetPointCells(ptId, ncells, cells);
-            for (unsigned short i = 0; i < ncells; ++i) {
+            for (vtkPolyDataGetPointCellsNumCellsType i = 0; i < ncells; ++i) {
               if (collisions.GetCollisionType(cells[i]) != SurfaceCollisions::NoCollision) {
                 mask->SetComponent(ptId, 0, 1.);
                 break;

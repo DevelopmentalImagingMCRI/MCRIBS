@@ -157,9 +157,9 @@ istream &operator >>(istream &is, OverlapMetric &metric)
     metric = FalseNegatives;
   } else if (str == "false positives" || str == "falsepositives" || str == "fp") {
     metric = FalsePositives;
-  } else if (str == "sensitivity") {
+  } else if (str == "tpr" || str == "sensitivity") {
     metric = Sensitivity;
-  } else if (str == "specificity") {
+  } else if (str == "tnr" || str == "specificity") {
     metric = Specificity;
   } else if (str == "ppv" || str == "positivepredictivevalue" || str == "positive predictive value" || str == "precision") {
     metric = PositivePredictiveValue;
@@ -171,7 +171,7 @@ istream &operator >>(istream &is, OverlapMetric &metric)
     metric = FalseDiscoveryRate;
   } else if (str == "fnr" || str == "falsenegativerate" || str == "false negative rate" || str == "missrate" || str == "miss rate") {
     metric = FalseNegativeRate;
-  } else if (str == "accuracy") {
+  } else if (str == "acc" || str == "accuracy") {
     metric = Accuracy;
   } else if (str == "f1score" || str == "fscore" || str == "f-score" || str == "fmeasure" || str == "f-measure") {
     metric = F1Score;
@@ -481,7 +481,7 @@ int main(int argc, char **argv)
     else if (OPTION("-Ry2")) PARSE_ARGUMENT(j2);
     else if (OPTION("-Rz1")) PARSE_ARGUMENT(k1);
     else if (OPTION("-Rz2")) PARSE_ARGUMENT(k2);
-    else if (OPTION("-probs")) {
+    else if (OPTION("-probs") || OPTION("-pbmaps")) {
       pbmaps = true;
       if (HAS_ARGUMENT) {
         PARSE_ARGUMENT(pbmap_min);
@@ -508,7 +508,7 @@ int main(int argc, char **argv)
     else HANDLE_COMMON_OR_UNKNOWN_OPTION();
   }
   if (pbmaps && (all_labels || !segments.empty())) {
-    FatalError("Options -label[s] and -pbmaps are mutually exclusive");
+    FatalError("Options -label[s] and -probs are mutually exclusive");
   }
 
   // Read source image file paths from text file

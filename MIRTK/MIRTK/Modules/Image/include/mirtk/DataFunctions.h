@@ -491,6 +491,90 @@ public:
 };
 
 // -----------------------------------------------------------------------------
+/// Compute element-wise modulo division
+class Mod : public ElementWiseUnaryOp
+{
+  mirtkPublicAttributeMacro(double, Denominator);
+
+public:
+
+  Mod(double denominator) : _Denominator(denominator) {}
+
+  /// Transform data value and/or mask data value by setting *mask = false
+  virtual double Op(double value, bool &) const
+  {
+    return fmod(value, _Denominator);
+  }
+
+  /// Process given data (not thread-safe!)
+  virtual void Process(int n, double *data, bool *mask = NULL)
+  {
+    ElementWiseUnaryOp::Process(n, data, mask);
+    parallel_for(blocked_range<int>(0, n), *this);
+  }
+};
+
+// -----------------------------------------------------------------------------
+/// Element-wise floor
+class Floor : public ElementWiseUnaryOp
+{
+public:
+
+  /// Transform data value and/or mask data value by setting *mask = false
+  virtual double Op(double value, bool &) const
+  {
+    return floor(value);
+  }
+
+  /// Process given data (not thread-safe!)
+  virtual void Process(int n, double *data, bool *mask = NULL)
+  {
+    ElementWiseUnaryOp::Process(n, data, mask);
+    parallel_for(blocked_range<int>(0, n), *this);
+  }
+};
+
+// -----------------------------------------------------------------------------
+/// Element-wise ceil
+class Ceil : public ElementWiseUnaryOp
+{
+public:
+
+  /// Transform data value and/or mask data value by setting *mask = false
+  virtual double Op(double value, bool &) const
+  {
+    return ceil(value);
+  }
+
+  /// Process given data (not thread-safe!)
+  virtual void Process(int n, double *data, bool *mask = NULL)
+  {
+    ElementWiseUnaryOp::Process(n, data, mask);
+    parallel_for(blocked_range<int>(0, n), *this);
+  }
+};
+
+// -----------------------------------------------------------------------------
+/// Element-wise round
+class Round : public ElementWiseUnaryOp
+{
+public:
+
+  /// Transform data value and/or mask data value by setting *mask = false
+  virtual double Op(double value, bool &) const
+  {
+    return round(value);
+  }
+
+  /// Process given data (not thread-safe!)
+  virtual void Process(int n, double *data, bool *mask = NULL)
+  {
+    ElementWiseUnaryOp::Process(n, data, mask);
+    parallel_for(blocked_range<int>(0, n), *this);
+  }
+};
+
+// -----------------------------------------------------------------------------
 /// Element-wise addition
 class Add : public ElementWiseBinaryOp
 {
