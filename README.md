@@ -17,17 +17,17 @@ The script build.sh will build ITK, VTK and MIRTK. Install the following depende
 - For MIRTK
   - libtbb-dev libflann-dev python-contextlib2
 - For Python
-  - python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr python3-h5py
+  - python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr
 
 This will install all of the dependencies for ubuntu:
 
-`apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev python3-dev libtbb-dev libflann-dev libeigen3-dev python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr  python3-h5py`
+`apt install zlib1g-dev libboost-dev libglu1-mesa-dev libxt-dev python-dev python3-dev libtbb-dev libflann-dev libeigen3-dev python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr`
 
 In centos, do this:
 
-`yum install zlib-devel boost-devel mesa-libGLU-devel libXt-devel python-devel python3-devel tbb-devel eigen3-devel python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr python3-h5py`
+`yum install zlib-devel boost-devel mesa-libGLU-devel libXt-devel python-devel python3-devel tbb-devel eigen3-devel python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr`
 
-The script build.sh will checkout VTK 8.2.0 and build it.
+The script build.sh will checkout VTK 8.2.0, ITK 4.13.2 and build it.
 
 # Setting up
 
