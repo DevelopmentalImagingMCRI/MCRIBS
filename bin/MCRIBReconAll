@@ -13,7 +13,7 @@ def getScriptPath():
 
     return head
 
-def runCommand(CMD, isPython = False):
+def runCommand(CMD, isPython = False, logFileName = None):
     print("Running command:")
 
     if isPython == True:
@@ -23,6 +23,11 @@ def runCommand(CMD, isPython = False):
         T.extend(CMD[1:])
         CMD = T[:]
         del T
+
+    if isinstance(logFileName, str):
+        FID = open(logFileName, 'a')
+        FID.write("\t" + " ".join(CMD) + "\n")
+        FID.close()
 
     print("\t" + " ".join(CMD))
     try:
@@ -157,8 +162,28 @@ def main():
     else:
         Hemis = 'both'
 
+    logDir = 'logs'
+
+    os.makedirs(logDir, exist_ok = True)
+
+    logFileName = os.path.join(logDir, options.subjectid + ".log")
+
+    if not os.path.isfile(logFileName):
+        logFileFID = open(logFileName, 'w')
+    else:
+        logFileFID = open(logFileName, 'a')
+
+    logFileFID.write('--------------------------------------------\n')
+    logFileFID.write('MCRIBReconAll invocation\n')
+    logFileFID.write(datetime.now() + "\n\n")
+
+    gitCommitHash = '$Id$'
+    #@%['git', 'rev-parse', 'HEAD']
+    #logFileFID.write('')
+    logFileFID.close()
+
     isFromDHCP = os.path.isfile(os.path.join('freesurfer', options.subjectid, '.isFromDHCP'))
-    print("isFromDHCP: " + str(isFromDHCP))
+    #print("isFromDHCP: " + str(isFromDHCP))
     if (options.conform == True or options.all == True) and not isFromDHCP:
         cmd = ["MCRIBConform", os.path.join('RawT2', options.subjectid + ".nii.gz"), options.voxelsize, os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz")]
         runCommand(cmd)
