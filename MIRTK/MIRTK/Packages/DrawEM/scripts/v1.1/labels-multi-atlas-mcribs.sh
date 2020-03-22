@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 # ============================================================================
 # Developing brain Region Annotation With Expectation-Maximization (Draw-EM)
 #
@@ -57,11 +57,11 @@ if [ ! -f $sdir/MADs/$subj-subspace.nii.gz ];then
 		#transform atlas labels
 		if [ ! -f $sdir/transformations/$subj-$atlas.nii.gz ];then 
 			ms=$sdir/template/$str/$subj.nii.gz
-			run mirtk transform-image $DRAWEMDIR/atlases/MCRIBs/segmentations-v3/$atlas.nii.gz $sdir/transformations/$subj-$atlas.nii.gz -target N4/$subj.nii.gz -dofin dofs/$subj-$atlas-n.dof.gz -interp NN 
+			run mirtk transform-image $DRAWEMDIR/atlases/MCRIBs/segmentations/$atlas.nii.gz $sdir/transformations/$subj-$atlas.nii.gz -target N4/$subj.nii.gz -dofin dofs/$subj-$atlas-n.dof.gz -interp NN 
 		fi
 		if [ ! -f $sdir/transformations/tissues-$subj-$atlas.nii.gz ];then 
 			ms=$sdir/template/$str/$subj.nii.gz
-			run mirtk transform-image $DRAWEMDIR/atlases/MCRIBs/tissues-v3/$atlas.nii.gz $sdir/transformations/tissues-$subj-$atlas.nii.gz -target N4/$subj.nii.gz -dofin dofs/$subj-$atlas-n.dof.gz -interp NN 
+			run mirtk transform-image $DRAWEMDIR/atlases/MCRIBs/tissues/$atlas.nii.gz $sdir/transformations/tissues-$subj-$atlas.nii.gz -target N4/$subj.nii.gz -dofin dofs/$subj-$atlas-n.dof.gz -interp NN 
 		fi
 
 		#transform atlases
@@ -89,7 +89,7 @@ if [ ! -f $sdir/MADs/$subj-subspace.nii.gz ];then
 	done
 
 	rm -f $sdir/atlas-weights/$subj-normalized.nii.gz	
-
+	continue;
 
 	#split labels
 	transformed=""
