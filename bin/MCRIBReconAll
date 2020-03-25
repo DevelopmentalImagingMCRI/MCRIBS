@@ -6,6 +6,7 @@ import sys
 import subprocess
 import argparse
 import numpy
+import datetime
 
 def getScriptPath():
     fullPath = os.path.realpath(__file__)
@@ -175,13 +176,22 @@ def main():
 
     logFileFID.write('--------------------------------------------\n')
     logFileFID.write('MCRIBReconAll invocation\n')
-    logFileFID.write(datetime.now() + "\n\n")
+    logFileFID.write(str(datetime.datetime.now()) + "\n")
 
-    gitCommitHash = '$Id$'
-    #@%['git', 'rev-parse', 'HEAD']
-    #logFileFID.write('')
+    # option 2, run git rev-parse HEAD to get the commit hash
+    # change to the script path
+    CWD = os.getcwd()
+    os.chdir(scriptPath)
+    # run git rev-parse HEAD
+    gitProcess = subprocess.run(['git', 'rev-parse', 'HEAD'], stdout = subprocess.PIPE)
+    currentGitHash = gitProcess.stdout.decode("utf-8").rstrip()
+    # write to log file
+    logFileFID.write('git revision: ' + currentGitHash + "\n\n")
     logFileFID.close()
-
+    # change back to directory
+    os.chdir(CWD)
+    del CWD
+    
     isFromDHCP = os.path.isfile(os.path.join('freesurfer', options.subjectid, '.isFromDHCP'))
     #print("isFromDHCP: " + str(isFromDHCP))
     if (options.conform == True or options.all == True) and not isFromDHCP:
