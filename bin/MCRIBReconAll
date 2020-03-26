@@ -7,6 +7,8 @@ import subprocess
 import argparse
 import numpy
 import datetime
+import re
+
 
 def getScriptPath():
     fullPath = os.path.realpath(__file__)
@@ -14,7 +16,7 @@ def getScriptPath():
 
     return head
 
-def runCommand(CMD, isPython = False, logFileName = None):
+def runCommand(CMD, isPython = False, log_file_name = None):
     print("Running command:")
 
     if isPython == True:
@@ -25,8 +27,8 @@ def runCommand(CMD, isPython = False, logFileName = None):
         CMD = T[:]
         del T
 
-    if isinstance(logFileName, str):
-        FID = open(logFileName, 'a')
+    if isinstance(log_file_name, str):
+        FID = open(log_file_name, 'a')
         FID.write("\t" + " ".join(CMD) + "\n")
         FID.close()
 
@@ -186,17 +188,129 @@ def main():
     gitProcess = subprocess.run(['git', 'rev-parse', 'HEAD'], stdout = subprocess.PIPE)
     currentGitHash = gitProcess.stdout.decode("utf-8").rstrip()
     # write to log file
-    logFileFID.write('git revision: ' + currentGitHash + "\n\n")
-    logFileFID.close()
+    logFileFID.write('MCRIBS git revision: ' + currentGitHash + "\n\n")
+
+    # get VTK version
+
+    #os.chdir(os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK'))
+
+    # I don't have the git repo info for MIRTK so I have to put the commit in manually
+    #gitProcess = subprocess.run(['git', 'rev-parse', 'HEAD'], stdout = subprocess.PIPE)
+    #MIRTKGitHash = gitProcess.stdout.decode("utf-8").rstrip()
+    logFileFID.write("MIRTK version\n")
+    logFileFID.write('MIRTK git revision: c8e35554f1c23ef14a1c1c51b042e43f82fb44a7' + "\n\n")
+
+    # get ITK version
+    # find ITKConfig.cmake in scriptPath/ITK/ITK-install
+
+    os.chdir(os.path.join(scriptPath, '..', 'ITK', 'ITK'))
+
+    gitProcess = subprocess.run(['git', 'rev-parse', 'HEAD'], stdout = subprocess.PIPE)
+    ITKGitHash = gitProcess.stdout.decode("utf-8").rstrip()
+    logFileFID.write("ITK version\n")
+    logFileFID.write('ITK git revision: ' + ITKGitHash + "\n")
+
+    ITKConfigFileName = None
+
+    for root, dirs, files in os.walk(os.path.join(scriptPath, '..', 'ITK', 'ITK-install')):
+        if "ITKConfig.cmake" in files:
+            ITKConfigFileName = os.path.join(root, "ITKConfig.cmake")
+            break
+
+    if not ITKConfigFileName is None:
+        ITKMajorVersion = None
+        ITKMinorVersion = None
+        ITKPatchVersion = None
+
+        FID = open(ITKConfigFileName, 'r')
+
+        for curLine in FID:
+            if not (ITKMajorVersion is None or ITKMinorVersion is None or ITKPatchVersion is None):
+                break
+
+            #print(curLine)
+            mat = re.match('^set\(ITK_VERSION_(MAJOR|MINOR|PATCH) "(\d+)"\)$', curLine)
+            if not mat is None:
+                if mat.group(1) == "MAJOR":
+                    ITKMajorVersion = mat.group(2)
+                elif mat.group(1) == "MINOR":
+                    ITKMinorVersion = mat.group(2)
+                elif mat.group(1) == "PATCH":
+                    ITKPatchVersion = mat.group(2)
+        FID.close()
+
+    if not (ITKMajorVersion is None or ITKMinorVersion is None or ITKPatchVersion is None):
+        logFileFID.write('ITK version: ' + ITKMajorVersion + "." + ITKMinorVersion + "." + ITKPatchVersion + "\n\n")
+    else:
+        logFileFID.write("\n")
+    del ITKMajorVersion
+    del ITKMinorVersion
+    del ITKPatchVersion
+
+
+    # get VTK version
+    os.chdir(os.path.join(scriptPath, '..', 'VTK', 'VTK'))
+
+    gitProcess = subprocess.run(['git', 'rev-parse', 'HEAD'], stdout = subprocess.PIPE)
+    VTKGitHash = gitProcess.stdout.decode("utf-8").rstrip()
+
+    logFileFID.write("VTK version\n")
+    logFileFID.write('VTK git revision: ' + VTKGitHash + "\n")
+
+    VTKConfigFileName = None
+
+    for root, dirs, files in os.walk(os.path.join(scriptPath, '..', 'VTK', 'VTK-install')):
+        if "VTKConfig.cmake" in files:
+            VTKConfigFileName = os.path.join(root, "VTKConfig.cmake")
+            break
+
+    if not VTKConfigFileName is None:
+        VTKMajorVersion = None
+        VTKMinorVersion = None
+        VTKPatchVersion = None
+
+        FID = open(VTKConfigFileName, 'r')
+
+        for curLine in FID:
+            if not (VTKMajorVersion is None or VTKMinorVersion is None or VTKPatchVersion is None):
+                break
+
+            #print(curLine)
+            mat = re.match('^SET\(VTK_(MAJOR|MINOR|BUILD)_VERSION "(\d+)"\)$', curLine)
+            if not mat is None:
+                if mat.group(1) == "MAJOR":
+                    VTKMajorVersion = mat.group(2)
+                elif mat.group(1) == "MINOR":
+                    VTKMinorVersion = mat.group(2)
+                elif mat.group(1) == "BUILD":
+                    VTKPatchVersion = mat.group(2)
+
+                    #SET(VTK_MAJOR_VERSION "8")
+                    #SET(VTK_MINOR_VERSION "1")
+                    #SET(VTK_BUILD_VERSION "2")
+
+        FID.close()
+
+    if not (VTKMajorVersion is None or VTKMinorVersion is None or VTKPatchVersion is None):
+        logFileFID.write('VTK version: ' + VTKMajorVersion + "." + VTKMinorVersion + "." + VTKPatchVersion + "\n\n")
+    else:
+        logFileFID.write("\n")
+    del VTKMajorVersion
+    del VTKMinorVersion
+    del VTKPatchVersion
+
     # change back to directory
     os.chdir(CWD)
     del CWD
-    
+
+    logFileFID.write('--------------------------------------------\n\n')
+
+    #quit()
     isFromDHCP = os.path.isfile(os.path.join('freesurfer', options.subjectid, '.isFromDHCP'))
     #print("isFromDHCP: " + str(isFromDHCP))
     if (options.conform == True or options.all == True) and not isFromDHCP:
         cmd = ["MCRIBConform", os.path.join('RawT2', options.subjectid + ".nii.gz"), options.voxelsize, os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz")]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         #rint("--struct-reorient no longer needed, ignoring")
         pass
 
@@ -204,59 +318,59 @@ def main():
         if options.tissuesegmethod == 'DrawEM':
             cmd = ["MCRIBTissueSegDrawEM", options.subjectid, str(options.subjectage)]
             print(" ".join(cmd))
-            runCommand(cmd)
+            runCommand(cmd, log_file_name = logFileName)
         pass
 
     if (options.surfrecon == True or options.all == True) and not isFromDHCP:
         cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision)]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.inflatesphere == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBInflateSphere", options.subjectid, Hemis]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.cortribbon == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBVolMask", options.subjectid]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.surfreg == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBSurfReg", options.subjectid, Hemis]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.cortparc == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBCortParc", options.subjectid, Hemis]
         cmd.extend(options.cortparcatlases)
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if (options.cortthickness == True or options.all == True or options.autoreconaftersurf == True) and not isFromDHCP:
         cmd = ["MCRIBCortThickness", options.subjectid, Hemis]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.aparc2aseg == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBAPARC2ASEG", options.subjectid]
         cmd.extend(options.aparc2asegatlases)
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.apas2aseg == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBAPAS2ASEG", options.subjectid]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.segstats == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBSegStats", options.subjectid]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.surfvol == True or options.all == True or options.autoreconaftersurf == True:
         cmd = ["MCRIBSurfVol", options.subjectid, Hemis]
-        runCommand(cmd)
+        runCommand(cmd, log_file_name = logFileName)
         pass
 
     if options.parcstats == True or options.all == True or options.autoreconaftersurf == True:
@@ -264,8 +378,11 @@ def main():
         for curAtlas in options.aparc2asegatlases:
             curCmd = cmd[:]
             curCmd.extend([curAtlas])
-            runCommand(curCmd, isPython = True)
+            runCommand(curCmd, isPython = True, log_file_name = logFileName)
         pass
+
+    logFileFID.write("Finished without error\n\n")
+    logFileFID.close()
     quit()
 #def main():
 
