@@ -1,0 +1,11 @@
+{
+	"t2restore": "desc-restore_T2w.nii.gz",
+	"brainmask": "desc-drawem_space-T2w_brainmask.nii.gz",
+	"drawemlabels": "drawem87_space-T2w_dseg.nii.gz",
+	"lhwhitesurf": "hemi-L_space-T2w_wm.surf.gii",
+	"rhwhitesurf": "hemi-R_space-T2w_wm.surf.gii",
+	"lhpialsurf": "hemi-L_space-T2w_pial.surf.gii",
+	"rhpialsurf": "hemi-R_space-T2w_pial.surf.gii",
+	"lhcortexroi": "hemi-L_desc-medialwall_mask.shape.gii", 
+	"rhcortexroi": "hemi-R_desc-medialwall_mask.shape.gii"
+}

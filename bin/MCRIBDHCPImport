@@ -1,93 +1,157 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-if [ -z "$1" -o -z "$2" ]
-then
-  echo "usage: $0 <subject id> <dHCP anat dir>"
-  echo
-  exit
-fi
+import defusedxml.ElementTree
+import os
+import sys
+import re
+import subprocess
+import argparse
+import json
+import shutil
+import subprocess
 
-SUBJID=$1
-DHCPDIR=$2
+argParser = argparse.ArgumentParser(description = "Imports a subject's DHCP processed data for use with MCRIBS", usage = sys.argv[0] + " [optional file specs] <subject id> <workbench spec file>", formatter_class = argparse.RawTextHelpFormatter)
 
-if [ ! -d "$DHCPDIR" ]
-then
-  echo "<dHCP anat dir> given was not a directory"
-  exit
-fi
+#optionalFileArgGroup = argParser.add_argument_group('optionalfiles', "If files cannot be found automatically, specify them here")
+#optionalFileArgGroup.add_argument('--lhwhitesurf', help = "White surface, left hemisphere", required = False, type = str, action = 'store')
+#optionalFileArgGroup.add_argument('--rhwhitesurf', help = "White surface, right hemisphere", required = False, type = str, action = 'store')
+#optionalFileArgGroup.add_argument('--lhpialsurf', help = "Pial surface, left hemisphere", required = False, type = str, action = 'store')
+#optionalFileArgGroup.add_argument('--rhpialsurf', help = "Pial surface, right hemisphere", required = False, type = str, action = 'store')
+#optionalFileArgGroup.add_argument('--lhroi', help = "Cortex ROI, left hemisphere", required = False, type = str, action = 'store')
+#optionalFileArgGroup.add_argument('--rhroi', help = "Cortex ROI, right hemisphere", required = False, type = str, action = 'store')
+#optionalFileArgGroup.add_argument('--t2restore', help = "T2 bias-corrected image", required = False, type = str, action = 'store')
+#optionalFileArgGroup.add_argument('--drawemlabels', help = "DrawEM label image", required = False, type = str, action = 'store')
 
-#pwd
-mkdir -p RawT2RadiologicalIsotropic freesurfer/$1 TissueSeg
-cd freesurfer/$1
-mkdir -p label mri surf stats
-cd ../../
-#pwd
-# find the BIDS prefix they are using
-DRAWEMLABELIMAGE=`ls -1 $DHCPDIR/*_drawem_all_labels.nii.gz 2>/dev/null`
-if [ ! -z "$DRAWEMLABELIMAGE" ]
-then
-  B=`basename $DRAWEMLABELIMAGE`
-  DHCPPREFIX=${B%_drawem_all_labels.nii.gz}
-fi
+argParser.add_argument('subjectid', help = "The subject ID")
+argParser.add_argument('endswithconf', help = "The endswith conf file")
+argParser.add_argument('inputdir', help = "The input directory to search for files")
 
-# copy the images in
-cp $DRAWEMLABELIMAGE TissueSeg/${SUBJID}_all_labels.nii.gz
-ln -sf ${SUBJID}_all_labels.nii.gz TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
+options = argParser.parse_args()
+options = vars(options)
 
-DRAWEMLABELBRAINMASKIMAGE=$DHCPDIR/${DHCPPREFIX}_brainmask_drawem.nii.gz
-if [ ! -f "$DRAWEMLABELBRAINMASKIMAGE" ]
-then
-  echo "Could not find the drawem all labels image"
-  exit
-fi
-cp $DRAWEMLABELBRAINMASKIMAGE TissueSeg/${SUBJID}_brain_mask.nii.gz
+subjectID = options['subjectid']
+endsWithConfFile = options['endswithconf']
+inputDir = options['inputdir']
 
-T2IMAGE=$DHCPDIR/${DHCPPREFIX}_T2w.nii.gz
-if [ ! -f "$T2IMAGE" ]
-then
-  echo "Could not find the T2 image"
-  exit
-fi
-cp $T2IMAGE RawT2RadiologicalIsotropic/${SUBJID}.nii.gz
+if not os.path.isfile(endsWithConfFile):
+    print("Endswithconffile not found")
+    quit()
 
-# convert the images to freesurfer
-mri_convert RawT2RadiologicalIsotropic/${SUBJID}.nii.gz freesurfer/$SUBJID/mri/T1.mgz 2>/dev/null
-ln -sf T1.mgz freesurfer/$SUBJID/mri/orig.mgz
-ln -sf T1.mgz freesurfer/$SUBJID/mri/brain.mgz
+if not os.path.isdir(inputDir):
+    print("InputDir not found")
+    quit()
 
-`dirname $0`/DrawEMToFreesurferLabels TissueSeg/${SUBJID}_all_labels_manedit.nii.gz freesurfer/$SUBJID/mri/aseg.presurf.preunwmfix.mgz
+try:
+    with open(endsWithConfFile) as f:
+        endsWithData = json.load(f)
+except Exception:
+    print("Could not load endswith conf file")
+    quit()
 
-# convert the surfaces
-VOLGEOMIMAGE=TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
+minimumFieldsNeeded = ['lhwhitesurf', 'rhwhitesurf', 'lhpialsurf', 'rhpialsurf', 'drawemlabels', 'brainmask']
 
-convertSurface () {
-  local DHCPSURFACENAME=$1
-  local FSSURFACENAME=$2
+for curField in minimumFieldsNeeded:
+    if not curField in endsWithData.keys():
+        print(curField + " not found in endswith conf, it is required")
+        quit()
 
-  if [ -f "$DHCPSURFACENAME" ]
-  then
-    mris_convert --vol-geom $VOLGEOMIMAGE $DHCPSURFACENAME ${FSSURFACENAME}.tmp >/dev/null 2>/dev/null
-    mris_convert --to-tkr --vol-geom $VOLGEOMIMAGE ${FSSURFACENAME}.tmp ${FSSURFACENAME} >/dev/null 2>/dev/null
-    rm -f ${FSSURFACENAME}.tmp
-  fi
-}
+if not 'lhcortexroi' in endsWithData.keys() and not 'lhmedialwallroi' in endsWithData.keys():
+    print("I require either lhroi or lhmedialwallroi, neither are in endswith conf")
+    quit()
+if not 'rhcortexroi' in endsWithData.keys() and not 'rhmedialwallroi' in endsWithData.keys():
+    print("I require either rhroi or rhmedialwallroi, neither are in endswith conf")
+    quit()
+if not 't2restore' in endsWithData.keys() and not 't2raw' in endsWithData.keys():
+    print("I require either t2restore or t2raw, neither are in endswith conf")
 
-convertSurface $DHCPDIR/Native/${DHCPPREFIX}_left_white.surf.gii freesurfer/$SUBJID/surf/lh.white
-convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_white.surf.gii freesurfer/$SUBJID/surf/rh.white
-convertSurface $DHCPDIR/Native/${DHCPPREFIX}_left_pial.surf.gii freesurfer/$SUBJID/surf/lh.pial
-convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_pial.surf.gii freesurfer/$SUBJID/surf/rh.pial
-convertSurface $DHCPDIR/Native/${DHCPPREFIX}_left_very_inflated.surf.gii freesurfer/$SUBJID/surf/lh.very_inflated
-convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_very_inflated.surf.gii freesurfer/$SUBJID/surf/rh.very_inflated
-convertSurface $DHCPDIR/Native/${DHCPPREFIX}_left_sphere.surf.gii freesurfer/$SUBJID/surf/lh.sphere
-convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_sphere.surf.gii freesurfer/$SUBJID/surf/rh.sphere
+dataFilesFound = dict.fromkeys(endsWithData.keys())
 
-# inflated surface is not the same, will need to redo it
-# the _roi is the lh.cotex.label data
-# the RAS values in the label file are just the vertex locations in the white file
-`dirname $0`/GIFTILabelToFSLabel $DHCPDIR/Native/${DHCPPREFIX}_left_roi.shape.gii freesurfer/$SUBJID/surf/lh.white freesurfer/$SUBJID/label/lh.cortex.label
-`dirname $0`/GIFTILabelToFSLabel $DHCPDIR/Native/${DHCPPREFIX}_right_roi.shape.gii freesurfer/$SUBJID/surf/rh.white freesurfer/$SUBJID/label/rh.cortex.label
+#for curKey in dataFiles.keys():
+#    dataFiles[curKey] = options[curKey]
 
-`dirname $0`/GIFTIScalarToFSCurv $DHCPDIR/Native/${DHCPPREFIX}_left_thickness.shape.gii freesurfer/$SUBJID/surf/lh.white freesurfer/$SUBJID/surf/lh.thickness
-`dirname $0`/GIFTIScalarToFSCurv $DHCPDIR/Native/${DHCPPREFIX}_right_thickness.shape.gii freesurfer/$SUBJID/surf/rh.white freesurfer/$SUBJID/surf/rh.thickness
 
-touch freesurfer/$SUBJID/.isFromDHCP
+# check for the existence of files if given
+#for curKey in dataFiles.keys():
+#    if not dataFiles[curKey] is None:
+#        if not os.path.isfile(dataFiles[curKey]):
+#            print(dataFiles[curKey] + " was given but was not found")
+#            quit()
+
+for curKey in dataFilesFound.keys():
+    for root, dirs, files in os.walk(inputDir, topdown=False):
+        for name in files:
+            if name.endswith(endsWithData[curKey]):
+                dataFilesFound[curKey] = os.path.join(root, name)
+                break
+        if not dataFilesFound[curKey] is None:
+            break
+    if dataFilesFound[curKey] is None:
+        print(curKey + " file not found")
+        quit()
+
+# success, we have found all our files, we can now start making directories and converting
+
+try:
+    os.makedirs(os.path.join('freesurfer', subjectID), exist_ok = True)
+    os.makedirs(os.path.join('freesurfer', subjectID, 'label'), exist_ok = True)
+    os.makedirs(os.path.join('freesurfer', subjectID, 'mri'), exist_ok = True)
+    os.makedirs(os.path.join('freesurfer', subjectID, 'stats'), exist_ok = True)
+    os.makedirs(os.path.join('freesurfer', subjectID, 'surf'), exist_ok = True)
+    os.makedirs(os.path.join('TissueSeg'), exist_ok = True)
+    os.makedirs(os.path.join('RawT2RadiologicalIsotropic'), exist_ok = True)
+except Exception:
+    print("An error occurred while creating output directories")
+    quit()
+
+# copy the t2restore if both t2restore and t2raw are there
+if "t2restore" in dataFilesFound:
+    shutil.copyfile(dataFilesFound['t2restore'], os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"))
+elif "t2raw" in dataFilesFound:
+    shutil.copyfile(dataFilesFound['t2raw'], os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"))
+
+shutil.copyfile(dataFilesFound['brainmask'], os.path.join('TissueSeg', subjectID + "_brain_mask.nii.gz"))
+shutil.copyfile(dataFilesFound['drawemlabels'], os.path.join('TissueSeg', subjectID + "_all_labels.nii.gz"))
+
+os.chdir('TissueSeg')
+try:
+    os.unlink(subjectID + "_all_labels_manedit.nii.gz")
+except Exception:
+    pass
+os.symlink(subjectID + "_all_labels.nii.gz", subjectID + "_all_labels_manedit.nii.gz")
+os.chdir('..')
+
+subprocess.call(['mri_convert', os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"), os.path.join('freesurfer', subjectID, 'mri', 'T1.mgz')])
+os.chdir(os.path.join('freesurfer', subjectID, 'mri'))
+try:
+    os.unlink('orig.mgz')
+except Exception:
+    pass
+os.symlink("T1.mgz", 'orig.mgz')
+try:
+    os.unlink('brain.mgz')
+except Exception:
+    pass
+os.symlink("T1.mgz", 'brain.mgz')
+os.chdir(os.path.join('..', '..', '..'))
+
+
+def convertSurface(dhcpSurfaceName, FSSurfaceName):
+    subprocess.call(['mris_convert', '--vol-geom', os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"), dhcpSurfaceName, FSSurfaceName + ".tmp"])
+    subprocess.call(['mris_convert', '--vol-geom', os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"), FSSurfaceName + ".tmp", FSSurfaceName])
+    os.unlink(FSSurfaceName + ".tmp")
+
+convertSurface(dataFilesFound['lhwhitesurf'], os.path.join('freesurfer', subjectID, 'surf', 'lh.white'))
+convertSurface(dataFilesFound['rhwhitesurf'], os.path.join('freesurfer', subjectID, 'surf', 'rh.white'))
+convertSurface(dataFilesFound['lhpialsurf'], os.path.join('freesurfer', subjectID, 'surf', 'lh.pial'))
+convertSurface(dataFilesFound['rhpialsurf'], os.path.join('freesurfer', subjectID, 'surf', 'rh.pial'))
+
+fullPath = os.path.realpath(__file__)
+scriptPath, tail = os.path.split(fullPath)
+#print(dataFilesFound)
+
+subprocess.call([os.path.join(scriptPath, 'GIFTILabelToFSLabel'), dataFilesFound['lhcortexroi'], os.path.join('freesurfer', subjectID, 'surf', 'lh.white'), os.path.join('freesurfer', subjectID, 'label', 'lh.cortex.label')])
+subprocess.call([os.path.join(scriptPath, 'GIFTILabelToFSLabel'), dataFilesFound['rhcortexroi'], os.path.join('freesurfer', subjectID, 'surf', 'rh.white'), os.path.join('freesurfer', subjectID, 'label', 'rh.cortex.label')])
+
+FID = open(os.path.join('freesurfer', subjectID, '.isFromDHCP'), 'w')
+FID.write("yes\n")
+FID.close()

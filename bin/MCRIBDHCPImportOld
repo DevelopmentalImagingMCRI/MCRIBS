@@ -1,0 +1,93 @@
+#!/bin/bash
+
+if [ -z "$1" -o -z "$2" ]
+then
+  echo "usage: $0 <subject id> <dHCP anat dir>"
+  echo
+  exit
+fi
+
+SUBJID=$1
+DHCPDIR=$2
+
+if [ ! -d "$DHCPDIR" ]
+then
+  echo "<dHCP anat dir> given was not a directory"
+  exit
+fi
+
+#pwd
+mkdir -p RawT2RadiologicalIsotropic freesurfer/$1 TissueSeg
+cd freesurfer/$1
+mkdir -p label mri surf stats
+cd ../../
+#pwd
+# find the BIDS prefix they are using
+DRAWEMLABELIMAGE=`ls -1 $DHCPDIR/*_drawem_all_labels.nii.gz 2>/dev/null`
+if [ ! -z "$DRAWEMLABELIMAGE" ]
+then
+  B=`basename $DRAWEMLABELIMAGE`
+  DHCPPREFIX=${B%_drawem_all_labels.nii.gz}
+fi
+
+# copy the images in
+cp $DRAWEMLABELIMAGE TissueSeg/${SUBJID}_all_labels.nii.gz
+ln -sf ${SUBJID}_all_labels.nii.gz TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
+
+DRAWEMLABELBRAINMASKIMAGE=$DHCPDIR/${DHCPPREFIX}_brainmask_drawem.nii.gz
+if [ ! -f "$DRAWEMLABELBRAINMASKIMAGE" ]
+then
+  echo "Could not find the drawem all labels image"
+  exit
+fi
+cp $DRAWEMLABELBRAINMASKIMAGE TissueSeg/${SUBJID}_brain_mask.nii.gz
+
+T2IMAGE=$DHCPDIR/${DHCPPREFIX}_T2w.nii.gz
+if [ ! -f "$T2IMAGE" ]
+then
+  echo "Could not find the T2 image"
+  exit
+fi
+cp $T2IMAGE RawT2RadiologicalIsotropic/${SUBJID}.nii.gz
+
+# convert the images to freesurfer
+mri_convert RawT2RadiologicalIsotropic/${SUBJID}.nii.gz freesurfer/$SUBJID/mri/T1.mgz 2>/dev/null
+ln -sf T1.mgz freesurfer/$SUBJID/mri/orig.mgz
+ln -sf T1.mgz freesurfer/$SUBJID/mri/brain.mgz
+
+`dirname $0`/DrawEMToFreesurferLabels TissueSeg/${SUBJID}_all_labels_manedit.nii.gz freesurfer/$SUBJID/mri/aseg.presurf.preunwmfix.mgz
+
+# convert the surfaces
+VOLGEOMIMAGE=TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
+
+convertSurface () {
+  local DHCPSURFACENAME=$1
+  local FSSURFACENAME=$2
+
+  if [ -f "$DHCPSURFACENAME" ]
+  then
+    mris_convert --vol-geom $VOLGEOMIMAGE $DHCPSURFACENAME ${FSSURFACENAME}.tmp >/dev/null 2>/dev/null
+    mris_convert --to-tkr --vol-geom $VOLGEOMIMAGE ${FSSURFACENAME}.tmp ${FSSURFACENAME} >/dev/null 2>/dev/null
+    rm -f ${FSSURFACENAME}.tmp
+  fi
+}
+
+convertSurface $DHCPDIR/Native/${DHCPPREFIX}_left_white.surf.gii freesurfer/$SUBJID/surf/lh.white
+convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_white.surf.gii freesurfer/$SUBJID/surf/rh.white
+convertSurface $DHCPDIR/Native/${DHCPPREFIX}_left_pial.surf.gii freesurfer/$SUBJID/surf/lh.pial
+convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_pial.surf.gii freesurfer/$SUBJID/surf/rh.pial
+convertSurface $DHCPDIR/Native/${DHCPPREFIX}_left_very_inflated.surf.gii freesurfer/$SUBJID/surf/lh.very_inflated
+convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_very_inflated.surf.gii freesurfer/$SUBJID/surf/rh.very_inflated
+convertSurface $DHCPDIR/Native/${DHCPPREFIX}_left_sphere.surf.gii freesurfer/$SUBJID/surf/lh.sphere
+convertSurface $DHCPDIR/Native/${DHCPPREFIX}_right_sphere.surf.gii freesurfer/$SUBJID/surf/rh.sphere
+
+# inflated surface is not the same, will need to redo it
+# the _roi is the lh.cotex.label data
+# the RAS values in the label file are just the vertex locations in the white file
+`dirname $0`/GIFTILabelToFSLabel $DHCPDIR/Native/${DHCPPREFIX}_left_roi.shape.gii freesurfer/$SUBJID/surf/lh.white freesurfer/$SUBJID/label/lh.cortex.label
+`dirname $0`/GIFTILabelToFSLabel $DHCPDIR/Native/${DHCPPREFIX}_right_roi.shape.gii freesurfer/$SUBJID/surf/rh.white freesurfer/$SUBJID/label/rh.cortex.label
+
+`dirname $0`/GIFTIScalarToFSCurv $DHCPDIR/Native/${DHCPPREFIX}_left_thickness.shape.gii freesurfer/$SUBJID/surf/lh.white freesurfer/$SUBJID/surf/lh.thickness
+`dirname $0`/GIFTIScalarToFSCurv $DHCPDIR/Native/${DHCPPREFIX}_right_thickness.shape.gii freesurfer/$SUBJID/surf/rh.white freesurfer/$SUBJID/surf/rh.thickness
+
+touch freesurfer/$SUBJID/.isFromDHCP
