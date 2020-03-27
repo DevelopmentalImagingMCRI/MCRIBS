@@ -52,7 +52,7 @@ mkdir -p ITK
 cd ITK
 git clone https://github.com/InsightSoftwareConsortium/ITK.git
 cd ITK
-git checkout tags/v4.13.2
+git checkout tags/v5.0.1
 cd ..
 mkdir -p ITK-build
 cd ITK-build
