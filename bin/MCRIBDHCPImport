@@ -49,7 +49,7 @@ except Exception:
     print("Could not load endswith conf file")
     quit()
 
-minimumFieldsNeeded = ['lhwhitesurf', 'rhwhitesurf', 'lhpialsurf', 'rhpialsurf', 'drawemlabels', 'brainmask']
+minimumFieldsNeeded = ['lhwhitesurf', 'rhwhitesurf', 'lhpialsurf', 'rhpialsurf', 'drawemlabels', 'brainmask', 'lhthickness', 'rhthickness']
 
 for curField in minimumFieldsNeeded:
     if not curField in endsWithData.keys():
@@ -148,6 +148,8 @@ convertSurface(dataFilesFound['rhwhitesurf'], os.path.join('freesurfer', subject
 convertSurface(dataFilesFound['lhpialsurf'], os.path.join('freesurfer', subjectID, 'surf', 'lh.pial'))
 convertSurface(dataFilesFound['rhpialsurf'], os.path.join('freesurfer', subjectID, 'surf', 'rh.pial'))
 
+subprocess.call(['mris_convert', '-c', dataFilesFound['lhthickness'], os.path.join('freesurfer', subjectID, 'surf', 'lh.white'), os.path.join('freesurfer', subjectID, 'surf', 'lh.thickness')])
+subprocess.call(['mris_convert', '-c', dataFilesFound['rhthickness'], os.path.join('freesurfer', subjectID, 'surf', 'rh.white'), os.path.join('freesurfer', subjectID, 'surf', 'rh.thickness')])
 #print(dataFilesFound)
 
 subprocess.call([os.path.join(scriptPath, 'GIFTILabelToFSLabel'), dataFilesFound['lhcortexroi'], os.path.join('freesurfer', subjectID, 'surf', 'lh.white'), os.path.join('freesurfer', subjectID, 'label', 'lh.cortex.label')])

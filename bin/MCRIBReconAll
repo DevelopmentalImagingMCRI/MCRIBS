@@ -105,6 +105,7 @@ def main():
     argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
     argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps after surface reconstruction", required = False, action = 'store_true')
 
+    argParser.add_argument('-usegpu', help = "Use the GPU for inflation and spherical projection, affects --inflatesphere", required = False, action = 'store_true')
     argParser.add_argument('-steplist', '--steplist', help = "Prints out the processing step options in order", required = False, action = 'store_true')
 
     argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
@@ -329,7 +330,10 @@ def main():
         pass
 
     if options.inflatesphere == True or options.all == True or options.autoreconaftersurf == True:
-        cmd = ["MCRIBInflateSphere", options.subjectid, Hemis]
+        cmd = ["MCRIBInflateSphere", options.subjectid]
+        if options.usegpu == True:
+            cmd.append('-use-gpu')
+        cmd.append(Hemis)
         runCommand(cmd, log_file_name = logFileName)
         pass
 
