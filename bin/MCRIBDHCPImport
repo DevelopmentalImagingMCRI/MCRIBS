@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import defusedxml.ElementTree
 import os
 import sys
 import re
@@ -28,6 +27,8 @@ argParser.add_argument('inputdir', help = "The input directory to search for fil
 
 options = argParser.parse_args()
 options = vars(options)
+fullPath = os.path.realpath(__file__)
+scriptPath, tail = os.path.split(fullPath)
 
 subjectID = options['subjectid']
 endsWithConfFile = options['endswithconf']
@@ -120,6 +121,8 @@ except Exception:
 os.symlink(subjectID + "_all_labels.nii.gz", subjectID + "_all_labels_manedit.nii.gz")
 os.chdir('..')
 
+subprocess.call([os.path.join(scriptPath, 'DrawEMToFreesurferLabels'), os.path.join('TissueSeg', subjectID + "_all_labels_manedit.nii.gz"), os.path.join('freesurfer', subjectID, 'mri', 'aseg.presurf.preunwmfix.mgz')])
+
 subprocess.call(['mri_convert', os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"), os.path.join('freesurfer', subjectID, 'mri', 'T1.mgz')])
 os.chdir(os.path.join('freesurfer', subjectID, 'mri'))
 try:
@@ -137,7 +140,7 @@ os.chdir(os.path.join('..', '..', '..'))
 
 def convertSurface(dhcpSurfaceName, FSSurfaceName):
     subprocess.call(['mris_convert', '--vol-geom', os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"), dhcpSurfaceName, FSSurfaceName + ".tmp"])
-    subprocess.call(['mris_convert', '--vol-geom', os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"), FSSurfaceName + ".tmp", FSSurfaceName])
+    subprocess.call(['mris_convert', '--to-tkr', '--vol-geom', os.path.join('RawT2RadiologicalIsotropic', subjectID + ".nii.gz"), FSSurfaceName + ".tmp", FSSurfaceName])
     os.unlink(FSSurfaceName + ".tmp")
 
 convertSurface(dataFilesFound['lhwhitesurf'], os.path.join('freesurfer', subjectID, 'surf', 'lh.white'))
@@ -145,8 +148,6 @@ convertSurface(dataFilesFound['rhwhitesurf'], os.path.join('freesurfer', subject
 convertSurface(dataFilesFound['lhpialsurf'], os.path.join('freesurfer', subjectID, 'surf', 'lh.pial'))
 convertSurface(dataFilesFound['rhpialsurf'], os.path.join('freesurfer', subjectID, 'surf', 'rh.pial'))
 
-fullPath = os.path.realpath(__file__)
-scriptPath, tail = os.path.split(fullPath)
 #print(dataFilesFound)
 
 subprocess.call([os.path.join(scriptPath, 'GIFTILabelToFSLabel'), dataFilesFound['lhcortexroi'], os.path.join('freesurfer', subjectID, 'surf', 'lh.white'), os.path.join('freesurfer', subjectID, 'label', 'lh.cortex.label')])

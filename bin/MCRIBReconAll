@@ -9,7 +9,6 @@ import numpy
 import datetime
 import re
 
-
 def getScriptPath():
     fullPath = os.path.realpath(__file__)
     head, tail = os.path.split(fullPath)
@@ -100,6 +99,8 @@ def main():
     dhcpImportArgGroup = argParser.add_argument_group('dhcpimport', 'Perform import of completed dHCP run, directory containing data required --dhcpanatdir')
     dhcpImportArgGroup.add_argument('--dhcpimport', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     dhcpImportArgGroup.add_argument('--dhcpanatdir', help = "", required = False, action = 'store_true')
+    dhcpImportArgGroup.add_argument('--dhcpsourcedir', help = "", required = False, action = 'store_true')
+    dhcpImportArgGroup.add_argument('--dhcpderiveddir', help = "", required = False, action = 'store_true')
 
     argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
     argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps after surface reconstruction", required = False, action = 'store_true')
@@ -183,7 +184,8 @@ def main():
     # option 2, run git rev-parse HEAD to get the commit hash
     # change to the script path
     CWD = os.getcwd()
-    os.chdir(scriptPath)
+    os.chdir(os.path.join(scriptPath, '..'))
+    
     # run git rev-parse HEAD
     gitProcess = subprocess.run(['git', 'rev-parse', 'HEAD'], stdout = subprocess.PIPE)
     currentGitHash = gitProcess.stdout.decode("utf-8").rstrip()
