@@ -1,0 +1,17 @@
+--- VTK/VTK/Filters/General/vtkIntersectionPolyDataFilter.cxx	2020-03-30 15:03:42.050578551 +1100
++++ ./Filters/General/vtkIntersectionPolyDataFilter.cxx	2020-03-30 15:03:12.406561357 +1100
+@@ -2131,12 +2131,12 @@
+   //If the value of the index is greater than 2, the intersecting point
+   //actually is intersected by all three edges. In this case, set the two
+   //edges to the two edges where the intersecting point is not the end point
+-  if (index1 > 2)
++  if (index1 > 2 && ts1 < 50)
+   {
+     index1--;
+     std::swap(t1[ts1], t1[2]);
+   }
+-  if (index2 > 2)
++  if (index2 > 2 && ts2 < 50)
+   {
+     index2--;
+     std::swap(t2[ts2], t2[2]);

@@ -7,5 +7,7 @@
 	"lhpialsurf": "hemi-L_space-T2w_pial.surf.gii",
 	"rhpialsurf": "hemi-R_space-T2w_pial.surf.gii",
 	"lhcortexroi": "hemi-L_desc-medialwall_mask.shape.gii", 
-	"rhcortexroi": "hemi-R_desc-medialwall_mask.shape.gii"
+	"rhcortexroi": "hemi-R_desc-medialwall_mask.shape.gii",
+	"lhthickness": "hemi-L_space-T2w_thickness.shape.gii",
+	"rhthickness": "hemi-R_space-T2w_thickness.shape.gii"
 }
