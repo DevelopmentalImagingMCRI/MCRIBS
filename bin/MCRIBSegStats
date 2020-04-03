@@ -27,4 +27,4 @@ mri_segstats --seg mri/aseg_neo.mgz --sum stats/aseg.segstats.stats --empty --pv
 # therefore, this script is deprecated
 
 MCRIBSegStatsPython $SUBJID mri/aseg_neo.mgz `dirname $0`/../lib/ASegStatsNeonateLUT.txt stats/aseg.segstats.stats stats/aseg.stats
-rm -f mri/aseg_neo.mgz stats/aseg.segstats.stats
+#rm -f mri/aseg_neo.mgz stats/aseg.segstats.stats
