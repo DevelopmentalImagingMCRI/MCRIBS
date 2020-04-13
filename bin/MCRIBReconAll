@@ -96,11 +96,13 @@ def main():
     parcstatsArgGroup = argParser.add_argument_group('parcstats', 'Perform stats on the cortical surfaces, depends on --apas2aseg')
     parcstatsArgGroup.add_argument('--parcstats', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
 
-    dhcpImportArgGroup = argParser.add_argument_group('dhcpimport', 'Perform import of completed dHCP run, directory containing data required --dhcpanatdir')
-    dhcpImportArgGroup.add_argument('--dhcpimport', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
-    dhcpImportArgGroup.add_argument('--dhcpanatdir', help = "", required = False, action = 'store_true')
-    dhcpImportArgGroup.add_argument('--dhcpsourcedir', help = "", required = False, action = 'store_true')
-    dhcpImportArgGroup.add_argument('--dhcpderiveddir', help = "", required = False, action = 'store_true')
+    #dhcpImportArgGroup = argParser.add_argument_group('dhcpimport', 'Perform import of completed dHCP run, directory containing data required --dhcpanatdir')
+    #dhcpImportArgGroup.add_argument('--dhcpimport', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
+    #dhcpImportArgGroup.add_argument('--dhcpanatdir', help = "", required = False, action = 'store_true')
+    #dhcpImportArgGroup.add_argument('--dhcpsourcedir', help = "", required = False, action = 'store_true')
+    #dhcpImportArgGroup.add_argument('--dhcpderiveddir', help = "", required = False, action = 'store_true')
+
+    argParser.add_argument('-useT1', '--useT1', help = "Use a T1 image for Deformable, must be RawT1RadiologicalIsotropic/<subjectid>.nii.gz and registered to the conformed T2 image", required = False, action = 'store_true')
 
     argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
     argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps after surface reconstruction", required = False, action = 'store_true')
@@ -186,7 +188,7 @@ def main():
     # change to the script path
     CWD = os.getcwd()
     os.chdir(os.path.join(scriptPath, '..'))
-    
+
     # run git rev-parse HEAD
     gitProcess = subprocess.run(['git', 'rev-parse', 'HEAD'], stdout = subprocess.PIPE)
     currentGitHash = gitProcess.stdout.decode("utf-8").rstrip()
@@ -325,7 +327,7 @@ def main():
         pass
 
     if (options.surfrecon == True or options.all == True) and not isFromDHCP:
-        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision)]
+        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision), str(options.useT1)]
         runCommand(cmd, log_file_name = logFileName)
         pass
 
