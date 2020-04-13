@@ -824,7 +824,7 @@ parser.add_argument('-f', '-force', '--force', action='store_true',
 parser.add_argument('-j', '-jointol', '--jointol', dest='join_tol', default=1, type = float,
                     help='Join tolerance')
 parser.add_argument('-use-fast-collision', dest='fastcollision', action='store_true',
-                    help='Use the fast collision test')
+                    help='Use the fast collision test for white and pial surfaces')
 parser.add_argument('-v', '-verbose', '--verbose', action='count', default=0,
                     help='Increase verbosity of output messages')
 parser.add_argument('-d', '-debug', '--debug', action='count', default=0,
