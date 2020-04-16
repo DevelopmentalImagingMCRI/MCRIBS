@@ -19,22 +19,22 @@ echo $@
 
 if [ "$3" == "True" ]
 then
-    USEFASTCOLLISION=-use-fast-collision
+	USEFASTCOLLISION=-use-fast-collision
 else
-    USEFASTCOLLISION=
+	USEFASTCOLLISION=
 fi
 
 if [ "$4" == "True" ]
 then
-    echo "Using T1"
-	if [ ! -f "RawT1RadiologicalIsotropic/$SUBJID.nii.gz"]
+	echo "Using T1"
+	if [ ! -f "RawT1RadiologicalIsotropic/$SUBJID.nii.gz" ]
 	then
-	    echo "Use T1 was selected but RawT1RadiologicalIsotropic/$SUBJID.nii.gz was not found"
+		echo "Use T1 was selected but RawT1RadiologicalIsotropic/$SUBJID.nii.gz was not found"
 		exit 1
 	fi
 	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1.cfg
 else
-    CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg
 fi
 
 
