@@ -27,16 +27,23 @@ fi
 if [ "$4" == "True" ]
 then
 	echo "Using T1"
-	if [ ! -f "RawT1RadiologicalIsotropic/$SUBJID.nii.gz" ]
+	if [ ! -e "RawT1RadiologicalIsotropicN4/$SUBJID.nii.gz" -a ! -e "RawT1RadiologicalIsotropic/$SUBJID.nii.gz" ]
 	then
-		echo "Use T1 was selected but RawT1RadiologicalIsotropic/$SUBJID.nii.gz was not found"
+		echo "Use T1 was selected but RawT1RadiologicalIsotropicN4/$SUBJID.nii.gz was not found"
 		exit 1
+	fi
+
+	if [ -e "RawT1RadiologicalIsotropic/$SUBJID.nii.gz" -a ! -e "RawT1RadiologicalIsotropicN4/$SUBJID.nii.gz" ]
+	then
+		# Run N4
+		echo "Running N4"
+		mkdir -p RawT1RadiologicalIsotropicN4
+		$MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -x TissueSeg/${SUBJID}_brain_mask.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
 	fi
 	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1.cfg
 else
 	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg
 fi
-
 
 OUTDIR=SurfReconDeformable
 
@@ -45,7 +52,17 @@ mkdir -p $OUTDIR/$SUBJID/{temp,meshes,recon}
 #export LD_LIBRARY_PATH=`dirname $0`/../MIRTK/MIRTK-install/lib:$LD_LIBRARY_PATH
 #export PATH=`dirname $0`/../MIRTK/MIRTK-install/bin:$PATH
 
-#echo recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION
+if [ ! -e "TissueSeg/${SUBJID}_T2w_restore.nii.gz" ]
+then
+	if [ ! -e "MCRIBTissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz"]
+	then
+		echo "Couldnt find the bias corrected T2 in DrawEM output"
+	fi
+	
+	ln -sf ../MCRIBTissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_T2w_restore.nii.gz
+fi
+
+#echo recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 
 #recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J

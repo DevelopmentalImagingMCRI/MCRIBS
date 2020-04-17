@@ -27,7 +27,7 @@ In centos, do this:
 
 `yum install zlib-devel boost-devel mesa-libGLU-devel libXt-devel python-devel python3-devel tbb-devel eigen3-devel python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr`
 
-The script build.sh will checkout VTK 8.2.0, ITK 4.13.2 and build it.
+The script build.sh will checkout VTK 8.1.0, ITK 5.0.1 and build it.
 
 # Setting up
 
@@ -42,41 +42,62 @@ Then depending on the shell you are using source the configuration files as foll
 
 The main script to run is MCRIBReconAll. To get usage run MCRIBReconAll --help
 
+## Set up
+
+Place your raw structural images, for subject `subjid` into subdirectories as follows:  
+
+* T2 structural: `RawT2/subjid.nii.gz`
+* T1 structural: `RawT1/subjid.nii.gz` (optional)
+
+## Running
+
+There is a wrapper script called `MCRIBReconAll` that runs the pipeline of segmentation, surface extraction. The synopsis of the command is:
+
+`MCRIBReconAll [processing directive] [options] <subject id>`
+
+### Processing directives and options
+
+- --conform: Reorients T2 image to radiological orientation, axial slices. Resamples to isotropic voxels. Input <RawT2/subjid.nii.gz> Output <RawT2RadiologicalIsotropic/subjid.nii.gz>
+  - Options:
+  - --voxelsize VOXELSIZE: Voxel size to use for isotropic resampling. Use "volumepreserve" to preserve original voxel volume
+- --tissueseg: Tissue type segmentation, depends on --conform. Input <RawT2RadiologicalIsotropic/subjid.nii.gz> Outputs <TissueSeg>
+  - Options:
+  - --tissuesegmethod {DrawEM}: Specify tissue segmentation method, only DrawEM is supported
+  - --subjectage {28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44}: Subject age in weeks
+- --surfrecon: Cortical surface extraction, depends --tissueseg. Inputs <TissueSeg>, Outputs <SurfReconDeformable/subjid>
+  - Options:
+  - --surfreconmethod {Deformable}: Specify cortical surface extraction method
+  - --deformablejointhresh DEFORMABLEJOINTHRESH: Join threshold parameter for Deformable, default=1.
+  - --deformablefastcollision: Use Deformable fast collision test
+- --inflatesphere: Perform inflation, spherical mapping, curv, area, depends --surfrecon. Inputs <SurfReconDeformable/subjid>, Outputs <freesurfer/subjid>
+- --surfreg: Perform surface registration to the spherical template, depends --surfrecon
+- --surfvol: Perform surface volume calculations, depends --surfrecon
+- --cortribbon: Perform cortical ribbon volume generation, depends --surfrecon
+- --cortparc: Perform cortical parcellation, depends on --surfreg
+  - Options:
+  - --cortparcatlases {aparc,aparc+DKTatlas} [{aparc,aparc+DKTatlas} ...]: Parcellation scheme(s) to use
+- --aparc2aseg: Transfer cortical parcellations to volume, depends on --surfreg
+  - Options:
+  - --aparc2asegatlases {aparc,aparc+DKTatlas} [{aparc,aparc+DKTatlas} ...] Parcellation scheme(s) to use
+- --apas2aseg: Refine aseg.presurf using cortical parcellations, depends on --aparc2aseg with aparc
+- --cortthickness: Compute cortical thickness
+- --segstats: Perform segstats on the aseg image, depends on --apas2aseg
+- --parcstats: Perform stats on the cortical surfaces, depends on --apas2aseg
+
+The following shorthand options may be used:
+
+- --all: executes --conform, --tissueseg, --surfrecon, --inflatesphere, --surfreg, --surfvol, --cortribbon, --cortparc, --aparc2aseg, --apas2aseg, --cortthickness, --segstats, --parcstats
+- -autoreconaftersurf: executes all steps post surface extraction, i.e. --inflatesphere, --surfreg, --surfvol, --cortribbon, --cortparc, --aparc2aseg, --apas2aseg, --cortthickness, --segstats, --parcstats
+
+Other options:
+- --use-gpu, -use-gpu: Use GPU for --inflatesphere steps
+- -openmp, --openmp nthreads. Use nthreads for multithreading where possible.
+
 ## dHCP interoperability
 
 ### Import data
 
-If a subject has already been put through the dHCP subject reconstruction pipeline, data can be imported with the command
-
-`MCRIBDHCPImport <subj id> <dHCP dir>`
-
-The `<subj id>` is the intended id of the subject after importing. The parameter `<dHCP dir>` is the "anat" directory in the derivatives directory. It should be something like `../derivatives/sub-subject1/ses-session1/anat`. The prefix `sub-subject1_ses-session1` is at the start of each file, the import tool looks for the following files in the `<dHCP dir>` directory:
-
-* `sub-subject1_ses-session1_T2w.nii.gz`
-* `sub-subject1_ses-session1_drawem_all_labels.nii.gz`
-* `sub-subject1_ses-session1_brainmask_drawem.nii.gz`
-* `Native/sub-subject1_ses-session1_right_corr_thickness.shape.gii`
-* `Native/sub-subject1_ses-session1_right_curvature.shape.gii`
-* `Native/sub-subject1_ses-session1_right_drawem.label.gii`
-* `Native/sub-subject1_ses-session1_right_inflated.surf.gii`
-* `Native/sub-subject1_ses-session1_right_midthickness.surf.gii`
-* `Native/sub-subject1_ses-session1_right_pial.surf.gii`
-* `Native/sub-subject1_ses-session1_right_roi.shape.gii`
-* `Native/sub-subject1_ses-session1_right_sphere.surf.gii`
-* `Native/sub-subject1_ses-session1_right_sulc.shape.gii`
-* `Native/sub-subject1_ses-session1_right_thickness.shape.gii`
-* `Native/sub-subject1_ses-session1_right_very_inflated.surf.gii`
-* `Native/sub-subject1_ses-session1_right_white.surf.gii`
-* `Native/sub-subject1_ses-session1_thickness.dscalar.nii`
-* `Native/sub-subject1_ses-session1_sulc.dscalar.nii`
-
-After running the import tool with the following indicative command:
-
-`MCRIBDHCPImport subj ../derivatives/sub-subject1/ses-session1/anat`
-
-, use the following command to execute the MCRIB pipeline
-
-`MCRIBReconAll -all subj`
+This has recently changed, need to update the documentation here.
 
 ### Export data
 
