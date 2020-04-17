@@ -52,9 +52,9 @@ mkdir -p $OUTDIR/$SUBJID/{temp,meshes,recon}
 #export LD_LIBRARY_PATH=`dirname $0`/../MIRTK/MIRTK-install/lib:$LD_LIBRARY_PATH
 #export PATH=`dirname $0`/../MIRTK/MIRTK-install/bin:$PATH
 
-if [ ! -e "TissueSeg/${SUBJID}_T2w_restore.nii.gz" ]
+if [ ! -e "TissueSeg/${SUBJID}_t2w_restore.nii.gz" ]
 then
-	if [ ! -e "MCRIBTissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz"]
+	if [ ! -e "MCRIBTissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz" ]
 	then
 		echo "Couldnt find the bias corrected T2 in DrawEM output"
 	fi
