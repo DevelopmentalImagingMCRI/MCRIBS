@@ -32,7 +32,14 @@ export SUBJECTS_DIR=`pwd`/freesurfer
 FSDIR=`pwd`/freesurfer/$SUBJID
 
 # make the brainmask
-mri_mask $FSDIR/mri/T1.mgz TissueSeg/${SUBJID}_brain_mask.nii.gz $FSDIR/mri/brainmask.mgz
+if [ ! -e "$FSDIR/mri/T1.mgz" ]
+then
+	T1=$FSDIR/mri/T2.mgz
+else
+	T1=$FSDIR/mri/T1.mgz
+fi
+
+mri_mask $T1 TissueSeg/${SUBJID}_brain_mask.nii.gz $FSDIR/mri/brainmask.mgz
 
 for CURHEMI in $HEMIS
 do

@@ -58,7 +58,7 @@ then
 	then
 		echo "Couldnt find the bias corrected T2 in DrawEM output"
 	fi
-	
+
 	ln -sf ../MCRIBTissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_T2w_restore.nii.gz
 fi
 
