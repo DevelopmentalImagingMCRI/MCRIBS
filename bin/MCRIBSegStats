@@ -20,7 +20,7 @@ mri_binarize --i mri/aseg.mgz --o mri/aseg_neo.mgz --replace 2 159 --replace 41 
 
 # we can't use the etiv option since we dont have the talairach.xfm file
 #mri_segstats --seg mri/aseg_tmp.mgz --sum stats/aseg.allwm.stats --empty --pv mri/T1.mgz --brainmask mri/brainmask.mgz --brain-vol-from-seg --excludeid 0 --excl-ctxgmwm --supratent --subcortgray --in mri/T1.mgz --in-intensity-name norm --in-intensity-units MR --surf-wm-vol --surf-ctx-vol --totalgray --ctab $FREESURFER_HOME/ASegStatsLUT.txt --subject $SUBJID
-mri_segstats --seg mri/aseg_neo.mgz --sum stats/aseg.segstats.stats --empty --pv mri/T1.mgz --brainmask mri/brainmask.mgz --brain-vol-from-seg --excludeid 0 --excl-ctxgmwm --supratent --subcortgray --in mri/T1.mgz --in-intensity-name norm --in-intensity-units MR --surf-wm-vol --surf-ctx-vol --totalgray --ctab `dirname $0`/../lib/ASegStatsNeonateLUT.txt --subject $SUBJID
+mri_segstats --seg mri/aseg_neo.mgz --sum stats/aseg.segstats.stats --empty --pv mri/norm.mgz --brainmask mri/brainmask.mgz --brain-vol-from-seg --excludeid 0 --excl-ctxgmwm --supratent --subcortgray --in mri/norm.mgz --in-intensity-name norm --in-intensity-units MR --surf-wm-vol --surf-ctx-vol --totalgray --ctab `dirname $0`/../lib/ASegStatsNeonateLUT.txt --subject $SUBJID
 #rm -f mri/aseg_tmp.mgz mri/aseg_neo.mgz
 
 # segstats does not take into account image voxel size for its summary stats, also the pv option relies on a normalized T1 volume so we shouldn't be using it
