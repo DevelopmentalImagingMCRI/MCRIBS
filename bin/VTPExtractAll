@@ -37,9 +37,12 @@ inFilePrefix = os.path.splitext(inFileName)[0]
 geometryNIIFile = None
 
 verbose = False
+TKROnly = False
 for o, a in opts:
     if o == '--surf-volgeom':
         geometryNIIFile = a
+    if o == '--tkr-only':
+        TKROnly = True
     if o == '-v':
         verbose = True
 
@@ -67,8 +70,10 @@ S['vertices'] = numpy.stack(S['vertices']).T
 if Data.GetNumberOfPolys() > 0:
     S['faces'] = [[int(Data.GetPolys().GetData().GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
     S['faces'] = numpy.stack(S['faces']).T
+  
     freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
-    freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
+    if TKROnly == False:
+        freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
     
 # now do the point data arrays
 pointData = Data.GetPointData()

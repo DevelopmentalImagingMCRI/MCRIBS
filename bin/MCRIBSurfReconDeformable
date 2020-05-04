@@ -38,7 +38,8 @@ then
 		# Run N4
 		echo "Running N4"
 		mkdir -p RawT1RadiologicalIsotropicN4
-		$MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -x TissueSeg/${SUBJID}_brain_mask.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
+		 $MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -x TissueSeg/${SUBJID}_brain_mask.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
+		#$MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
 	fi
 	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1.cfg
 else
