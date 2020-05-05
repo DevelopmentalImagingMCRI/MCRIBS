@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+SURFDIR=SurfReconDeformable/$SUBJID/meshes
+
+if [ -f "$SURFDIR/pial-lh.vtp" -a -f "$SURFDIR/pial-rh.vtp" -a -f "$SURFDIR/white-lh.vtp" -a -f "$SURFDIR/white-rh.vtp" ]
+then
+	echo "yes"
+else
+	echo "no"
+fi
