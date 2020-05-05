@@ -586,7 +586,7 @@ def recon_neonatal_cortex(config, section, config_vars,
                                           left_mesh=left_cerebrum_mesh,
                                           bs_cb_mesh=bs_cb_mesh_1,
                                           internal_mesh=internal_mesh,
-                                          temp=temp_dir, check=check)
+                                          temp=temp_dir, check=check, join_tol=join_tol)
 
             # remove cortical surfaces of right and left hemispheres
             if not with_cerebrum_mesh:
@@ -896,14 +896,14 @@ else:
 # for each session...
 failed = 0
 for session in sessions:
-    match = re.match('^(.*)-([^-]+)$', session)
-    if match:
-        subject_id = match.group(1)
-        session_id = match.group(2)
-    else:
-        subject_id = session
-        session_id = '0'
-        session = session + '-0'
+    #match = re.match('^(.*)-([^-]+)$', session)
+    #if match:
+    #    subject_id = match.group(1)
+    #    session_id = match.group(2)
+    #else:
+    subject_id = session
+    session_id = '0'
+    session = session + '-0'
     info = {
         'subid': subject_id,
         'subject_id': subject_id,
