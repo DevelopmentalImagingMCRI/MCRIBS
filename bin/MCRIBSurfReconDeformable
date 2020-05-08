@@ -66,29 +66,52 @@ fi
 #echo recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 
-#recon-neonatal-cortex  -r `pwd` -c `dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg -s $SUBJID -t 8 -v -d -d -f -ensure-pial-is-outside-white-surface -j $J
-#recon-neonatal-cortex -r `pwd` -c recon-neonatal-cortex.cfg -s $SUBJID -t 1 -v -d -f
+RECONRETURNCODE=${PIPESTATUS[0]}
 
-HEMIS="lh
-rh"
+if [ "$RECONRETURNCODE" != "0" ]
+then
+	CEREBRUMERROR=`tac logs/$SUBJID.log | sed '/[^[:blank:]]/q;d' | grep -Po -e "\s*Exception: Failed to resolve self-intersections of .+/cerebrum-1.vtp\s*$"`
 
-SURFS="white"
+	if [ ! -z "$CEREBRUMERROR" ]
+	then
+		echo "Initial cerebrum closing failed, restarting with larger structuring elements for subdivide-brain-image"
 
-mkdir -p freesurfer/$SUBJID/surf
-mkdir -p freesurfer/$SUBJID/label
+		T=`mktemp`
+		cp $CONFIGFILE $T
+		sed -i -e 's/subcortex_closing  = 5/subcortex_closing  = 15/' $T
+		sed -i -e 's/brainstem_closing  = 5/brainstem_closing  = 15/' $T
+		sed -i -e 's/cerebellum_closing = 5/cerebellum_closing = 15/' $T
 
-for HEMI in $HEMIS
-do
-	for SURF in $SURFS
+		find SurfReconDeformable/$SUBJID -type f -delete
+		recon-neonatal-cortex -r `pwd` -c $T -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
+		SECONDRECONRETURNCODE=${PIPESTATUS[0]}
+		rm -f $T
+	fi
+fi
+
+if [ "$RECONRETURNCODE" == "0" -o "$SECONDRECONRETURNCODE" == "0" ]
+then
+	HEMIS="lh
+	rh"
+
+	SURFS="white"
+
+	mkdir -p freesurfer/$SUBJID/surf
+	mkdir -p freesurfer/$SUBJID/label
+
+	for HEMI in $HEMIS
 	do
-		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractAll --surf-volgeom=TissueSeg/${SUBJID}_all_labels.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
-		rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
-		mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
-		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.curv
-		rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.surf
+		for SURF in $SURFS
+		do
+			`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractAll --surf-volgeom=TissueSeg/${SUBJID}_all_labels.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+			rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
+			mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
+			rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.curv
+			rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.surf
 
+		done
 	done
-done
 
-# make the pial surfaces by reordering the pial vertices in the VTP files
-`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
+	# make the pial surfaces by reordering the pial vertices in the VTP files
+	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
+fi
