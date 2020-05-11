@@ -352,13 +352,13 @@ def main():
         runCommand(cmd, log_file_name = logFileName)
         pass
 
-    if (options.cortribbon == True or options.all == True or options.autoreconaftersurf == True) and options.nocortribbon == False:
-        cmd = ["MCRIBVolMask", options.subjectid]
-        runCommand(cmd, log_file_name = logFileName)
-        pass
-
     if (options.surfreg == True or options.all == True or options.autoreconaftersurf == True) and options.nosurfreg == False:
         cmd = ["MCRIBSurfReg", options.subjectid, Hemis]
+        runCommand(cmd, log_file_name = logFileName)
+        pass
+    
+    if (options.cortribbon == True or options.all == True or options.autoreconaftersurf == True) and options.nocortribbon == False:
+        cmd = ["MCRIBVolMask", options.subjectid]
         runCommand(cmd, log_file_name = logFileName)
         pass
 
