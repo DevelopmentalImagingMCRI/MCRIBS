@@ -126,4 +126,6 @@ for Hemi in Hemis:
 
     #for curField in numericFields:
     #    outDF[curField] = outDF[curField].to_numeric()
+    outDF = outDF.loc[outDF.NumVert > 0, :]
+    
     outDF.to_csv(os.path.join(SubjectsDir, SubjectID, 'stats', Hemi + "." + Atlas + ".stats"), index = False)
