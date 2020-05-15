@@ -59,7 +59,12 @@ ASEGRASTKR2Vox = numpy.linalg.inv(ASEGVox2RASTKR)
 TransformedV = ASEGRASTKR2Vox[0:3, 0:3] * numpy.matrix(FSSurf['vertices']) + ASEGRASTKR2Vox[0:3, 3]
 
 TransformedVRound = numpy.int16(numpy.array(numpy.round(TransformedV)))
-
+TransformedVRound[0] = numpy.maximum(TransformedVRound[0], 0)
+TransformedVRound[0] = numpy.minimum(TransformedVRound[0], ASEGIMG.shape[0] - 1)
+TransformedVRound[1] = numpy.maximum(TransformedVRound[1], 0)
+TransformedVRound[1] = numpy.minimum(TransformedVRound[1], ASEGIMG.shape[1] - 1)
+TransformedVRound[2] = numpy.maximum(TransformedVRound[2], 0)
+TransformedVRound[2] = numpy.minimum(TransformedVRound[2], ASEGIMG.shape[2] - 1)
 #C = 100
 
 #plt.imshow(ASEGIMG[:, :, C])
