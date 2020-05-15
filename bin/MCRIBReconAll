@@ -378,11 +378,11 @@ def main():
         cmd.extend(options.aparc2asegatlases)
         runCommand(cmd, log_file_name = logFileName)
         pass
-
-    if (options.apas2aseg == True or options.all == True or options.autoreconaftersurf == True) and options.noapas2aseg == False:
-        cmd = ["MCRIBAPAS2ASEG", options.subjectid]
-        runCommand(cmd, log_file_name = logFileName)
-        pass
+    # deprecated, done in aparc2aseg
+    #if (options.apas2aseg == True or options.all == True or options.autoreconaftersurf == True) and options.noapas2aseg == False:
+    #    cmd = ["MCRIBAPAS2ASEG", options.subjectid]
+    #    runCommand(cmd, log_file_name = logFileName)
+    #    pass
 
     if (options.segstats == True or options.all == True or options.autoreconaftersurf == True) and options.nosegstats == False:
         cmd = ["MCRIBSegStats", options.subjectid]
