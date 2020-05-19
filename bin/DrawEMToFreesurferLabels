@@ -38,8 +38,8 @@ done
 
 for i in `seq 20 2 38`
 do
-    CMD="$CMD --replace $i 3"
-    CMD="$CMD --replace `expr $i + 1` 42"
+    CMD="$CMD --replace $i 42"
+    CMD="$CMD --replace `expr $i + 1` 3"
 done
 
 #outside the brain

@@ -20,8 +20,10 @@ fi
 
 if [ -f "$FREESURFER_HOME/bin/mri_surf2volseg" ]
 then
+	# FREESURFER 7, mri_surf2volseg
 	cd $SUBJECTS_DIR/$SUBJID/mri
 	mri_surf2volseg --i aseg.presurf.mgz --fix-presurf-with-ribbon ribbon.mgz --o aseg.mgz --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
+	
 	#`dirname $0`/APARC2ASEGZeroToCSFFix aseg.mgz aseg.presurf.mgz aseg.mgz
 fi
 
@@ -31,15 +33,16 @@ do
 	then
 		# FREESURFER 6, aparc2aseg
 		cd $SUBJECTS_DIR/$SUBJID
-		#mri_aparc2aseg --no-hash --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
 		mri_aparc2aseg --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
-		`dirname $0`/ASEGRibbonFix mri/${ANNOT}+aseg.mgz mri/ribbon.mgz ../../TissueSeg/${SUBJID}_all_labels.nii.gz mri/${ANNOT}+aseg.mgz
-		`dirname $0`/APARC2ASEGZeroToCSFFix mri/${ANNOT}+aseg.mgz mri/aseg.presurf.mgz mri/${ANNOT}+aseg.mgz
-		cd mri
-		apas2aseg --i ${ANNOT}+aseg.mgz --o aseg.mgz 2>&1 > /dev/null
-	else
 		cd $SUBJECTS_DIR/$SUBJID/mri
-		mri_surf2volseg --i aseg.mgz --label-cortex --o ${ANNOT}+aseg.mgz --lh-annot ../label/lh.${ANNOT}.annot 1000 --rh-annot ../label/rh.${ANNOT}.annot 2000 --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
-		#`dirname $0`/APARC2ASEGZeroToCSFFix ${ANNOT}+aseg.mgz aseg.presurf.mgz ${ANNOT}+aseg.mgz
+		apas2aseg --i ${ANNOT}+aseg.mgz --o aseg.mgz
+	else	
+		# FREESURFER 7, mri_surf2volseg
+		cd $SUBJECTS_DIR/$SUBJID/mri
+		mri_surf2volseg --i aseg.mgz --label-cortex --o ${ANNOT}+aseg_surf2vol.mgz --lh-annot ../label/lh.${ANNOT}.annot 1000 --rh-annot ../label/rh.${ANNOT}.annot 2000 --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
+		#exit;
+		#`dirname $0`/ASEGRibbonFix mri/${ANNOT}+aseg.mgz mri/ribbon.mgz ../../TissueSeg/${SUBJID}_all_labels.nii.gz mri/${ANNOT}+aseg.mgz
+		#`dirname $0`/APARC2ASEGZeroToCSFFix mri/${ANNOT}+aseg.mgz mri/aseg.presurf.mgz mri/${ANNOT}+aseg.mgz
+		#cd mri
 	fi
 done
