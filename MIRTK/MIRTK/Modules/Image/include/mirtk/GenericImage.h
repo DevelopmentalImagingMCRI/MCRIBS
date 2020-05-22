@@ -312,9 +312,17 @@ public:
   void GetRegion(GenericImage &, int, int, int,
                                  int, int, int) const;
 
+
   /// Get image consisting of specified 3D subregion
   virtual void GetRegion(BaseImage *&, int, int, int,
                                        int, int, int) const;
+
+  // Pad image
+  GenericImage PadImage(int) const;
+  void PadImage(GenericImage&, int) const;
+  virtual void PadImage(BaseImage*&, int) const;
+
+  //virtual void PadImage(GenericImage *&, int) const;
 
   /// Get image consisting of specified 4D subregion
   GenericImage GetRegion(int, int, int, int,

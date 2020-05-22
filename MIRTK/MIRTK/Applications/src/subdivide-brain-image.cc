@@ -1723,7 +1723,10 @@ int main(int argc, char *argv[])
 
   // ---------------------------------------------------------------------------
   // Write output labels
-  regions.Write(output_name);
+  //regions.Write(output_name);
+  GreyImage paddedregions = regions.PadImage(2);
+
+  paddedregions.Write(output_name);
 
   // ---------------------------------------------------------------------------
   // Create distance map for interior of cortical surface
