@@ -55,12 +55,12 @@ mkdir -p $OUTDIR/$SUBJID/{temp,meshes,recon}
 
 if [ ! -e "TissueSeg/${SUBJID}_t2w_restore.nii.gz" ]
 then
-	if [ ! -e "MCRIBTissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz" ]
+	if [ ! -e "TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz" ]
 	then
 		echo "Couldnt find the bias corrected T2 in DrawEM output"
 	fi
 
-	ln -sf ../MCRIBTissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_T2w_restore.nii.gz
+	ln -sf ../TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_T2w_restore.nii.gz
 fi
 
 #echo recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log

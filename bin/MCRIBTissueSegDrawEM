@@ -44,6 +44,8 @@ else
 	ln -sf T2.mgz freesurfer/$SUBJID/mri/brain.mgz
 	mri_convert TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz freesurfer/$SUBJID/mri/norm.mgz
 	ln -sf ../TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_t2w_restore.nii.gz
+	
+	mri_mask freesurfer/$SUBJID/mri/T2.mgz TissueSeg/${SUBJID}_brain_mask.nii.gz $FSDIR/mri/brainmask.mgz
 
 	#DRAWEMIMAGE=$DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz
 	DRAWEMIMAGE=$OUTDIR/${SUBJID}_all_labels.nii.gz

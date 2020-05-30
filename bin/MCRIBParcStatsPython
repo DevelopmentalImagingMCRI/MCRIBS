@@ -80,7 +80,12 @@ for Hemi in Hemis:
     ThicknessValues = ThicknessData['values']
     MeanCurvValues = MeanCurvData['values']
     GaussCurvValues = GaussCurvData['values']
-    SurfVolValues = SurfVolData['values']
+    try:
+        SurfVolValues = SurfVolData['values']
+    except Exception:
+        print("Surf vol was not found, run --surfvol, GrayVol will be zeros")
+        SurfVolValues = numpy.zeros((WhiteSurf['vertices'].shape[1]))
+
     K1CurvValues = K1CurvData['values']
     K2CurvValues = K2CurvData['values']
 

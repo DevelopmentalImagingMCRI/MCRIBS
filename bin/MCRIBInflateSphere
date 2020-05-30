@@ -39,8 +39,6 @@ else
 	T1=$FSDIR/mri/T1.mgz
 fi
 
-mri_mask $T1 TissueSeg/${SUBJID}_brain_mask.nii.gz $FSDIR/mri/brainmask.mgz
-
 for CURHEMI in $HEMIS
 do
 	cd $FSDIR/surf
