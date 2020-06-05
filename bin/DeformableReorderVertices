@@ -312,6 +312,8 @@ RHIDX = WhiteWhiteRHEqual[Pial4Pial3Equal[Pial5Pial4Equal[RHUpToPial5]]]
 #raise
 # occasionally we get some duplicates in LHIDX and RHIDX
 # this is where 
+
+print(numpy.where(LHIDX < 0))
 LHDuplicates = numpy.where(numpy.bincount(LHIDX) > 1)[0]
 RHDuplicates = numpy.where(numpy.bincount(RHIDX) > 1)[0]
 

@@ -1,0 +1,52 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id> <annot prefix>"
+	exit
+fi
+
+SUBJID=$1
+
+if [ -f "TissueSeg/${1}_all_labels.nii.gz" -a -L "TissueSeg/${1}_all_labels_manedit.nii.gz" ]
+then
+	rm -f TissueSeg/${1}_all_labels_manedit.nii.gz
+	cp TissueSeg/${1}_all_labels.nii.gz TissueSeg/${1}_all_labels_manedit.nii.gz
+fi
+
+SURFS=""
+
+EDGETHICKNESS=3
+
+if [ -f "freesurfer/$1/surf/lh.white" ]
+then
+	SURFS="$SURFS -f freesurfer/$1/surf/lh.white:edgecolor=yellow:edgethickness=$EDGETHICKNESS"
+fi
+if [ -f "freesurfer/$1/surf/rh.white" ]
+then
+	SURFS="$SURFS -f freesurfer/$1/surf/rh.white:edgecolor=yellow:edgethickness=$EDGETHICKNESS"
+fi
+if [ -f "freesurfer/$1/surf/lh.pial" ]
+then
+	SURFS="$SURFS -f freesurfer/$1/surf/lh.pial:edgecolor=red:edgethickness=$EDGETHICKNESS"
+fi
+if [ -f "freesurfer/$1/surf/rh.pial" ]
+then
+	SURFS="$SURFS -f freesurfer/$1/surf/rh.pial:edgecolor=red:edgethickness=$EDGETHICKNESS"
+fi
+
+if [ -f "RawT1RadiologicalIsotropicN4/${1}.nii.gz" ]
+then
+	T1="-v RawT1RadiologicalIsotropicN4/${1}.nii.gz:visible=0"
+fi
+if [ -f "freesurfer/${1}/mri/aparc+aseg.mgz" ]
+then
+	ASEG="-v freesurfer/${1}/mri/aparc+aseg.mgz:colormap=lut:opacity=0.3"
+fi
+
+freeview \
+			 -v RawT2RadiologicalIsotropic/${1}.nii.gz \
+			 $T1 \
+			 $ASEG \
+			 -v TissueSeg/${1}_all_labels_manedit.nii.gz:opacity=0.3:colormap=lut:lut=$MCRIBS_HOME/lib/drawem_labels_FSLUT.txt:visible=0 \
+			 $SURFS

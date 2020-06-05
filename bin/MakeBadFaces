@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+
+import vtk
+import numpy
+import sys
+import os
+import freesurfer
+import nibabel
+
+if len(sys.argv) < 3:
+	print "Incorrect number of arguments"
+	print
+	print "Usage: " + sys.argv[0] + " <fs file> <curv file>"
+	quit()
+
+inFileName = sys.argv[1]
+
+if not os.path.isfile(inFileName):
+	print "Input file not found"
+	quit()
+
+S = freesurfer.readSurf(inFileName)
+
+EA = numpy.stack((S['faces'][0], S['faces'][1]))
+EB = numpy.stack((S['faces'][0], S['faces'][2]))
+EC = numpy.stack((S['faces'][2], S['faces'][1]))
+
+Edges = numpy.concatenate((EA, EB, EC), axis = 1)
+del EA
+del EB
+del EC
+
+Edges = numpy.sort(Edges, axis = 0)
+
+SortedEdgeIDX = numpy.lexsort(Edges)
+
+SortedEdges = numpy.take(Edges, SortedEdgeIDX, axis = 1)
+ChangeIDX = numpy.where(numpy.any(numpy.diff(SortedEdges, axis = 1) != 0, axis = 0))[0] + 1
+# = numpy.concatnate((numpy.array([-1]), numpy.where(numpy.any(numpy.diff(SortedEdges, axis = 1) != 0, axis = 0))[0], numpy.array([SortedEdges.shape[1]])), axis = 0 )
+J = numpy.zeros(SortedEdges.shape[1], dtype = numpy.int64)
+J[ChangeIDX] = 1
+J = numpy.cumsum(J)
+N = numpy.bincount(J)
+
+#UniqueEdges = numpy.take(SortedEdges, numpy.concatenate((numpy.array([0]), ChangeIDX)), axis = 1)
+
+#BadEdges = numpy.where(N != 2)[0]
+BadEdges = numpy.where(N == 1)[0]
+
+#dgeTuples = [tuple(row) for row in Edges]
+#U = numpy.unique(EdgeTuples)
+
+FaceIDX = numpy.tile(numpy.arange(0, S['faces'].shape[1]), 3)
+
+I = numpy.where(numpy.in1d(J, BadEdges))[0]
+
+BadFaces = numpy.unique(FaceIDX[SortedEdgeIDX[I]])
+#print str(BadFaces.size) + " bad faces"
+S['faces'] = numpy.take(S['faces'], BadFaces, axis = 1)
+
+#S = dict()
+#S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
+#S['vertices'] = numpy.stack(S['vertices']).T
+
+#if Data.GetNumberOfPolys() > 0:
+#	S['faces'] = [[int(Data.GetPolys().GetData().GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
+#	S['faces'] = numpy.stack(S['faces']).T
+	#print(S['faces'][:, 0])
+	#S['faces'] = numpy.array(numpy.take(S['faces'], numpy.array([1, 0, 2]), axis = 0))
+	#print(S['faces'][:, 0])
+
+#numpy.set_printoptions(precision=4, formatter={'float': '{: 0.3f}'.format})
+#freesurfer.writeSurf(S, sys.argv[3], fileFormat = 'binary', geometryNIIFile = sys.argv[2], convertToTKR = False)
+
+# make a curv file with the vertices that belong to the bad faces
+C = dict()
+BadVertices = numpy.unique(S['faces'].ravel())
+
+C['values'] = numpy.zeros(S['vertices'].shape[1])
+C['values'][BadVertices] = 1
+C['numVertices'] = S['vertices'].shape[1]
+C['numFaces'] = S['faces'].shape[1]
+freesurfer.writeCurv(C, sys.argv[2])
+
+#print(sys.argv)
+#freesurfer.writeSurf(S, sys.argv[3] + ".nogeom", fileFormat = 'binary', geometryNIIFile = None)

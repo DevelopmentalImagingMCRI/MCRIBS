@@ -1,0 +1,942 @@
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/subdivide-brain-image /home/addo/stlouis/MOD1517_V1_a/TissueSeg/MOD1517_V1_a_all_labels_manedit.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/recon/regions.nii.gz -cb 17 18 -wm 51..82 1..4 40..47 85..87 48 49 50 -fg /home/addo/stlouis/MOD1517_V1_a/TissueSeg/MOD1517_V1_a_brain_mask.nii.gz -subcortical-closing 5 -brainstem-closing 5 -bs 19 -gm 5..16 20..39 -output-inner-cortical-distance /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/recon/cortical-hull-dmap.nii.gz -cerebellum-closing 5 -lh 1 3 5 7 9 11 13 15 17 21 23 25 27 29 31 33 35 37 39 41 43 45 47 49 51 53 55 57 59 61 64 66 68 70 72 74 76 78 80 82 87 -sb 40..47 85..87 48 -bs+cb True -rh 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 50 52 54 56 58 60 62 63 65 67 69 71 73 75 77 79 81 86
+
+makes recon/regions.nii.gz and brainstem+cerebellum-iso.vtp
+
+erebrum-rh-mask.nii.gz
+cerebrum-rh-dmap.nii.gz
+
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/TissueSeg/MOD1517_V1_a_brain_mask.nii.gz -mask 0 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask-1.nii.gz binary
+
+All non-zero voxels
+brain-mask-1.nii.gz
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/transform-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask-1.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask-2.nii.gz -type float -interp linear -target /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/recon/regions.nii.gz -dofin Id
+
+Transform into regions.nii.gz space (so cropping).
+brain-mask-2.nii.gz
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask-2.nii.gz -threshold-le 0 -set 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/close-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz -iterations 5
+
+Binarize and close
+brain-mask.nii.gz
+
+Resampling T2-weighted image to standard RAS space
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/transform-image /home/addo/stlouis/MOD1517_V1_a/RawT2RadiologicalIsotropic/MOD1517_V1_a.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/t2w-image.nii.gz -type float -Sp 0 -interp "fast cubic bspline with padding" -target /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz -dofin Id
+
+t2w-image.nii.gz
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/TissueSeg/MOD1517_V1_a_all_labels_manedit.nii.gz -label 48 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/corpus-callosum-mask-1.nii.gz binary
+
+corpus-callosum-mask-1.nii.gz
+Extract CC label from label image
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/transform-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/corpus-callosum-mask-1.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/corpus-callosum-mask-2.nii.gz -type float -interp linear -target /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz -dofin Id
+
+corpus-callosum-mask-2.nii.gz
+Interpolate into brain_mask space
+
+ /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/corpus-callosum-mask-2.nii.gz -threshold-le 0.5 -set 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/corpus-callosum-mask.nii.gz binary
+
+corpus-callosum-mask.nii.gz
+Binarize.
+
+Reconstructing boundary of right cerebral hemisphere segmentation
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/recon/regions.nii.gz -label 2 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-mask.nii.gz binary
+
+cerebrum-rh-mask.nii.gz
+Take label from regions.
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-distance-map /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-mask.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-dmap.nii.gz -distance euclidean -isotropic 1
+
+cerebrum-rh-dmap.nii.gz
+Distance map of cerebrum-rh-mask.nii.gz.
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-dmap.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-iso.vtp -close True -isovalue 0 -blur 0
+
+cerebrum-rh-iso.vtp
+Make marching cubes wrapping surface around right hemi wm.
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-pointset-surface -input /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-iso.vtp -hull -output /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-1.vtp
+
+cerebrum-rh-hull-1.vtp
+The -hull option makes a hull.
+
+Remaining options smooth the hull a bit.
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-2.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-2.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-3.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-3.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-4.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-4.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-4.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-4.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-5.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-5.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-6.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-6.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-6.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-6.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-7.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-7.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-7.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-7.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-8.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-8.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-8.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-8.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-9.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-9.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-9.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-9.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-10.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-10.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-10.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-10.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-11.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-11.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull-11.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/project-onto-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-hull.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-1.vtp -labels /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/corpus-callosum-mask.nii.gz -name ImplicitSurfaceFillMask -dilation-radius 20 -fill False
+
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-1.vtp -scalars ImplicitSurfaceFillMask -threshold-inside 0 0 -set 0 -pad 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-1.vtp
+
+cerebrum-rh-1.vtp
+Project the corpus callosum mask onto the cerebrum mask. Set it to the pointdata field ImplicitSurfaceFillMask 'Cerebrum1ImplicitSurfaceFillMask.png'
+
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/deform-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-2.vtp -max-edge-length 1 -debug-interval 10 -gauss-curvature 0.4 -repulsion-width 1 -min-active 1% -min-distance 0.5 -triangle-inversion True -implicit-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-dmap.nii.gz -min-width 0.2 -steps 300 200 -debug-prefix /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-2- -distance-hole-filling True -distance-threshold 2 -gauss-curvature-maximum 0.5 -optimizer EulerMethod -epsilon 1e-08 -level-prefix False -fast-collision-test True -curvature 0.8 -extrinsic-energy True -step 0.5 0.1 -delta 0.01 -reset-status True -distance-measure normal -distance 1 -min-edge-length 0.5 -remesh 1 -gauss-curvature-outside 1 -gauss-curvature-minimum 0.1 -repulsion 4 -debug 1 -non-self-intersection True -distance-max-depth 5 -repulsion-distance 0.5
+
+cerebrum-rh-2.vtp
+
+Evolve the surface 
+
+# shrink the hull around the cerebrum-rh-iso.vtp to make an initial 
+
+cerebrum-rh-3.vtp
+cerebrum-lh-iso.vtp
+cerebrum-lh-hull-3.vtp
+cerebrum-lh-hull-2.vtp
+cerebrum-lh-hull-1.vtp
+cerebrum-lh-hull-5.vtp
+cerebrum-lh-hull-4.vtp
+cerebrum-lh-hull-6.vtp
+cerebrum-lh-hull-7.vtp
+cerebrum-lh-hull-9.vtp
+cerebrum-lh-hull-8.vtp
+cerebrum-lh-hull-10.vtp
+cerebrum-lh-hull.vtp
+cerebrum-lh-1.vtp
+cerebrum-lh-2-output_000.vtp
+cerebrum-lh-2-output_010.vtp
+cerebrum-lh-2-output_020.vtp
+cerebrum-lh-2-output_030.vtp
+cerebrum-lh-2-output_040.vtp
+cerebrum-lh-2-output_050.vtp
+cerebrum-lh-2-output_060.vtp
+cerebrum-lh-2-output_070.vtp
+cerebrum-lh-2-output_080.vtp
+cerebrum-lh-2-output_090.vtp
+cerebrum-lh-2-output_100.vtp
+cerebrum-lh-2-output_110.vtp
+cerebrum-lh-2-output_120.vtp
+cerebrum-lh-2-output_130.vtp
+cerebrum-lh-2-output_140.vtp
+cerebrum-lh-2.vtp
+cerebrum-lh-2-output_150.vtp
+cerebrum-lh-3.vtp
+cerebrum-1.vtp
+cerebrum-2.vtp
+cerebrum-3.vtp
+white-1.vtp
+white-2-output_000.vtp
+white-2-output_010.vtp
+white-2-output_020.vtp
+white-2-output_030.vtp
+white-2-output_040.vtp
+white-2-output_050.vtp
+white-2-output_060.vtp
+white-2-output_070.vtp
+white-2-output_080.vtp
+white-2-output_090.vtp
+white-2-output_100.vtp
+white-2-output_110.vtp
+white-2-output_120.vtp
+white-2-output_130.vtp
+white-2-output_140.vtp
+white-2-output_150.vtp
+white-2-output_160.vtp
+white-2-output_170.vtp
+white-2-output_180.vtp
+white-2-output_190.vtp
+white-2-output_200.vtp
+white-2.vtp
+pial-1.vtp
+pial-2-output_000.vtp
+pial-2-output_010.vtp
+pial-2.vtp
+pial-3.vtp
+pial-4.vtp
+pial-5.vtp
+pial-6-output_000.vtp
+pial-6-output_010.vtp
+pial-6-output_020.vtp
+pial-6-output_030.vtp
+pial-6-output_040.vtp
+pial-6-output_050.vtp
+pial-6-output_060.vtp
+pial-6-output_070.vtp
+pial-6.vtp
+
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-3.vtp -pointdata ImplicitSurfaceFillMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh.vtp -pointdata CollisionMask -celldata CollisionType
+
+Reconstructing boundary of left cerebral hemisphere segmentation
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/recon/regions.nii.gz -label 3 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-mask.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-distance-map /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-mask.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-dmap.nii.gz -distance euclidean -isotropic 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-dmap.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-iso.vtp -close True -isovalue 0 -blur 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-pointset-surface -input /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-iso.vtp -hull -output /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-1.vtp
+
+Generic Warning: In /home/addo/MCRIBS/VTK/VTK/Common/Core/vtkMath.cxx, line 564
+Unable to factor linear system
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-2.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-2.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-3.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-3.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-4.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-4.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-4.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-4.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-5.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-5.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-6.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-6.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-6.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-6.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-7.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-7.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-7.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-7.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-8.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-8.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-8.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-8.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-9.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-9.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-9.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-9.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-10.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-10.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-10.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/remesh-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-10.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-11.vtp -edge-length 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-11.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull-11.vtp -mu -0.34 -combinatorial -exclnode -iterations 100 -lambda 0.33
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/project-onto-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-hull.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-1.vtp -labels /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/corpus-callosum-mask.nii.gz -name ImplicitSurfaceFillMask -dilation-radius 20 -fill False
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-1.vtp -scalars ImplicitSurfaceFillMask -threshold-inside 0 0 -set 0 -pad 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-1.vtp
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/deform-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-2.vtp -max-edge-length 1 -debug-interval 10 -gauss-curvature 0.4 -repulsion-width 1 -min-active 1% -min-distance 0.5 -triangle-inversion True -implicit-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-dmap.nii.gz -min-width 0.2 -steps 300 200 -debug-prefix /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-2- -distance-hole-filling True -distance-threshold 2 -gauss-curvature-maximum 0.5 -optimizer EulerMethod -epsilon 1e-08 -level-prefix False -fast-collision-test True -curvature 0.8 -extrinsic-energy True -step 0.5 0.1 -delta 0.01 -reset-status True -distance-measure normal -distance 1 -min-edge-length 0.5 -remesh 1 -gauss-curvature-outside 1 -gauss-curvature-minimum 0.1 -repulsion 4 -debug 1 -non-self-intersection True -distance-max-depth 5 -repulsion-distance 0.5
+
+
+Level 1 out of 2
+
+          Energy            Distance          Curvature         Gauss curv.         Repulsion         Stopping criterion
+   1      2.97893             2.97893             0.00387             0.00339             0.00000      [active = 100.0%, delta = 0.5000mm]
+   2      2.67990             2.67990             0.00419             0.00714             0.00000      [active = 100.0%, delta = 0.5000mm]
+   3      2.43161             2.43161             0.00481             0.01073             0.00000      [active = 100.0%, delta = 0.5000mm]
+   4      2.23048             2.23048             0.00577             0.01441             0.00000      [active = 100.0%, delta = 0.5000mm]
+   5      2.07385             2.07385             0.00688             0.01790             6.77620e-09  [active = 100.0%, delta = 0.5000mm]
+   6      1.94204             1.94204             0.00773             0.02098             0.00000      [active =  99.4%, delta = 0.5000mm]
+   7      1.83317             1.83317             0.00795             0.02325             1.62573e-09  [active =  99.1%, delta = 0.5000mm]
+   8      1.73782             1.73782             0.00817             0.02579             7.37246e-08  [active =  98.8%, delta = 0.5000mm]
+   9      1.65071             1.65071             0.00827             0.02791             8.22381e-08  [active =  97.9%, delta = 0.5000mm]
+  10      1.58341             1.58341             0.00839             0.02973             1.31162e-07  [active =  96.8%, delta = 0.5000mm]
+  11      1.52277             1.52277             0.00843             0.03158             2.41381e-07  [active =  96.0%, delta = 0.5000mm]
+  12      1.47134             1.47134             0.00851             0.03311             4.70034e-07  [active =  95.2%, delta = 0.5000mm]
+  13      1.42301             1.42301             0.00864             0.03457             9.06161e-07  [active =  94.7%, delta = 0.5000mm]
+  14      1.37952             1.37952             0.00887             0.03642             2.30323e-06  [active =  93.7%, delta = 0.5000mm]
+  15      1.33739             1.33739             0.00893             0.03717             1.94684e-06  [active =  92.7%, delta = 0.5000mm]
+  16      1.29991             1.29991             0.00879             0.03823             1.38616e-06  [active =  91.7%, delta = 0.5000mm]
+  17      1.26555             1.26555             0.00890             0.03938             1.54092e-06  [active =  91.3%, delta = 0.5000mm]
+  18      1.23560             1.23560             0.00899             0.04046             1.52532e-06  [active =  91.2%, delta = 0.5000mm]
+  19      1.20074             1.20074             0.00896             0.04145             6.73864e-06  [active =  91.3%, delta = 0.5000mm]
+  20      1.17020             1.17020             0.00904             0.04214             3.26039e-06  [active =  88.5%, delta = 0.4545mm]
+  21      1.14011             1.14011             0.00905             0.04289             5.45660e-06  [active =  88.7%, delta = 0.5000mm]
+  22      1.11110             1.11110             0.00908             0.04350             3.37443e-06  [active =  88.2%, delta = 0.5000mm]
+  23      1.08005             1.08005             0.00903             0.04402             7.64813e-07  [active =  87.6%, delta = 0.5000mm]
+  24      1.05283             1.05283             0.00893             0.04423             9.37950e-07  [active =  87.6%, delta = 0.5000mm]
+  25      1.03057             1.03057             0.00894             0.04454             2.44995e-06  [active =  87.3%, delta = 0.5000mm]
+  26      1.00750             1.00750             0.00903             0.04495             2.03642e-06  [active =  87.3%, delta = 0.5000mm]
+  27      0.98465             0.98465             0.00894             0.04512             2.59255e-06  [active =  85.7%, delta = 0.5000mm]
+  28      0.96273             0.96273             0.00890             0.04545             1.96786e-06  [active =  84.4%, delta = 0.5000mm]
+  29      0.94130             0.94130             0.00882             0.04577             9.22369e-07  [active =  84.5%, delta = 0.4980mm]
+  30      0.91838             0.91838             0.00890             0.04606             5.38534e-07  [active =  84.6%, delta = 0.4782mm]
+  31      0.89219             0.89219             0.00890             0.04603             2.97087e-07  [active =  84.0%, delta = 0.5000mm]
+  32      0.87350             0.87350             0.00885             0.04620             1.56570e-07  [active =  84.1%, delta = 0.5000mm]
+  33      0.85132             0.85132             0.00890             0.04652             3.32574e-07  [active =  84.1%, delta = 0.5000mm]
+  34      0.83009             0.83009             0.00893             0.04672             5.09348e-07  [active =  84.3%, delta = 0.5000mm]
+  35      0.80811             0.80811             0.00888             0.04681             3.67580e-06  [active =  82.7%, delta = 0.5000mm]
+  36      0.78605             0.78605             0.00902             0.04720             4.50667e-06  [active =  82.0%, delta = 0.4885mm]
+  37      0.75838             0.75838             0.00915             0.04733             7.89199e-06  [active =  82.1%, delta = 0.5000mm]
+  38      0.73216             0.73216             0.00910             0.04742             6.83194e-06  [active =  82.2%, delta = 0.5000mm]
+  39      0.70443             0.70443             0.00908             0.04778             6.39958e-06  [active =  82.4%, delta = 0.5000mm]
+  40      0.68051             0.68051             0.00907             0.04793             4.36035e-06  [active =  82.5%, delta = 0.5000mm]
+  41      0.65725             0.65725             0.00903             0.04811             1.03823e-06  [active =  82.7%, delta = 0.5000mm]
+  42      0.63354             0.63354             0.00910             0.04840             2.56613e-06  [active =  82.6%, delta = 0.5000mm]
+  43      0.60806             0.60806             0.00906             0.04857             1.15869e-06  [active =  82.4%, delta = 0.5000mm]
+  44      0.58681             0.58681             0.00889             0.04856             5.51369e-07  [active =  82.2%, delta = 0.5000mm]
+  45      0.56504             0.56504             0.00883             0.04882             3.09736e-07  [active =  82.2%, delta = 0.5000mm]
+  46      0.53896             0.53896             0.00897             0.04900             3.52254e-07  [active =  82.5%, delta = 0.5000mm]
+  47      0.51326             0.51326             0.00880             0.04916             3.94398e-07  [active =  82.5%, delta = 0.5000mm]
+  48      0.49125             0.49125             0.00862             0.04910             3.90378e-07  [active =  81.4%, delta = 0.5000mm]
+  49      0.47361             0.47361             0.00843             0.04899             6.24275e-07  [active =  81.3%, delta = 0.5000mm]
+  50      0.45853             0.45853             0.00835             0.04902             1.32454e-06  [active =  81.5%, delta = 0.5000mm]
+  51      0.44286             0.44286             0.00832             0.04908             2.27870e-06  [active =  81.2%, delta = 0.5000mm]
+  52      0.42753             0.42753             0.00824             0.04909             1.47270e-06  [active =  79.7%, delta = 0.5000mm]
+  53      0.41495             0.41495             0.00812             0.04911             2.53404e-07  [active =  77.3%, delta = 0.5000mm]
+  54      0.40107             0.40107             0.00809             0.04922             3.17761e-07  [active =  76.0%, delta = 0.5000mm]
+  55      0.38984             0.38984             0.00802             0.04911             2.59587e-07  [active =  75.8%, delta = 0.5000mm]
+  56      0.37887             0.37887             0.00789             0.04908             2.74896e-07  [active =  69.8%, delta = 0.5000mm]
+  57      0.37030             0.37030             0.00783             0.04893             3.52032e-07  [active =  68.4%, delta = 0.5000mm]
+  58      0.36031             0.36031             0.00777             0.04901             2.24071e-07  [active =  64.4%, delta = 0.5000mm]
+  59      0.35141             0.35141             0.00779             0.04898             4.27195e-07  [active =  60.4%, delta = 0.5000mm]
+  60      0.34184             0.34184             0.00774             0.04896             1.98955e-07  [active =  48.4%, delta = 0.5000mm]
+  61      0.33518             0.33518             0.00773             0.04900             2.98270e-07  [active =  45.3%, delta = 0.5000mm]
+  62      0.32888             0.32888             0.00766             0.04896             3.40101e-07  [active =  43.7%, delta = 0.5000mm]
+  63      0.32226             0.32226             0.00763             0.04886             3.68356e-07  [active =  43.4%, delta = 0.5000mm]
+  64      0.31614             0.31614             0.00767             0.04887             4.08714e-07  [active =  41.3%, delta = 0.5000mm]
+  65      0.30894             0.30894             0.00768             0.04886             5.30157e-07  [active =  39.7%, delta = 0.5000mm]
+  66      0.30123             0.30123             0.00762             0.04883             6.75639e-07  [active =  36.1%, delta = 0.5000mm]
+  67      0.29519             0.29519             0.00757             0.04861             7.84388e-07  [active =  36.0%, delta = 0.5000mm]
+  68      0.29069             0.29069             0.00748             0.04849             3.40712e-07  [active =  34.9%, delta = 0.5000mm]
+  69      0.28604             0.28604             0.00748             0.04848             1.19583e-06  [active =  35.0%, delta = 0.5000mm]
+  70      0.28159             0.28159             0.00743             0.04840             2.15854e-07  [active =  32.2%, delta = 0.5000mm]
+  71      0.27685             0.27685             0.00744             0.04840             1.49628e-06  [active =  28.6%, delta = 0.5000mm]
+  72      0.27243             0.27243             0.00739             0.04837             2.27935e-07  [active =  24.8%, delta = 0.5000mm]
+  73      0.26844             0.26844             0.00735             0.04831             4.57258e-07  [active =  23.6%, delta = 0.5000mm]
+  74      0.26482             0.26482             0.00739             0.04829             7.00652e-07  [active =  23.3%, delta = 0.5000mm]
+  75      0.26124             0.26124             0.00740             0.04823             1.04631e-06  [active =  21.1%, delta = 0.5000mm]
+  76      0.25774             0.25774             0.00736             0.04816             3.03494e-07  [active =  20.8%, delta = 0.5000mm]
+  77      0.25383             0.25383             0.00738             0.04816             1.82165e-06  [active =  17.3%, delta = 0.5000mm]
+  78      0.25111             0.25111             0.00733             0.04805             3.98701e-07  [active =  16.8%, delta = 0.5000mm]
+  79      0.24894             0.24894             0.00738             0.04811             9.55727e-07  [active =  16.8%, delta = 0.5000mm]
+  80      0.24645             0.24645             0.00733             0.04792             3.51342e-07  [active =  15.6%, delta = 0.5000mm]
+  81      0.24398             0.24398             0.00734             0.04792             2.63297e-07  [active =  14.1%, delta = 0.5000mm]
+  82      0.24128             0.24128             0.00735             0.04792             2.56646e-07  [active =  13.8%, delta = 0.5000mm]
+  83      0.23907             0.23907             0.00733             0.04784             3.28550e-07  [active =  12.5%, delta = 0.5000mm]
+  84      0.23732             0.23732             0.00732             0.04787             2.48030e-07  [active =  12.3%, delta = 0.5000mm]
+  85      0.23581             0.23581             0.00735             0.04777             1.48178e-07  [active =  11.3%, delta = 0.5000mm]
+  86      0.23432             0.23432             0.00735             0.04791             8.87748e-07  [active =  11.3%, delta = 0.5000mm]
+  87      0.23277             0.23277             0.00735             0.04789             2.57056e-07  [active =  10.6%, delta = 0.5000mm]
+  88      0.23202             0.23202             0.00729             0.04785             1.61725e-07  [active =   9.7%, delta = 0.5000mm]
+  89      0.23117             0.23117             0.00730             0.04785             2.21752e-07  [active =   9.4%, delta = 0.5000mm]
+  90      0.23056             0.23056             0.00726             0.04783             1.87574e-07  [active =   9.1%, delta = 0.5000mm]
+  91      0.22999             0.22999             0.00732             0.04782             2.35168e-07  [active =   8.6%, delta = 0.5000mm]
+  92      0.22976             0.22976             0.00730             0.04788             2.54245e-07  [active =   7.7%, delta = 0.5000mm]
+  93      0.22919             0.22919             0.00728             0.04787             2.85881e-07  [active =   6.9%, delta = 0.5000mm]
+  94      0.22928             0.22928             0.00727             0.04784             2.63645e-07  [active =   6.7%, delta = 0.5000mm]
+  95      0.22844             0.22844             0.00730             0.04793             9.30637e-07  [active =   6.3%, delta = 0.5000mm]
+  96      0.22840             0.22840             0.00724             0.04785             1.79738e-07  [active =   6.1%, delta = 0.5000mm]
+  97      0.22793             0.22793             0.00727             0.04784             1.34402e-06  [active =   5.1%, delta = 0.5000mm]
+  98      0.22831             0.22831             0.00730             0.04784             3.20215e-07  [active =   4.5%, delta = 0.5000mm]
+  99      0.22752             0.22752             0.00725             0.04782             6.25471e-07  [active =   4.3%, delta = 0.5000mm]
+ 100      0.22766             0.22766             0.00727             0.04779             3.88880e-07  [active =   4.2%, delta = 0.5000mm]
+ 101      0.22749             0.22749             0.00727             0.04780             1.35819e-06  [active =   3.8%, delta = 0.5000mm]
+ 102      0.22743             0.22743             0.00728             0.04781             1.04044e-06  [active =   3.8%, delta = 0.5000mm]
+ 103      0.22688             0.22688             0.00727             0.04778             2.19147e-07  [active =   3.7%, delta = 0.5000mm]
+ 104      0.22710             0.22710             0.00726             0.04778             2.31589e-07  [active =   2.9%, delta = 0.5000mm]
+ 105      0.22692             0.22692             0.00727             0.04776             2.34291e-07  [active =   2.8%, delta = 0.5000mm]
+ 106      0.22713             0.22713             0.00727             0.04776             6.92607e-07  [active =   2.5%, delta = 0.5000mm]
+ 107      0.22659             0.22659             0.00728             0.04777             6.41496e-07  [active =   2.3%, delta = 0.5000mm]
+ 108      0.22691             0.22691             0.00726             0.04776             2.21049e-07  [active =   2.1%, delta = 0.5000mm]
+ 109      0.22667             0.22667             0.00728             0.04782             2.45291e-07  [active =   2.0%, delta = 0.5000mm]
+ 110      0.22647             0.22647             0.00726             0.04781             1.68099e-07  [active =   1.9%, delta = 0.5000mm]
+ 111      0.22687             0.22687             0.00728             0.04785             2.80120e-07  [active =   1.8%, delta = 0.5000mm]
+ 112      0.22691             0.22691             0.00727             0.04781             8.25121e-07  [active =   1.7%, delta = 0.5000mm]
+ 113      0.22681             0.22681             0.00729             0.04781             3.22887e-07  [active =   1.5%, delta = 0.5000mm]
+ 114      0.22673             0.22673             0.00727             0.04775             2.72509e-07  [active =   1.5%, delta = 0.5000mm]
+ 115      0.22689             0.22689             0.00729             0.04777             1.71151e-07  [active =   1.4%, delta = 0.5000mm]
+ 116      0.22667             0.22667             0.00727             0.04774             1.72939e-07  [active =   1.4%, delta = 0.5000mm]
+ 117      0.22683             0.22683             0.00729             0.04779             1.66507e-07  [active =   1.3%, delta = 0.5000mm]
+ 118      0.22673             0.22673             0.00727             0.04775             1.69890e-07  [active =   1.3%, delta = 0.5000mm]
+ 119      0.22682             0.22682             0.00729             0.04780             1.64235e-07  [active =   1.3%, delta = 0.5000mm]
+ 120      0.22661             0.22661             0.00727             0.04779             1.63960e-07  [active =   1.2%, delta = 0.5000mm]
+ 121      0.22685             0.22685             0.00729             0.04785             1.62974e-07  [active =   1.2%, delta = 0.5000mm]
+ 122      0.22664             0.22664             0.00727             0.04780             1.61067e-07  [active =   1.2%, delta = 0.5000mm]
+ 123      0.22686             0.22686             0.00730             0.04780             1.70708e-07  [active =   1.1%, delta = 0.5000mm]
+ 124      0.22676             0.22676             0.00728             0.04776             1.59775e-07  [active =   1.1%, delta = 0.5000mm]
+ 125      0.22686             0.22686             0.00730             0.04780             1.66996e-07  [active =   1.1%, delta = 0.5000mm]
+ 126      0.22671             0.22671             0.00728             0.04778             1.63795e-07  [active =   1.0%, delta = 0.5000mm]
+ 127      0.22705             0.22705             0.00731             0.04779             1.62989e-07  [active =   1.0%, delta = 0.5000mm]
+ 128      0.22682             0.22682             0.00729             0.04774             1.60565e-07  [active =   1.0%, delta = 0.5000mm]
+ 129      0.22685             0.22685             0.00730             0.04775             1.63641e-07  [active =   1.0%, delta = 0.5000mm]
+ 130      0.22670             0.22670             0.00729             0.04776             1.61290e-07  [active =   1.0%, delta = 0.5000mm]
+          No further improvement or stopping criterion fulfilled
+
+Level 2 out of 2
+
+          Energy            Distance          Curvature         Gauss curv.         Repulsion         Stopping criterion
+   1      0.22475             0.22475             0.00697             0.04773             1.14481e-07  [active = 100.0%, delta = 0.1000mm]
+   2      0.22212             0.22212             0.00672             0.04764             1.31670e-07  [active = 100.0%, delta = 0.1000mm]
+   3      0.21994             0.21994             0.00654             0.04761             1.62722e-07  [active = 100.0%, delta = 0.1000mm]
+   4      0.21845             0.21845             0.00647             0.04757             2.32529e-07  [active = 100.0%, delta = 0.1000mm]
+   5      0.21682             0.21682             0.00639             0.04755             3.83936e-07  [active = 100.0%, delta = 0.1000mm]
+   6      0.21461             0.21461             0.00634             0.04750             6.35538e-07  [active =  11.5%, delta = 0.1000mm]
+   7      0.21335             0.21335             0.00627             0.04739             3.39236e-07  [active =  11.3%, delta = 0.1000mm]
+   8      0.21236             0.21236             0.00626             0.04740             3.31993e-07  [active =  10.9%, delta = 0.1000mm]
+   9      0.21185             0.21185             0.00627             0.04738             2.47367e-07  [active =  10.7%, delta = 0.1000mm]
+  10      0.21129             0.21129             0.00629             0.04735             2.20340e-07  [active =  10.7%, delta = 0.1000mm]
+  11      0.21096             0.21096             0.00630             0.04736             1.96170e-07  [active =  10.6%, delta = 0.1000mm]
+  12      0.21033             0.21033             0.00632             0.04737             1.99674e-07  [active =  10.6%, delta = 0.1000mm]
+  13      0.21001             0.21001             0.00635             0.04736             1.67797e-07  [active =   7.2%, delta = 0.1000mm]
+  14      0.20978             0.20978             0.00637             0.04739             1.63585e-07  [active =   5.1%, delta = 0.1000mm]
+  15      0.20950             0.20950             0.00638             0.04740             3.03981e-07  [active =   2.5%, delta = 0.1000mm]
+  16      0.20938             0.20938             0.00638             0.04741             2.31895e-07  [active =   2.5%, delta = 0.1000mm]
+  17      0.20941             0.20941             0.00638             0.04739             2.33743e-07  [active =   2.4%, delta = 0.1000mm]
+  18      0.20923             0.20923             0.00639             0.04738             3.42758e-07  [active =   1.4%, delta = 0.1000mm]
+  19      0.20928             0.20928             0.00640             0.04738             3.11033e-07  [active =   1.4%, delta = 0.1000mm]
+  20      0.20915             0.20915             0.00640             0.04737             3.30865e-07  [active =   0.9%, delta = 0.1000mm]
+          No further improvement or stopping criterion fulfilled
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-3.vtp -pointdata ImplicitSurfaceFillMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh.vtp -pointdata CollisionMask -celldata CollisionType
+
+Joining surfaces of right and left cerebral hemispheres
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/merge-surfaces -smoothing-iterations 100 -source-array RegionId -largest True -smoothing-lambda 1 -output /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-1.vtp -snap-tolerance 0.1 -input /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-rh.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-lh.vtp -dividers True -labels /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/recon/regions.nii.gz -tolerance 1.0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-1.vtp -pointdata RegionId
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-1.vtp -threads 0 -attr -topology
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-2.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-2.vtp -pointdata CollisionMask -celldata CollisionType
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/recon/regions.nii.gz -label 1 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cortex-mask.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/project-onto-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -cell-data True -point-data False -name CortexMask -dilation-radius 0.5 -max-hole-size 100 -labels /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cortex-mask.nii.gz -smooth 2 -min-size 1000 -fill True
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/erode-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -cell-data CortexMask -iterations 2
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -cell-data RegionId -label 7 -set 0 -pad 1 -reset-mask -mul CortexMask -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp binary CortexMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-surface-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -cell-labels RegionId -border-mask RegionBorder
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -cell-data RegionBorder -threshold 1 -set 0 -pad 1 -reset-mask -mul RegionId -mul CortexMask -binarize 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp char CortexMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -gt 0 -where CortexMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -cell-data ComponentId -binarize 1 2 -mul CortexMask -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp binary CortexMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -cell-data RegionId -label 1 -mul CortexMask -threshold-gt 0 -add 5 -reset-mask -label 2 -mul CortexMask -threshold-gt 0 -add 6 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -name BoundaryMask ComponentId RegionBorder DuplicatedMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp -threads 0 -attr -where CortexMask -gt 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-pointset-cells /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/internal.vtp -where RegionId -lt 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-pointset-cells /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum-4.vtp -where RegionId -gt 0
+
+Creating white matter mask from segmentation image
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/TissueSeg/MOD1517_V1_a_all_labels_manedit.nii.gz -label 51..82 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-matter-mask-1.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/transform-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-matter-mask-1.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-matter-mask-2.nii.gz -type float -interp linear -target /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz -dofin Id
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-matter-mask-2.nii.gz -threshold-le 0.5 -set 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-matter-mask.nii.gz binary
+
+Creating gray matter mask from segmentation image
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/TissueSeg/MOD1517_V1_a_all_labels_manedit.nii.gz -label 5..16 20..39 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/gray-matter-mask-1.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/transform-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/gray-matter-mask-1.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/gray-matter-mask-2.nii.gz -type float -interp linear -target /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz -dofin Id
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/gray-matter-mask-2.nii.gz -threshold-le 0.5 -set 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/gray-matter-mask.nii.gz binary
+
+Creating deep gray matter mask from segmentation image
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/TissueSeg/MOD1517_V1_a_all_labels_manedit.nii.gz -label 1..4 40..47 85..87 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/deep-gray-matter-mask-1.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/transform-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/deep-gray-matter-mask-1.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/deep-gray-matter-mask-2.nii.gz -type float -interp linear -target /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz -dofin Id
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/deep-gray-matter-mask-2.nii.gz -threshold-le 0.5 -set 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/deep-gray-matter-mask.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/TissueSeg/MOD1517_V1_a_all_labels_manedit.nii.gz -label 49 50 -set 1 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/ventricles-mask-1.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/transform-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/ventricles-mask-1.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/ventricles-mask-2.nii.gz -type float -interp linear -target /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz -dofin Id
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/ventricles-mask-2.nii.gz -threshold-le 0.5 -set 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/ventricles-mask.nii.gz binary
+
+Computing lateral ventricles distance map
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-distance-map /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/ventricles-mask.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/ventricles-dmap.nii.gz -distance euclidean -isotropic 1
+
+Reconstructing inner-cortical surface
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/copy-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/cerebrum.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-1.vtp -unanimous -celldata-as-pointdata CortexMask InitialStatus other binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/erode-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-1.vtp -array InitialStatus -iterations 8
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/deep-gray-matter-mask.nii.gz -binarize 0 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-foreground-1.nii.gz binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/close-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-foreground-1.nii.gz /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-foreground.nii.gz -connectivity 18 -iterations 2
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/deform-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-2.vtp -debug-interval 10 -ventricles-distance-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/ventricles-dmap.nii.gz -image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/t2w-image.nii.gz -edge-distance-median 1 -repulsion-width 1.0 -repulsion-distance 0.5 -min-width 0.1 -edge-distance 1.0 -gauss-curvature-inside 1.0 -epsilon 1e-06 -edge-distance-smoothing 1 -fast-collision-test False -curvature 2.0 -delta 0.01 -min-edge-length 0.5 -edge-distance-type "Neonatal T2-w WM/cGM" -gauss-curvature-outside 0.5 -distance-averaging 4 2 1 -debug 1 -max-edge-length 1.0 -gauss-curvature 0.5 -min-active 1% -triangle-inversion True -inner-cortical-distance-image /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/recon/cortical-hull-dmap.nii.gz -wm-mask /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-matter-mask.nii.gz -edge-distance-max-depth 5.0 -steps 50 100 -debug-prefix /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-2- -gauss-curvature-maximum 0.2 -optimizer EulerMethod -level-prefix False -extrinsic-energy True -step 0.2 -reset-status True -remesh 1 -edge-distance-averaging 4 2 1 -mask /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-foreground.nii.gz -gauss-curvature-minimum 0.1 -repulsion 4.0 -gm-mask /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/gray-matter-mask.nii.gz -non-self-intersection True
+
+
+Level 1 out of 3
+
+          Energy         Edge distance        Curvature         Gauss curv.         Repulsion         Stopping criterion
+   1      0.29973             0.29973             0.00661             0.04682             5.99667e-06  [active =  94.5%, delta = 0.2000mm]
+   2      0.28419             0.28419             0.00674             0.04638             3.12662e-06  [active =  94.5%, delta = 0.2000mm]
+   3      0.27022             0.27022             0.00686             0.04602             1.60547e-06  [active =  94.5%, delta = 0.2000mm]
+   4      0.25643             0.25643             0.00696             0.04579             1.24427e-06  [active =  94.5%, delta = 0.2000mm]
+   5      0.24271             0.24271             0.00704             0.04559             1.02278e-06  [active =  94.5%, delta = 0.2000mm]
+   6      0.22928             0.22928             0.00712             0.04549             9.24004e-07  [active =  76.1%, delta = 0.2000mm]
+   7      0.21739             0.21739             0.00722             0.04538             8.84312e-07  [active =  74.7%, delta = 0.2000mm]
+   8      0.20653             0.20653             0.00732             0.04532             8.86335e-07  [active =  72.5%, delta = 0.2000mm]
+   9      0.19621             0.19621             0.00745             0.04533             8.69232e-07  [active =  71.2%, delta = 0.2000mm]
+  10      0.18683             0.18683             0.00753             0.04533             8.72906e-07  [active =  69.1%, delta = 0.2000mm]
+  11      0.17696             0.17696             0.00762             0.04531             8.63989e-07  [active =  67.1%, delta = 0.2000mm]
+  12      0.16792             0.16792             0.00774             0.04531             8.46636e-07  [active =  64.5%, delta = 0.2000mm]
+  13      0.15961             0.15961             0.00785             0.04529             9.53744e-07  [active =  62.3%, delta = 0.2000mm]
+  14      0.15227             0.15227             0.00791             0.04534             8.64774e-07  [active =  60.3%, delta = 0.2000mm]
+  15      0.14633             0.14633             0.00794             0.04535             8.79683e-07  [active =  58.0%, delta = 0.2000mm]
+  16      0.14082             0.14082             0.00799             0.04537             9.02875e-07  [active =  55.9%, delta = 0.2000mm]
+  17      0.13640             0.13640             0.00803             0.04545             8.75572e-07  [active =  53.8%, delta = 0.2000mm]
+  18      0.13290             0.13290             0.00804             0.04547             8.75979e-07  [active =  50.4%, delta = 0.2000mm]
+  19      0.13046             0.13046             0.00807             0.04552             9.06707e-07  [active =  47.1%, delta = 0.2000mm]
+  20      0.12711             0.12711             0.00810             0.04560             8.64959e-07  [active =  43.9%, delta = 0.2000mm]
+  21      0.12556             0.12556             0.00810             0.04560             8.63154e-07  [active =  41.0%, delta = 0.2000mm]
+  22      0.12388             0.12388             0.00810             0.04565             8.75621e-07  [active =  38.0%, delta = 0.2000mm]
+  23      0.12261             0.12261             0.00815             0.04566             8.92511e-07  [active =  35.3%, delta = 0.2000mm]
+  24      0.12081             0.12081             0.00819             0.04565             9.33183e-07  [active =  33.6%, delta = 0.2000mm]
+  25      0.11858             0.11858             0.00822             0.04570             9.21528e-07  [active =  30.3%, delta = 0.2000mm]
+  26      0.11833             0.11833             0.00824             0.04575             9.36881e-07  [active =  28.5%, delta = 0.2000mm]
+  27      0.11623             0.11623             0.00826             0.04573             9.58873e-07  [active =  27.5%, delta = 0.2000mm]
+  28      0.11626             0.11626             0.00827             0.04580             9.65088e-07  [active =  26.2%, delta = 0.2000mm]
+  29      0.11494             0.11494             0.00829             0.04578             9.46824e-07  [active =  24.8%, delta = 0.2000mm]
+  30      0.11506             0.11506             0.00830             0.04582             9.69380e-07  [active =  22.6%, delta = 0.2000mm]
+  31      0.11388             0.11388             0.00832             0.04580             9.39464e-07  [active =  22.0%, delta = 0.2000mm]
+  32      0.11333             0.11333             0.00830             0.04580             9.66565e-07  [active =  19.7%, delta = 0.2000mm]
+  33      0.11347             0.11347             0.00832             0.04583             9.49993e-07  [active =  19.1%, delta = 0.2000mm]
+  34      0.11344             0.11344             0.00835             0.04586             9.23281e-07  [active =  17.8%, delta = 0.2000mm]
+  35      0.11230             0.11230             0.00836             0.04583             9.12110e-07  [active =  17.2%, delta = 0.2000mm]
+  36      0.11164             0.11164             0.00836             0.04585             9.12078e-07  [active =  16.1%, delta = 0.2000mm]
+  37      0.11154             0.11154             0.00837             0.04583             9.38766e-07  [active =  15.3%, delta = 0.2000mm]
+  38      0.11146             0.11146             0.00838             0.04589             9.92960e-07  [active =  15.0%, delta = 0.2000mm]
+  39      0.11117             0.11117             0.00838             0.04588             1.03166e-06  [active =  14.5%, delta = 0.2000mm]
+  40      0.11040             0.11040             0.00839             0.04589             1.06387e-06  [active =  13.6%, delta = 0.2000mm]
+  41      0.11078             0.11078             0.00842             0.04587             1.06639e-06  [active =  12.8%, delta = 0.2000mm]
+  42      0.10921             0.10921             0.00843             0.04589             1.17803e-06  [active =  12.5%, delta = 0.2000mm]
+  43      0.10974             0.10974             0.00844             0.04587             1.32189e-06  [active =  12.0%, delta = 0.2000mm]
+  44      0.10941             0.10941             0.00845             0.04589             1.23403e-06  [active =  11.7%, delta = 0.2000mm]
+  45      0.10922             0.10922             0.00846             0.04589             1.22423e-06  [active =  11.2%, delta = 0.2000mm]
+  46      0.10869             0.10869             0.00846             0.04590             1.18090e-06  [active =  11.0%, delta = 0.2000mm]
+  47      0.10856             0.10856             0.00846             0.04591             1.32691e-06  [active =  10.4%, delta = 0.2000mm]
+  48      0.10890             0.10890             0.00847             0.04593             1.62815e-06  [active =  10.2%, delta = 0.2000mm]
+  49      0.10795             0.10795             0.00848             0.04591             1.68293e-06  [active =   9.8%, delta = 0.2000mm]
+  50      0.10839             0.10839             0.00849             0.04593             1.94157e-06  [active =   9.4%, delta = 0.2000mm]
+
+Level 2 out of 3
+
+          Energy         Edge distance        Curvature         Gauss curv.         Repulsion         Stopping criterion
+   1      0.10146             0.10146             0.00789             0.04585             1.59506e-06  [active =  94.9%, delta = 0.2000mm]
+   2      0.09920             0.09920             0.00764             0.04578             1.54263e-06  [active =  94.9%, delta = 0.2000mm]
+   3      0.09742             0.09742             0.00752             0.04581             1.77032e-06  [active =  94.9%, delta = 0.2000mm]
+   4      0.09837             0.09837             0.00747             0.04575             1.46417e-06  [active =  94.9%, delta = 0.2000mm]
+   5      0.09632             0.09632             0.00743             0.04580             9.92685e-07  [active =  94.9%, delta = 0.2000mm]
+   6      0.09273             0.09273             0.00740             0.04580             9.61037e-07  [active =  52.6%, delta = 0.2000mm]
+   7      0.09239             0.09239             0.00741             0.04580             9.14202e-07  [active =  49.3%, delta = 0.2000mm]
+   8      0.09037             0.09037             0.00743             0.04582             8.88177e-07  [active =  46.9%, delta = 0.2000mm]
+   9      0.09132             0.09132             0.00745             0.04587             1.17717e-06  [active =  45.4%, delta = 0.2000mm]
+  10      0.09176             0.09176             0.00749             0.04589             9.18075e-07  [active =  41.5%, delta = 0.2000mm]
+  11      0.08941             0.08941             0.00751             0.04595             9.35146e-07  [active =  36.5%, delta = 0.2000mm]
+  12      0.09166             0.09166             0.00753             0.04590             9.48089e-07  [active =  33.9%, delta = 0.2000mm]
+  13      0.09260             0.09260             0.00755             0.04593             1.01294e-06  [active =  30.9%, delta = 0.2000mm]
+  14      0.08974             0.08974             0.00756             0.04590             1.02875e-06  [active =  29.5%, delta = 0.2000mm]
+  15      0.08521             0.08521             0.00756             0.04592             1.06618e-06  [active =  28.2%, delta = 0.2000mm]
+  16      0.08900             0.08900             0.00758             0.04588             1.08461e-06  [active =  26.8%, delta = 0.2000mm]
+  17      0.09027             0.09027             0.00760             0.04588             1.08479e-06  [active =  25.9%, delta = 0.2000mm]
+  18      0.08866             0.08866             0.00761             0.04586             1.13411e-06  [active =  24.9%, delta = 0.2000mm]
+  19      0.09127             0.09127             0.00763             0.04591             1.18529e-06  [active =  23.7%, delta = 0.2000mm]
+  20      0.08995             0.08995             0.00764             0.04588             1.24595e-06  [active =  22.4%, delta = 0.2000mm]
+  21      0.08748             0.08748             0.00764             0.04592             1.19401e-06  [active =  22.0%, delta = 0.2000mm]
+  22      0.08950             0.08950             0.00763             0.04584             1.24674e-06  [active =  21.6%, delta = 0.2000mm]
+  23      0.08823             0.08823             0.00763             0.04588             1.26486e-06  [active =  21.1%, delta = 0.2000mm]
+  24      0.08838             0.08838             0.00764             0.04584             1.27438e-06  [active =  20.7%, delta = 0.2000mm]
+  25      0.09094             0.09094             0.00767             0.04587             1.11030e-06  [active =  20.2%, delta = 0.2000mm]
+  26      0.08581             0.08581             0.00766             0.04580             1.12336e-06  [active =  19.5%, delta = 0.2000mm]
+  27      0.08443             0.08443             0.00765             0.04583             1.09774e-06  [active =  19.2%, delta = 0.2000mm]
+  28      0.08761             0.08761             0.00766             0.04579             1.10107e-06  [active =  18.8%, delta = 0.2000mm]
+  29      0.08821             0.08821             0.00767             0.04580             1.12185e-06  [active =  18.4%, delta = 0.2000mm]
+  30      0.08560             0.08560             0.00766             0.04578             1.08314e-06  [active =  18.1%, delta = 0.2000mm]
+  31      0.08936             0.08936             0.00768             0.04579             1.10353e-06  [active =  17.6%, delta = 0.2000mm]
+  32      0.08441             0.08441             0.00767             0.04575             1.11025e-06  [active =  17.1%, delta = 0.2000mm]
+  33      0.08791             0.08791             0.00769             0.04579             1.12711e-06  [active =  16.8%, delta = 0.2000mm]
+  34      0.08810             0.08810             0.00770             0.04579             1.08810e-06  [active =  16.6%, delta = 0.2000mm]
+  35      0.08752             0.08752             0.00771             0.04583             1.11498e-06  [active =  16.3%, delta = 0.2000mm]
+  36      0.08228             0.08228             0.00769             0.04580             1.05648e-06  [active =  16.2%, delta = 0.2000mm]
+  37      0.08288             0.08288             0.00769             0.04579             1.05695e-06  [active =  15.9%, delta = 0.2000mm]
+  38      0.08758             0.08758             0.00770             0.04578             1.02622e-06  [active =  15.8%, delta = 0.2000mm]
+  39      0.08623             0.08623             0.00770             0.04583             1.01057e-06  [active =  15.6%, delta = 0.2000mm]
+  40      0.08651             0.08651             0.00771             0.04582             1.01844e-06  [active =  15.3%, delta = 0.2000mm]
+  41      0.08870             0.08870             0.00773             0.04584             1.10041e-06  [active =  14.9%, delta = 0.2000mm]
+  42      0.08562             0.08562             0.00772             0.04583             1.06559e-06  [active =  14.7%, delta = 0.2000mm]
+  43      0.08496             0.08496             0.00772             0.04584             1.06529e-06  [active =  14.7%, delta = 0.2000mm]
+  44      0.08730             0.08730             0.00773             0.04584             1.01809e-06  [active =  14.6%, delta = 0.2000mm]
+  45      0.08474             0.08474             0.00772             0.04586             1.03887e-06  [active =  14.4%, delta = 0.2000mm]
+  46      0.08589             0.08589             0.00773             0.04583             1.06751e-06  [active =  14.3%, delta = 0.2000mm]
+  47      0.08504             0.08504             0.00773             0.04583             1.09460e-06  [active =  14.1%, delta = 0.2000mm]
+  48      0.08599             0.08599             0.00774             0.04581             1.05331e-06  [active =  14.0%, delta = 0.2000mm]
+  49      0.08602             0.08602             0.00774             0.04583             1.08314e-06  [active =  13.9%, delta = 0.2000mm]
+  50      0.08626             0.08626             0.00774             0.04583             1.01795e-06  [active =  13.7%, delta = 0.2000mm]
+
+Level 3 out of 3
+
+          Energy         Edge distance        Curvature         Gauss curv.         Repulsion         Stopping criterion
+   1      0.07653             0.07653             0.00749             0.04581             9.91957e-07  [active =  95.0%, delta = 0.2000mm]
+   2      0.08158             0.08158             0.00739             0.04582             1.01644e-06  [active =  95.0%, delta = 0.2000mm]
+   3      0.08242             0.08242             0.00736             0.04587             1.12849e-06  [active =  95.0%, delta = 0.2000mm]
+   4      0.07891             0.07891             0.00734             0.04586             1.09787e-06  [active =  95.0%, delta = 0.2000mm]
+   5      0.08029             0.08029             0.00734             0.04592             1.21176e-06  [active =  95.0%, delta = 0.2000mm]
+   6      0.08316             0.08316             0.00735             0.04589             1.36080e-06  [active =  45.3%, delta = 0.2000mm]
+   7      0.07679             0.07679             0.00735             0.04595             1.78339e-06  [active =  43.9%, delta = 0.2000mm]
+   8      0.08304             0.08304             0.00741             0.04595             1.45427e-06  [active =  41.9%, delta = 0.2000mm]
+   9      0.07981             0.07981             0.00746             0.04599             1.44754e-06  [active =  38.6%, delta = 0.2000mm]
+  10      0.07509             0.07509             0.00745             0.04598             1.52717e-06  [active =  36.0%, delta = 0.2000mm]
+  11      0.07961             0.07961             0.00746             0.04600             1.27888e-06  [active =  33.8%, delta = 0.2000mm]
+  12      0.07641             0.07641             0.00747             0.04598             1.37868e-06  [active =  31.8%, delta = 0.2000mm]
+  13      0.07788             0.07788             0.00748             0.04599             1.47999e-06  [active =  30.7%, delta = 0.2000mm]
+  14      0.07944             0.07944             0.00750             0.04595             1.44842e-06  [active =  29.1%, delta = 0.2000mm]
+  15      0.07606             0.07606             0.00750             0.04598             1.50924e-06  [active =  27.5%, delta = 0.2000mm]
+  16      0.07778             0.07778             0.00750             0.04596             1.59637e-06  [active =  26.7%, delta = 0.2000mm]
+  17      0.07711             0.07711             0.00751             0.04595             1.67041e-06  [active =  25.8%, delta = 0.2000mm]
+  18      0.07904             0.07904             0.00753             0.04590             1.51703e-06  [active =  25.1%, delta = 0.2000mm]
+  19      0.07708             0.07708             0.00754             0.04593             1.64127e-06  [active =  24.5%, delta = 0.2000mm]
+  20      0.07660             0.07660             0.00754             0.04590             1.53532e-06  [active =  23.8%, delta = 0.2000mm]
+  21      0.07549             0.07549             0.00754             0.04591             1.78829e-06  [active =  23.2%, delta = 0.2000mm]
+  22      0.07758             0.07758             0.00755             0.04590             1.57736e-06  [active =  22.8%, delta = 0.2000mm]
+  23      0.07591             0.07591             0.00755             0.04591             1.62263e-06  [active =  22.4%, delta = 0.2000mm]
+  24      0.08032             0.08032             0.00758             0.04591             1.53245e-06  [active =  22.0%, delta = 0.2000mm]
+  25      0.07153             0.07153             0.00756             0.04594             1.79560e-06  [active =  21.6%, delta = 0.2000mm]
+  26      0.07622             0.07622             0.00757             0.04591             1.71256e-06  [active =  21.2%, delta = 0.2000mm]
+  27      0.07607             0.07607             0.00758             0.04593             1.75682e-06  [active =  21.0%, delta = 0.2000mm]
+  28      0.07842             0.07842             0.00760             0.04587             1.85825e-06  [active =  20.7%, delta = 0.2000mm]
+  29      0.07487             0.07487             0.00760             0.04591             1.93334e-06  [active =  20.6%, delta = 0.2000mm]
+  30      0.07754             0.07754             0.00760             0.04584             1.71384e-06  [active =  20.3%, delta = 0.2000mm]
+  31      0.07696             0.07696             0.00761             0.04591             1.95415e-06  [active =  20.0%, delta = 0.2000mm]
+  32      0.07541             0.07541             0.00761             0.04582             1.80389e-06  [active =  19.9%, delta = 0.2000mm]
+  33      0.07393             0.07393             0.00760             0.04588             1.83775e-06  [active =  19.8%, delta = 0.2000mm]
+  34      0.07968             0.07968             0.00763             0.04585             1.81799e-06  [active =  19.6%, delta = 0.2000mm]
+  35      0.07599             0.07599             0.00764             0.04592             1.72969e-06  [active =  19.4%, delta = 0.2000mm]
+  36      0.07685             0.07685             0.00764             0.04585             2.71951e-06  [active =  19.3%, delta = 0.2000mm]
+  37      0.07327             0.07327             0.00763             0.04591             2.25078e-06  [active =  19.1%, delta = 0.2000mm]
+  38      0.07752             0.07752             0.00764             0.04586             1.95320e-06  [active =  19.0%, delta = 0.2000mm]
+  39      0.07034             0.07034             0.00762             0.04588             1.98191e-06  [active =  18.9%, delta = 0.2000mm]
+  40      0.07682             0.07682             0.00764             0.04585             2.06223e-06  [active =  18.8%, delta = 0.2000mm]
+  41      0.07641             0.07641             0.00765             0.04592             2.17353e-06  [active =  18.6%, delta = 0.2000mm]
+  42      0.07809             0.07809             0.00767             0.04589             2.11905e-06  [active =  18.4%, delta = 0.2000mm]
+  43      0.07130             0.07130             0.00765             0.04592             2.04023e-06  [active =  18.3%, delta = 0.2000mm]
+  44      0.07816             0.07816             0.00767             0.04588             1.75712e-06  [active =  18.2%, delta = 0.2000mm]
+  45      0.07177             0.07177             0.00765             0.04590             2.21330e-06  [active =  18.1%, delta = 0.2000mm]
+  46      0.07834             0.07834             0.00768             0.04589             1.79520e-06  [active =  18.0%, delta = 0.2000mm]
+  47      0.07008             0.07008             0.00765             0.04591             1.79045e-06  [active =  17.9%, delta = 0.2000mm]
+  48      0.07890             0.07890             0.00769             0.04589             1.93099e-06  [active =  17.8%, delta = 0.2000mm]
+  49      0.07225             0.07225             0.00767             0.04594             1.93901e-06  [active =  17.7%, delta = 0.2000mm]
+  50      0.07644             0.07644             0.00769             0.04590             1.98871e-06  [active =  17.6%, delta = 0.2000mm]
+  51      0.07416             0.07416             0.00768             0.04593             2.17938e-06  [active =  17.5%, delta = 0.2000mm]
+  52      0.07841             0.07841             0.00771             0.04588             1.96757e-06  [active =  17.5%, delta = 0.2000mm]
+  53      0.07245             0.07245             0.00769             0.04590             2.07195e-06  [active =  17.4%, delta = 0.2000mm]
+  54      0.07765             0.07765             0.00771             0.04589             1.93175e-06  [active =  17.3%, delta = 0.2000mm]
+  55      0.07385             0.07385             0.00770             0.04594             2.21648e-06  [active =  17.2%, delta = 0.2000mm]
+  56      0.07543             0.07543             0.00770             0.04590             1.94582e-06  [active =  17.2%, delta = 0.2000mm]
+  57      0.07661             0.07661             0.00771             0.04592             2.12730e-06  [active =  17.1%, delta = 0.2000mm]
+  58      0.07719             0.07719             0.00772             0.04595             1.89609e-06  [active =  17.0%, delta = 0.2000mm]
+  59      0.07119             0.07119             0.00768             0.04592             1.85353e-06  [active =  17.0%, delta = 0.2000mm]
+  60      0.07572             0.07572             0.00770             0.04588             1.96755e-06  [active =  16.9%, delta = 0.2000mm]
+  61      0.07429             0.07429             0.00770             0.04591             2.11648e-06  [active =  16.9%, delta = 0.2000mm]
+  62      0.07917             0.07917             0.00772             0.04592             2.01893e-06  [active =  16.8%, delta = 0.2000mm]
+  63      0.07088             0.07088             0.00770             0.04591             2.20239e-06  [active =  16.7%, delta = 0.2000mm]
+  64      0.07605             0.07605             0.00771             0.04589             1.85899e-06  [active =  16.7%, delta = 0.2000mm]
+  65      0.07346             0.07346             0.00770             0.04593             1.93852e-06  [active =  16.6%, delta = 0.2000mm]
+  66      0.07676             0.07676             0.00772             0.04588             1.99956e-06  [active =  16.5%, delta = 0.2000mm]
+  67      0.07330             0.07330             0.00771             0.04590             1.98450e-06  [active =  16.5%, delta = 0.2000mm]
+  68      0.07622             0.07622             0.00772             0.04588             1.93650e-06  [active =  16.4%, delta = 0.2000mm]
+  69      0.07710             0.07710             0.00773             0.04595             2.18888e-06  [active =  16.4%, delta = 0.2000mm]
+  70      0.07147             0.07147             0.00771             0.04591             1.89489e-06  [active =  16.3%, delta = 0.2000mm]
+  71      0.07462             0.07462             0.00772             0.04592             1.90158e-06  [active =  16.3%, delta = 0.2000mm]
+  72      0.07563             0.07563             0.00773             0.04591             2.00013e-06  [active =  16.2%, delta = 0.2000mm]
+  73      0.07624             0.07624             0.00773             0.04592             2.09061e-06  [active =  16.2%, delta = 0.2000mm]
+  74      0.07277             0.07277             0.00772             0.04592             1.99828e-06  [active =  16.1%, delta = 0.2000mm]
+  75      0.07469             0.07469             0.00772             0.04593             1.85124e-06  [active =  16.0%, delta = 0.2000mm]
+  76      0.07610             0.07610             0.00773             0.04593             1.97637e-06  [active =  16.0%, delta = 0.2000mm]
+  77      0.07556             0.07556             0.00773             0.04593             2.20986e-06  [active =  15.9%, delta = 0.2000mm]
+  78      0.07324             0.07324             0.00773             0.04590             2.00123e-06  [active =  15.9%, delta = 0.2000mm]
+  79      0.07561             0.07561             0.00773             0.04590             2.29945e-06  [active =  15.8%, delta = 0.2000mm]
+  80      0.07593             0.07593             0.00774             0.04588             1.99294e-06  [active =  15.8%, delta = 0.2000mm]
+  81      0.07224             0.07224             0.00772             0.04588             1.98274e-06  [active =  15.8%, delta = 0.2000mm]
+  82      0.07849             0.07849             0.00775             0.04590             2.01614e-06  [active =  15.7%, delta = 0.2000mm]
+  83      0.07239             0.07239             0.00774             0.04591             2.24865e-06  [active =  15.7%, delta = 0.2000mm]
+  84      0.07517             0.07517             0.00774             0.04587             2.06287e-06  [active =  15.6%, delta = 0.2000mm]
+  85      0.07618             0.07618             0.00775             0.04593             2.32237e-06  [active =  15.6%, delta = 0.2000mm]
+  86      0.07623             0.07623             0.00775             0.04591             2.16346e-06  [active =  15.6%, delta = 0.2000mm]
+  87      0.07550             0.07550             0.00775             0.04594             2.24255e-06  [active =  15.5%, delta = 0.2000mm]
+  88      0.07341             0.07341             0.00775             0.04589             2.06118e-06  [active =  15.5%, delta = 0.2000mm]
+  89      0.07118             0.07118             0.00773             0.04589             2.08524e-06  [active =  15.4%, delta = 0.2000mm]
+  90      0.07741             0.07741             0.00776             0.04592             2.16711e-06  [active =  15.4%, delta = 0.2000mm]
+  91      0.07529             0.07529             0.00776             0.04596             2.14047e-06  [active =  15.4%, delta = 0.2000mm]
+  92      0.07047             0.07047             0.00774             0.04590             2.21918e-06  [active =  15.4%, delta = 0.2000mm]
+  93      0.07712             0.07712             0.00776             0.04593             2.31670e-06  [active =  15.3%, delta = 0.2000mm]
+  94      0.07288             0.07288             0.00775             0.04592             2.24614e-06  [active =  15.3%, delta = 0.2000mm]
+  95      0.07391             0.07391             0.00775             0.04592             2.35882e-06  [active =  15.3%, delta = 0.2000mm]
+  96      0.07710             0.07710             0.00777             0.04594             2.24586e-06  [active =  15.2%, delta = 0.2000mm]
+  97      0.07317             0.07317             0.00775             0.04593             2.65527e-06  [active =  15.2%, delta = 0.2000mm]
+  98      0.07594             0.07594             0.00776             0.04592             2.39457e-06  [active =  15.2%, delta = 0.2000mm]
+  99      0.07212             0.07212             0.00774             0.04592             2.32391e-06  [active =  15.2%, delta = 0.2000mm]
+ 100      0.07276             0.07276             0.00774             0.04592             2.20970e-06  [active =  15.1%, delta = 0.2000mm]
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-3.vtp -threads 0 -iterations 100 -combinatorial -mask InitialStatus -exclnode -lambda 0.33 -mu -0.34
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp -pointdata CollisionMask -celldata CollisionType
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/white-3.vtp -pointdata InitialStatus
+
+Merging inner-cortical surface with internal mesh
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/convert-pointset /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/internal.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white+internal.vtp -merge 0
+
+Cutting inner-cortical surface at medial cutting plane
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-pointset-cells /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white+internal.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white-rh.vtp -normals True -where RegionId -or -eq -1 -eq -3 -eq 1 -eq 3 -eq 5
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-pointset-cells /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white+internal.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white-lh.vtp -normals True -where RegionId -or -eq -1 -eq -2 -eq 2 -eq 4 -eq 6
+
+Reconstructing outer-cortical surface
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/extract-pointset-surface -input /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp -outside True -mask /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-foreground.nii.gz -reference /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/gray-matter-mask.nii.gz
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-foreground.nii.gz -mul /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/brain-mask.nii.gz -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-foreground.nii.gz
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/copy-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-1.vtp -unanimous -celldata-as-pointdata RegionId Status
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-1.vtp -point-data Status -label 7 -set 0 -pad 1 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-1.vtp binary
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/deform-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-1.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-2.vtp -optimizer EulerMethod -max-displacement 0.8 -normal-force 1 -level-prefix False -fast-collision-test False -curvature 1 -step 0.1 -min-active 10% -delta 0.0001 -min-distance 0.1 -debug-interval 10 -steps 100 -debug 1 -debug-prefix /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-2- -non-self-intersection True
+
+
+Level 1 out of 1
+
+          Energy             Normal           Curvature         Stopping criterion
+   1              inf                 inf         0.00590      [active = 100.0%, delta = 0.1000mm]
+   2              inf                 inf         0.00588      [active = 100.0%, delta = 0.1000mm]
+   3              inf                 inf         0.00589      [active = 100.0%, delta = 0.1000mm]
+   4              inf                 inf         0.00595      [active = 100.0%, delta = 0.1000mm]
+   5              inf                 inf         0.00604      [active = 100.0%, delta = 0.1000mm]
+   6              inf                 inf         0.00619      [active = 100.0%, delta = 0.1000mm]
+   7              inf                 inf         0.00639      [active = 100.0%, delta = 0.1000mm]
+   8              inf                 inf         0.00664      [active = 100.0%, delta = 0.0949mm]
+   9              inf                 inf         0.00693      [active = 100.0%, delta = 0.0899mm]
+  10              inf                 inf         0.00726      [active = 100.0%, delta = 0.0849mm]
+  11              inf                 inf         0.00760      [active =  99.9%, delta = 0.0784mm]
+  12              inf                 inf         0.00797      [active =  99.9%, delta = 0.0783mm]
+  13              inf                 inf         0.00848      [active =  99.9%, delta = 0.0783mm]
+  14              inf                 inf         0.00881      [active =  99.8%, delta = 0.0746mm]
+  15              inf                 inf         0.00883      [active =  99.8%, delta = 0.0808mm]
+  16              inf                 inf         0.00885      [active =  99.7%, delta = 0.0784mm]
+  17              inf                 inf         0.00886      [active =  99.6%, delta = 0.0778mm]
+  18              inf                 inf         0.00886      [active =  98.0%, delta = 0.0749mm]
+  19              inf                 inf         0.00887      [active =   4.9%, delta = 0.0767mm]
+          No further improvement or stopping criterion fulfilled
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/copy-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-2.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-3.vtp -unanimous -celldata-as-pointdata CortexMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/blend-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-3.vtp -smooth-iterations 3 -gt 0 -where CortexMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-3.vtp -cell-data RegionId -map 1 3 2 4 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-3.vtp
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/convert-pointset /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/meshes/white.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-3.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp -merge 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp -v -threads 0 -attr -where CortexMask -gt 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp -cell-data CortexMask -mask BoundaryMask -set 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp -cell-data RegionId -mask BoundaryMask -add 4 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/delete-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp -celldata DuplicatedMask -name ComponentId BoundaryMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-4.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-surface-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -H Curvature -vtk-curvatures
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/copy-pointset-attributes /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -unanimous -celldata-as-pointdata RegionId
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 2
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 2
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 3
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 3
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 4
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 4
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 5
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 5
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 6
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 6
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 7
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 7
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 3 4 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-ge 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 8
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/calculate-element-wise /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -point-data RegionId -label 1 2 -mask CollisionMask -set 1 -pad 0 -mul Curvature -threshold-le 0 -pad 0 -out /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp binary SmoothMask
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/dilate-scalars /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -array SmoothMask -iterations 8
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/smooth-surface /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -threads 0 -iterations 1 -combinatorial -mask SmoothMask -inclnode -lambda 1
+
+> /home/addo/MCRIBS/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp /home/addo/stlouis/MOD1517_V1_a/SurfReconDeformable/MOD1517_V1_a/temp/pial-5.vtp -v -threads 0 -collisions 0
+
+

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+#if [ ! -f "surf_ensurepial/$SUBJID/temp/pial-5.CollisionMask.curv" -o ! -z "$2" ]
+#then
+#	./extract_all_vtp_indir.sh DrawEM/$SUBJID/T2/${SUBJID}.nii.gz surf_ensurepial/$SUBJID/temp
+#fi
+VOLGEOM=TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
+
+export MCRIBS_HOME=$HOME/MCRIBS
+
+VTPExtractAll --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/temp/pial-5.vtp
+VTPExtractAll --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/temp/pial-6.vtp
+#./VTPExtractAll --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/meshes/white.vtp &
+#./VTPExtractAll --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/meshes/white+internal.vtp &
+
+W=`PialDisplayCollisionVertices SurfReconDeformable/$SUBJID/temp/pial-6.vtp`
+freeview \
+	-v RawT2RadiologicalIsotropic/$SUBJID.nii.gz \
+	-v TissueSeg/${SUBJID}_all_labels_manedit.nii.gz:colormap=lut:lut=$MCRIBS_HOME/lib/drawem_labels_FSLUT.txt:opacity=0.3 \
+	-v SurfReconDeformable/$SUBJID/recon/regions.nii.gz \
+	-f SurfReconDeformable/$SUBJID/temp/pial-5_tkr.surf:edgecolor=green \
+	-f SurfReconDeformable/$SUBJID/temp/pial-6_tkr.surf:overlay=SurfReconDeformable/$SUBJID/temp/pial-6.CollisionMask.curv:edgecolor=overlay:goto=$W 

@@ -65,11 +65,14 @@ fi
 
 #echo recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
+#econ-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 
+exit
 RECONRETURNCODE=${PIPESTATUS[0]}
 
 if [ "$RECONRETURNCODE" != "0" ]
 then
+	exit
 	CEREBRUMERROR1=`tac logs/$SUBJID.log | sed '/[^[:blank:]]/q;d' | grep -Po -e "\s*Exception: Failed to resolve self-intersections of .+/cerebrum-1.vtp\s*$"`
 	CEREBRUMERROR2=`tac logs/$SUBJID.log | sed '/[^[:blank:]]/q;d' | grep -Po -e "^Exception: Merged surface is non-closed, no. of boundaries"`
 
