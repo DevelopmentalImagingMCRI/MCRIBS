@@ -1,0 +1,30 @@
+#!/bin/bash
+
+#. /group/deve2/data/addo/MCRIBS/SetUpMCRIBS.sh
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit 1
+fi
+
+export PYTHONPATH=$MCRIBS_HOME/lib/python
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MCRIBS_HOME/VTK/VTK-install/lib
+P=`pwd`
+
+SUBJID=$1
+
+T=`mktemp`
+cd $P/SurfReconDeformable/$SUBJID
+
+rm -f $T
+
+for i in `find temp meshes -name "pial*.vtp"`
+do
+	echo "$MCRIBS_HOME/VTK/VTK-install/bin/vtkpython $MCRIBS_HOME/bin/VTPExtractAll --surf-volgeom=$P/RawT2RadiologicalIsotropic/$SUBJID.nii.gz $i" >> $T
+done
+if [ -f "$T" ]
+then
+	parallel -j+0 < $T
+	rm -f $T
+fi

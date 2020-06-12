@@ -690,7 +690,7 @@ def deform_mesh(iname, oname=None, temp=None, opts={}):
             if fname.startswith(fname_prefix):
                 try_remove(os.path.join(temp, fname))
         makedirs(oname)
-        opts['debug-interval'] = 1
+        opts['debug-interval'] = 10
         run('deform-mesh', args=[iname, oname], opts=opts)
     return oname
 
@@ -1680,30 +1680,67 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
         status_array = 'Status'
         if outside_white_mesh:
 
+            # IsOuterFace is a cell data array that is 1 for the faces that are going to be projected outwards
+            # init_mesh IsOuterFace = 1
+            # copied_mesh IsOuterFace = 0
+            # copied_mesh = [init_mesh, copied_mesh]
+            # offset_mesh = deformed(copied_mesh)
+            # remove IsOuterFace = 0 faces from offset_mesh
+            # used for extraction of the original surface later
             # initialize node status
+
+            # copy the regionID to the status
             run('copy-pointset-attributes', args=[white_mesh, white_mesh, init_mesh], opts={'celldata-as-pointdata': [region_id_array, status_array], 'unanimous': None})
+            
+            # reset status = 0 if it equals 7, otherwise set to 1
             run('calculate-element-wise', args=[init_mesh], opts=[('point-data', status_array), ('label', 7), ('set', 0), ('pad', 1), ('out', init_mesh, 'binary')])
             
-            copied_mesh = push_output(stack, nextname(init_mesh))
-            run('calculate-element-wise', args=[init_mesh], opts=[('point-data', status_array), ('set', 0), ('pad', 1), ('out', copied_mesh, 'binary')])
             
-            append_surfaces(copied_mesh, surfaces=[copied_mesh, init_mesh], merge=False)
-
+            #run('calculate-element-wise', args=[init_mesh], opts=[('cell-data', region_id_array), ('set', -1), ('pad', 1), ('out', copied_mesh, 'binary')])
+            
             # deform pial surface outwards a few millimeters
-#            first_offset_mesh = push_output(stack, deform_mesh(init_mesh, opts={
-#                'normal-force': 1,
-#                'curvature': 1,
-#                'optimizer': 'EulerMethod',
-#                    'step': .1,
-#                    'steps': 100,
-#                    'max-displacement': max(get_voxel_size(gm_mask)),
-#                    'non-self-intersection': True,
-#                    'fast-collision-test': False,
-#                    'min-distance': .01,
-#                    'min-active': '10%',
-#                    'delta': .0001
-#            }))
-#            print(first_offset_mesh)
+            first_offset_mesh = push_output(stack, deform_mesh(init_mesh, opts={
+                'normal-force': 1,
+                'curvature': 1,
+                'optimizer': 'EulerMethod',
+                    'step': .1,
+                    'steps': 3,
+                    'max-displacement': max(get_voxel_size(gm_mask)),
+                    'non-self-intersection': True,
+                    'fast-collision-test': True,
+                    'min-distance': .01,
+                    'min-active': '10%',
+                    'delta': .0001
+            }))
+            
+            copied_mesh = push_output(stack, nextname(first_offset_mesh))
+            print("first_offset_mesh")
+            print(first_offset_mesh)
+            print("copied_mesh")
+            print(copied_mesh)
+            
+            run('copy-pointset-attributes', args=[first_offset_mesh, first_offset_mesh], opts={'celldata': ['CortexMask', 'IsOuterFace']})
+            run('calculate-element-wise', args=[first_offset_mesh], opts=[('cell-data', 'IsOuterFace'), ('set', 1), ('pad', 1), ('out', first_offset_mesh, 'binary')])
+            run('copy-pointset-attributes', args=[first_offset_mesh, first_offset_mesh], opts={'celldata-as-pointdata': ['CortexMask', status_array], 'unanimous': None})
+            run('calculate-element-wise', args=[first_offset_mesh], opts=[('point-data', status_array), ('set', 1), ('pad', 1), ('out', first_offset_mesh, 'binary')])
+
+            run('copy-pointset-attributes', args=[white_mesh, white_mesh, copied_mesh], opts={'celldata-as-pointdata': [region_id_array, status_array], 'unanimous': None})
+            run('copy-pointset-attributes', args=[copied_mesh, copied_mesh], opts={'celldata': ['CortexMask', 'IsOuterFace']})
+            run('calculate-element-wise', args=[copied_mesh], opts=[('cell-data', 'IsOuterFace'), ('set', 0), ('pad', 0), ('out', copied_mesh, 'binary')])
+            run('copy-pointset-attributes', args=[copied_mesh, copied_mesh], opts={'celldata-as-pointdata': ['CortexMask', status_array], 'unanimous': None})
+            run('calculate-element-wise', args=[copied_mesh], opts=[('point-data', status_array), ('set', 0), ('pad', 0), ('out', copied_mesh, 'binary')])
+            
+            #run('calculate-element-wise', args=[init_mesh], opts=[('point-data', status_array), ('label', 7), ('set', 0), ('pad', 1), ('out', copied_mesh, 'binary')])
+            #run('calculate-element-wise', args=[copied_mesh], opts=[('point-data', status_array), ('label', 7), ('set', 0), ('pad', 1), ('out', copied_mesh, 'binary')])
+            #run('calculate-element-wise', args=[first_offset_mesh], opts=[('point-data', status_array), ('set', 1), ('pad', 1), ('out', first_offset_mesh, 'binary')])
+            
+            #run('copy-pointset-attributes', args=[white_mesh, white_mesh, init_mesh], opts={'celldata-as-pointdata': [region_id_array, status_array], 'unanimous': None})
+            #run('copy-pointset-attributes', args=[init_mesh, copied_mesh], opts={'pointdata': ['Status', 'Status']})
+            #run('calculate-element-wise', args=[init_mesh], opts=[('point-data', status_array), ('set', 0), ('pad', 1), ('out', copied_mesh, 'binary')])
+            #run('calculate-element-wise', args=[copied_mesh], opts=[('cell-data', 'IsOuterFace'), ('set', 0), ('pad', 1), ('out', copied_mesh, 'binary')])
+            #run('copy-pointset-attributes', args=[white_mesh, white_mesh, init_mesh], opts={'celldata-as-pointdata': [region_id_array, status_array], 'unanimous': None})
+            #copied_mesh = push_output(stack, nextname(copied_mesh))
+            append_surfaces(copied_mesh, surfaces=[first_offset_mesh, copied_mesh], merge=False)
 #            offset_mesh = push_output(stack, deform_mesh(first_offset_mesh, opts={
 #                'collision': 1,
 #                'repulsion': 4.,
@@ -1737,7 +1774,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
 #                    'min-active': '10%',
 #                    'delta': .0001
 #            }))
-            first_offset_mesh = push_output(stack, deform_mesh(copied_mesh, opts={
+            second_offset_mesh = push_output(stack, deform_mesh(copied_mesh, opts={
                 'normal-force': 1,
                 'curvature': 1,
                 'collision': 2,
@@ -1746,18 +1783,22 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                  #   'repulsion-width': 1.,
                 'optimizer': 'EulerMethod',
                     'step': .1,
-                    'steps': 5,
+                    'steps': 100,
                     'max-displacement': max(get_voxel_size(gm_mask)),
                     'non-self-intersection': True,
-                    'fast-collision-test': False,
+                    'fast-collision-test': True,
                     'min-distance': .01,
                     'min-active': '10%',
                     'delta': .0001
             }))
 
-            offset_mesh = push_output(stack, nextname(first_offset_mesh))
-            opts = [('normals', True), ('select', 'Status'), ('eq', '1')]
-            run('extract-pointset-cells', args=[first_offset_mesh, offset_mesh], opts=opts)
+            offset_mesh = push_output(stack, nextname(second_offset_mesh))
+            opts = [('normals', True), ('select', 'IsOuterFace'), ('eq', '1')]
+            run('extract-pointset-cells', args=[second_offset_mesh, offset_mesh], opts=opts)
+            
+            opts = [('celldata', 'IsOuterFace')]
+            run('delete-pointset-attributes', args=[offset_mesh, offset_mesh], opts=opts)
+
             quit()
             if debug == 0:
                 try_remove(init_mesh)
@@ -1766,6 +1807,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             run('copy-pointset-attributes', args=[offset_mesh, offset_mesh, blended_mesh], opts={'celldata-as-pointdata': cortex_mask_array, 'unanimous': None})
             run('blend-surface', args=[white_mesh, blended_mesh, blended_mesh], opts={'where': cortex_mask_array, 'gt': 0, 'smooth-iterations': 3})
             run('calculate-element-wise', args=[blended_mesh], opts=[('cell-data', region_id_array), ('map', (1, 3), (2, 4)), ('out', blended_mesh)])
+
             if debug == 0:
                 try_remove(offset_mesh)
 

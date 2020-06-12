@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+SURFDIR=SurfReconDeformable/$SUBJID/meshes
+TEMPSURFDIR=SurfReconDeformable/$SUBJID/temp
+
+if [ -f "$SURFDIR/pial-lh.vtp" -a -f "$SURFDIR/pial-rh.vtp" -a -f "$SURFDIR/white-lh.vtp" -a -f "$SURFDIR/white-rh.vtp" ]
+then
+	echo "finished"
+else
+	if [ -f "$TEMPSURFDIR/pial-5.vtp" -a ! -f "$TEMPSURFDIR/pial-6.vtp" ]
+	then
+		echo "pial5"
+	fi
+	
+	if [ -f "$TEMPSURFDIR/cerebrum-2.vtp" -a ! -f "$TEMPSURFDIR/cerebrum-3.vtp" ]
+	then
+		echo "cerebrum"
+	fi
+fi

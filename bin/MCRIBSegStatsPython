@@ -155,6 +155,11 @@ RHWhiteSurfVol = surfVolume(RHWhiteSurf)
 LHPialSurfVol = surfVolume(LHPialSurf)
 RHPialSurfVol = surfVolume(RHPialSurf)
 
+#print(LHWhiteSurfVol)
+#print(RHWhiteSurfVol)
+#print(LHPialSurfVol)
+#print(RHPialSurfVol)
+
 import datetime
 
 def getFileTimeStampString(F):
@@ -167,10 +172,19 @@ FID.write("# Title Segmentation Statistics\n")
 FID.write("#\n")
 FID.write("# SUBJECTS_DIR " + SubjectsDir + "\n")
 FID.write("# subjectname " + SubjectID + "\n")
+ 
+# if ribbon == GM and aseg is not WM or GM then erase from GM volume
 
-FID.write("# Measure lhCortex, lhCortexVol, Left hemisphere cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol) + ", mm^3\n")
-FID.write("# Measure rhCortex, rhCortexVol, Right hemisphere cortical gray matter volume, " + str(RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
-FID.write("# Measure Cortex, CortexVol, Total cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol + RHPialSurfVol - RHWhiteSurfVol) + ", mm^3\n")
+#        if (ribbonid == 3 && asegid != 3 && asegid != 2 && asegid != 0) lhCtxGMCor += VoxelVol;
+
+lhCtxGMCor = numpy.count_nonzero(numpy.logical_and(RibbonIMG == 3, numpy.logical_not(numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([0, 2, 3, 159, 161])), ASEGIMG.shape)))) * voxelSize
+rhCtxGMCor = numpy.count_nonzero(numpy.logical_and(RibbonIMG == 42, numpy.logical_not(numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([0, 41, 42, 160, 162])), ASEGIMG.shape)))) * voxelSize
+
+#        if (ribbonid == 42 && asegid != 42 && asegid != 41 && asegid != 0) rhCtxGMCor += VoxelVol;
+
+FID.write("# Measure lhCortex, lhCortexVol, Left hemisphere cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol - lhCtxGMCor) + ", mm^3\n")
+FID.write("# Measure rhCortex, rhCortexVol, Right hemisphere cortical gray matter volume, " + str(RHPialSurfVol - RHWhiteSurfVol - rhCtxGMCor) + ", mm^3\n")
+FID.write("# Measure Cortex, CortexVol, Total cortical gray matter volume, " + str(LHPialSurfVol - LHWhiteSurfVol + RHPialSurfVol - RHWhiteSurfVol - lhCtxGMCor - rhCtxGMCor) + ", mm^3\n")
 
 LHWMMask = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([2, 159, 161, 253])), ASEGIMG.shape)
 RHWMMask = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([41, 160, 162, 253])), ASEGIMG.shape)
