@@ -23,11 +23,18 @@ fi
 CMD="mri_binarize --i $DRAWEMIMAGE --o $ASEGIMAGE"
 
 # wm
-for i in `seq 51 2 81`
+for i in `seq 51 2 61`
 do
     CMD="$CMD --replace $i 2"
     CMD="$CMD --replace `expr $i + 1` 41"
 done
+
+for i in `seq 63 2 81`
+do
+    CMD="$CMD --replace $i 41"
+    CMD="$CMD --replace `expr $i + 1` 2"
+done
+
 
 # gm
 for i in `seq 5 2 15`

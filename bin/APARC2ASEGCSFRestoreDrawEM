@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage.morphology
+
+if len(sys.argv) < 4:
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <aseg mgz> <drawem labels image> <out mgz>")
+
+    print()
+    print("Fixes voxels that are erased by seg labels using the ribbon")
+
+    quit()
+
+ASEGFileName = sys.argv[1]
+DrawEMLabelsFileName = sys.argv[2]
+OutFileName = sys.argv[3]
+
+if not os.path.isfile(ASEGFileName):
+    print("ASEG file not found")
+    quit()
+
+if not os.path.isfile(DrawEMLabelsFileName):
+    print("ASEG Presurffile not found")
+
+ASEGNII = nibabel.load(ASEGFileName)
+DrawEMLabelsNII = nibabel.load(DrawEMLabelsFileName)
+
+ASEGIMG = ASEGNII.get_data()
+DrawEMLabelsIMG = DrawEMLabelsNII.get_data()
+
+NewASEGIMG = numpy.array(ASEGIMG)
+
+DrawEMExtraCranialBackgroundLabel = 84
+DrawEMCSFLabel = 83
+
+MaskToFill = numpy.logical_or(DrawEMLabelsIMG == DrawEMExtraCranialBackgroundLabel, DrawEMLabelsIMG == DrawEMCSFLabel)
+
+FilledMask = scipy.ndimage.binary_fill_holes(MaskToFill) 
+FSCSFLabel = 24
+
+NewASEGIMG[numpy.logical_and(ASEGIMG == 0, numpy.logical_and(FilledMask > 0, DrawEMLabelsIMG != DrawEMExtraCranialBackgroundLabel))] = FSCSFLabel
+
+# retain largest connected component of NewASEGIMG
+
+L, numFeatures = scipy.ndimage.label(NewASEGIMG > 0)
+N = numpy.bincount(L[L > 0])
+
+I = numpy.argmax(N)
+NewASEGIMG[L != I] = 0
+
+NewASEGNII = nibabel.MGHImage(NewASEGIMG, ASEGNII.affine, ASEGNII.header)
+
+nibabel.save(NewASEGNII, OutFileName)
