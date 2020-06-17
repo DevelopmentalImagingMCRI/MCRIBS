@@ -31,13 +31,22 @@ for o, a in opts:
 
 # for each vertex in V1, finds the equal point in V2
 def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None, V1DebugIDX = None, V2DebugIDX = None):
-    T = numpy.concatenate((V1['vertices'], V2['vertices']), axis = 1)
-    I = numpy.lexsort(T)
-    IDX = numpy.concatenate((numpy.arange(V1['vertices'].shape[1]), numpy.arange(V2['vertices'].shape[1])))
+    VV = numpy.concatenate((V1['vertices'], V2['vertices']), axis = 1)
+    VVSortedI = numpy.lexsort(VV)
+    VVSorted = VV[:, VVSortedI]
+
+    # find where elements 0:V1['vertices'].shape[1] ended up
+    V1IInSorted = numpy.array(VVSortedI)
+    V1IInSorted[VVSortedI] = numpy.arange(VVSortedI.size)
+    V1IInSorted = V1IInSorted[0:V1['vertices'].shape[1]]
+
+    #$IDX = numpy.concatenate((numpy.arange(V1['vertices'].shape[1]), numpy.arange(V2['vertices'].shape[1])))
 
     #I = numpy.lexsort(T)
-    SortedT = numpy.take(T, I, axis = 1)
-    SortedIDX = IDX[I]
+    #SortedT = numpy.take(T, I, axis = 1)
+    #ortedT = T[:, I]
+    #SortedIDX = IDX[I]
+    
 
     if debug == True:
         V2DebugIDXInIDX = V1['vertices'].shape[1] + V2DebugIDX
@@ -59,16 +68,19 @@ def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None, V1Debug
         #print InverseI[V1DebugIDX]
 
     #print SortedT
-    D = numpy.where(numpy.all(numpy.diff(SortedT, axis = 1) == 0, axis = 0))[0]
-    if debug == True:
-        print(D)    
+    #D = numpy.where(numpy.all(numpy.diff(SortedT, axis = 1) == 0, axis = 0))[0]
+    #if debug == True:
+    #    print(D)    
     #SameIDX = dict()
+    ValidIDX = numpy.all(VVSorted[:, V1IInSorted] == VVSorted[:, numpy.mod(V1IInSorted + 1, VVSortedI.size)], axis = 0)
     
     SrcIDX = numpy.zeros(V1['vertices'].shape[1], dtype = numpy.int32)
     SrcIDX.fill(-1)
+    SrcIDX[ValidIDX] = VVSortedI[V1IInSorted[ValidIDX] + 1] - V1['vertices'].shape[1]
 
-    for z in range(D.size):
-        SrcIDX[SortedIDX[D[z]]] = SortedIDX[D[z] + 1]
+    #SrcIDX[SortedIDX[D]] = SortedIDX[D + 1]
+    #for z in range(D.size):
+    #    SrcIDX[SortedIDX[D[z]]] = SortedIDX[D[z] + 1]
     
     if not V1Mask is None and not V2Mask is None:
         V1MaskIDX = numpy.where(V1Mask)[0]
@@ -141,10 +153,16 @@ if VTKLoad == True:
     PialSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial.vtp'))
     PialLHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-lh.vtp'))
     PialRHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-rh.vtp'))
-    Pial3Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-3.vtp'))
-    Pial4Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-4.vtp'))
-    Pial5Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-5.vtp'))
-    Pial6Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-6.vtp'))
+
+    if os.path.isfile(os.path.join(inDir, 'temp', 'pial-3.vtp')) and os.path.isfile(os.path.join(inDir, 'temp', 'pial-4.vtp')) and os.path.isfile(os.path.join(inDir, 'temp', 'pial-5.vtp')) and os.path.isfile(os.path.join(inDir, 'temp', 'pial-6.vtp')):
+        ensureOutside = True
+        Pial3Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-3.vtp'))
+        Pial4Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-4.vtp'))
+        Pial5Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-5.vtp'))
+        Pial6Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-6.vtp'))
+    else:
+        ensureOutside = False
+    
 else:
     WhiteInternalSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white+internal_world.surf'))
     WhiteSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white_world.surf'))
@@ -185,19 +203,20 @@ if PialLHSurf is None:
 if PialRHSurf is None:
     print("PialRHSurf not found")
     exit()
-if Pial3Surf is None:
-    print("Pial3Surf not found")
-    exit()
-if Pial4Surf is None:
-    print("Pial4Surf not found")
-    exit()
-if Pial5Surf is None:
-    print("Pial5Surf not found")
-    exit()
-if Pial6Surf is None:
-    print("Pial6Surf not found")
-    exit()
 
+#if Pial3Surf is None:
+#    print("Pial3Surf not found")
+#    exit()
+#if Pial4Surf is None:
+#    print("Pial4Surf not found")
+#    exit()
+#if Pial5Surf is None:
+#    print("Pial5Surf not found")
+#    exit()
+#if Pial6Surf is None:
+#    print("Pial6Surf not found")
+#    exit()
+#
 #Pial5RegionId = VTPUtils.readVTPCellArray(os.path.join(inDir, 'temp', 'pial-5.vtp'), 'RegionId')
 #Pial6RegionId = VTPUtils.readVTPCellArray(os.path.join(inDir, 'temp', 'pial-6.vtp'), 'RegionId')
 #Pial5VRegionId = vertexRegionId(Pial5Surf['faces'], Pial5RegionId)
@@ -211,18 +230,22 @@ WhiteRHWhiteEqual = findEqualPoints(WhiteRHSurf, WhiteSurf)
 WhiteWhiteLHEqual = findEqualPoints(WhiteSurf, WhiteLHSurf)
 WhiteWhiteRHEqual = findEqualPoints(WhiteSurf, WhiteRHSurf)
 
-WhiteInternalEqual = findEqualPoints(WhiteInternalSurf, WhiteSurf)
-WhiteWhiteInternalEqual = findEqualPoints(WhiteInternalSurf, WhiteSurf)
+#WhiteInternalEqual = findEqualPoints(WhiteInternalSurf, WhiteSurf)
+#WhiteWhiteInternalEqual = findEqualPoints(WhiteInternalSurf, WhiteSurf)
 
 #Pial6PialEqual = findEqualPoints(Pial6Surf, PialSurf)
 #print "Doing equal"
 #Pial6Pial5Equal = findEqualPoints(Pial6Surf, Pial5Surf, V1Mask = Pial6VRegionId == 4, V2Mask = Pial5VRegionId == 4)
-Pial6Pial5Equal = findEqualPoints(Pial6Surf, Pial5Surf)
 #raise
-Pial5Pial4Equal = findEqualPoints(Pial5Surf, Pial4Surf)
-Pial4Pial3Equal = findEqualPoints(Pial4Surf, Pial3Surf)
+#Pial5Pial4Equal = findEqualPoints(Pial5Surf, Pial4Surf)
 
-PialPial6Equal = findEqualPoints(PialSurf, Pial6Surf)
+# pial 6 == pial 5 == pial 4
+# pial 3 == pial 2 == pial 1 == white
+if ensureOutside == True:
+    Pial6Pial5Equal = findEqualPoints(Pial6Surf, Pial5Surf)
+    Pial4Pial3Equal = findEqualPoints(Pial4Surf, Pial3Surf)
+    PialPial6Equal = findEqualPoints(PialSurf, Pial6Surf)
+
 PialPialInternalEqual = findEqualPoints(PialSurf, PialInternalSurf)
 PialLHPialEqual = findEqualPoints(PialLHSurf, PialSurf)
 PialRHPialEqual = findEqualPoints(PialRHSurf, PialSurf)
@@ -239,11 +262,11 @@ def anyDuplicates(T):
     N = numpy.bincount(T[T > -1])
     return numpy.any(N > 1)
 
-LHUpToPial5 = Pial5Pial4Equal[PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]]
-RHUpToPial5 = Pial5Pial4Equal[PialPial6Equal[PialRHPialEqual[PialRHPialCortexMask]]]
+#LHUpToPial5 = PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]]
+#RHUpToPial5 = PialPial6Equal[PialRHPialEqual[PialRHPialCortexMask]]]
 
-LHI = numpy.where(LHUpToPial5 < 0)[0]
-RHI = numpy.where(RHUpToPial5 < 0)[0]
+#LHI = numpy.where(LHUpToPial5 < 0)[0]
+#RHI = numpy.where(RHUpToPial5 < 0)[0]
 
 # find out why we are getting zero distances but negative one indices
 # there seems to be some vertices that stuff up in Pial5Pial4Equal, there are never many so an exhaustive search is not a big problem
@@ -267,8 +290,8 @@ def findClosestIDX(SurfSRC, SurfDST, IDX, return_dist = False):
     else:
         return (I, D[(numpy.arange(D.shape[0]), I)])
 
-if LHI.size > 0:
-    MinI = findClosestIDX(Pial5Surf, Pial4Surf, PialLHPialCortexIDX[LHI])
+#if LHI.size > 0:
+#    MinI = findClosestIDX(Pial5Surf, Pial4Surf, PialLHPialCortexIDX[LHI])
 # find closest vertices in Pial4 from the failed vertices in Pial5
     #T = numpy.take(Pial5Surf['vertices'], PialLHPialCortexIDX[LHI], axis = 1)
     #XC = numpy.atleast_2d(T[0]).T - Pial4Surf['vertices'][0]
@@ -276,13 +299,13 @@ if LHI.size > 0:
     #ZC = numpy.atleast_2d(T[2]).T - Pial4Surf['vertices'][2]
     #D = numpy.sqrt(XC * XC + YC * YC + ZC * ZC)
     #MinI = numpy.argmin(D, axis = 1)
-    LHUpToPial5[LHUpToPial5 < 0] = MinI
-    LHMinI = numpy.array(MinI)
+#    LHUpToPial5[LHUpToPial5 < 0] = MinI
+#    LHMinI = numpy.array(MinI)
 
 #MinI = findEqualPoints(Pial5Surf, Pial4Surf, debug = True, V1DebugIDX = LHI, V2DebugIDX = LHMinI)
 
-if RHI.size > 0:
-    MinI, D = findClosestIDX(Pial5Surf, Pial4Surf, PialRHPialCortexIDX[RHI], return_dist = True)
+#if RHI.size > 0:
+#    MinI, D = findClosestIDX(Pial5Surf, Pial4Surf, PialRHPialCortexIDX[RHI], return_dist = True)
     #print RHI
     #print D > 0
 # find closest vertices in Pial4 from the failed vertices in Pial5
@@ -293,11 +316,19 @@ if RHI.size > 0:
     #D = numpy.sqrt(XC * XC + YC * YC + ZC * ZC)
     #MinI = numpy.argmin(D, axis = 1)
     
-    RHUpToPial5[RHUpToPial5 < 0] = MinI
-    RHMinI = numpy.array(MinI)
+#    RHUpToPial5[RHUpToPial5 < 0] = MinI
+#    RHMinI = numpy.array(MinI)
 
-LHIDX = WhiteWhiteLHEqual[Pial4Pial3Equal[Pial5Pial4Equal[LHUpToPial5]]]
-RHIDX = WhiteWhiteRHEqual[Pial4Pial3Equal[Pial5Pial4Equal[RHUpToPial5]]]
+
+#LHUpToPial5 = PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]]
+#RHUpToPial5 = PialPial6Equal[PialRHPialEqual[PialRHPialCortexMask]]]
+
+if ensureOutside == True:
+    LHIDX = WhiteWhiteLHEqual[Pial4Pial3Equal[PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]]]
+    RHIDX = WhiteWhiteRHEqual[Pial4Pial3Equal[PialPial6Equal[PialRHPialEqual[PialRHPialCortexMask]]]]
+else:
+    LHIDX = WhiteWhiteLHEqual[PialLHPialEqual[PialLHPialCortexMask]]
+    RHIDX = WhiteWhiteRHEqual[PialRHPialEqual[PialRHPialCortexMask]]
 
 #T = (Pial4Pial3Equal[LHUpToPial5] == -1)
 #MinI, D = findClosestIDX(Pial4Surf, Pial3Surf, PialLHPialCortexIDX[T], return_dist = True)
@@ -312,6 +343,8 @@ RHIDX = WhiteWhiteRHEqual[Pial4Pial3Equal[Pial5Pial4Equal[RHUpToPial5]]]
 #raise
 # occasionally we get some duplicates in LHIDX and RHIDX
 # this is where 
+
+#print(numpy.where(LHIDX < 0))
 LHDuplicates = numpy.where(numpy.bincount(LHIDX) > 1)[0]
 RHDuplicates = numpy.where(numpy.bincount(RHIDX) > 1)[0]
 
@@ -381,6 +414,7 @@ outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
 #freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.pial.mask.curv'))
 #
 
+print("saving pials")
 freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
 
 outS = dict()

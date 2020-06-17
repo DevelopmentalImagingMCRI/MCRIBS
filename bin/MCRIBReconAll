@@ -66,6 +66,7 @@ def main():
     surfReconArgGroup.add_argument('--surfreconmethod', help = "Specify cortical surface extraction method", required = False, choices = ['Deformable'], default = 'Deformable')
     surfReconArgGroup.add_argument('--deformablejointhresh', help = "Join threshold parameter for Deformable", required = False, type = float, default = 1)
     surfReconArgGroup.add_argument('--deformablefastcollision', help = "Use Deformable fast collision test", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--deformablenoensurepialoutside', help = "Dont ensure pial is outside white", required = False, action = 'store_true')
 
     inflateSphereArgGroup = argParser.add_argument_group('inflatesphere', 'Perform inflation, spherical mapping, curv, area, depends --surfrecon')
     inflateSphereArgGroup.add_argument('--inflatesphere', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -340,7 +341,7 @@ def main():
         pass
 
     if (options.surfrecon == True or options.all == True) and not isFromDHCP and options.nosurfrecon == False:
-        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision), str(options.useT1)]
+        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision), str(options.useT1), str(options.deformablenoensurepialoutside)]
         runCommand(cmd, log_file_name = logFileName)
         pass
 
