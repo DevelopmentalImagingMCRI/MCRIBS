@@ -23,6 +23,9 @@ then
 	cd $SUBJECTS_DIR/$SUBJID/mri
 	mri_surf2volseg --i aseg.presurf.mgz --fix-presurf-with-ribbon ribbon.mgz --o aseg.mgz --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
 	#`dirname $0`/APARC2ASEGZeroToCSFFix aseg.mgz aseg.presurf.mgz aseg.mgz
+	# left over "intra-cranial background" needs to be made CSF
+	mri_binarize --i aseg.mgz --replace 85 24 --o aseg_tmp.mgz
+	mv aseg_tmp.mgz aseg.mgz
 	mri_mask -transfer 3 aseg.mgz ribbon.mgz aseg.mgz
 	mri_mask -transfer 42 aseg.mgz ribbon.mgz aseg.mgz
 	`dirname $0`/APARC2ASEGCSFRestoreDrawEM aseg.mgz $SUBJECTS_DIR/../TissueSeg/${SUBJID}_all_labels_manedit.nii.gz aseg.mgz
