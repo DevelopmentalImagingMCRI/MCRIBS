@@ -42,7 +42,7 @@ if Data.GetNumberOfPolys() > 0:
 
 ASEGMGZ = nibabel.load(sys.argv[2])
 
-I = numpy.linalg.inv(ASEGMGZ.get_affine())
+I = numpy.linalg.inv(ASEGMGZ.affine)
 
 TV = numpy.dot(I[:3, :3], S['vertices']) + numpy.atleast_2d(I[:3, 3]).T
 
@@ -95,7 +95,7 @@ NewIMG[NewIMG == 16] = ThalamusLabel
 #NewIMG[NewIMG == 17] = ThalamusLabel
 #NewIMG[NewIMG == 53] = ThalamusLabel
 
-NewMGZ = nibabel.MGHImage(NewIMG, ASEGMGZ.get_affine())
+NewMGZ = nibabel.MGHImage(NewIMG, ASEGMGZ.affine)
 nibabel.save(NewMGZ, sys.argv[3])
 #numpy.set_printoptions(precision=4, formatter={'float': '{: 0.3f}'.format})
 #try:

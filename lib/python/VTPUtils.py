@@ -26,14 +26,16 @@ def readVTPSurf(inFileName):
 
     Data = Reader.GetOutput()
     Vrts = Data.GetVerts()
-    indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
+    D = Vrts.GetData()
+    indices = [D.GetValue(i) for i in range(1, Vrts.GetSize())]
 
     S = dict()
     S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
     S['vertices'] = numpy.stack(S['vertices']).T
 
     if Data.GetNumberOfPolys() > 0:
-        S['faces'] = [[int(Data.GetPolys().GetData().GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
+        D = Data.GetPolys().GetData()
+        S['faces'] = [[int(D.GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
         S['faces'] = numpy.stack(S['faces']).T
     return S
 

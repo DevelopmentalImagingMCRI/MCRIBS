@@ -21,9 +21,9 @@ import freesurfer
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 1:
-	print("The number of arguments must be 1")
-	print(sys.argv[0] + " <vtp file>")
-	exit()
+    print("The number of arguments must be 1")
+    print(sys.argv[0] + " <vtp file>")
+    exit()
 
 numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
 
@@ -46,13 +46,11 @@ for o, a in opts:
         TKROnly = True
     if o == '-v':
         verbose = True
-	if o == '--surf-volgeom':
-		geometryNIIFile = a
-	if o == '-v':
-		verbose = True
+    if o == '--surf-volgeom':
+            geometryNIIFile = a
 
 if verbose == True:
-	print(inFilePrefix)
+    print(inFilePrefix)
 #SurfReader = vtk.vtkXMLPolyDataReader()
 #SurfReader.SetFileName(surfFileName)
 #SurfReader.Update()
@@ -102,25 +100,25 @@ for arrayIDX in range(pointData.GetNumberOfArrays()):
         curCurv = {'numVertices': curArray.shape[0], 'numFaces': 0}
         curCurv['values'] = numpy.ravel(curArray)
         freesurfer.writeCurv(curCurv, inFilePrefix + '.' + curArrayName + '.curv')
-	curArrayName = pointData.GetArrayName(arrayIDX)
-	curArrayName = curArrayName.replace(" ", "_")
-	if verbose == True:
-		print(curArrayName)
-	curArray = pointData.GetArray(arrayIDX)
-	curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
-	curArray = numpy.array(curArray)
-	# check the number of columns in the array
-	if curArray.shape[1] == 3:
-		# these are 3d points, save them as a surface
-		curSurf = {'vertices': None, 'faces': None}
-		curSurf['vertices'] = numpy.array(curArray)
-		freesurfer.writeSurf(curSurf, inFilePrefix + '.' + curArrayName + '.surf' , fileFormat = 'binary')
-		del curSurf
-	if curArray.shape[1] == 1:
-		# this is a scalar for each vertex, save as a curvature file
-		curCurv = {'numVertices': curArray.shape[0], 'numFaces': 0}
-		curCurv['values'] = numpy.ravel(curArray)
-		freesurfer.writeCurv(curCurv, inFilePrefix + '.' + curArrayName + '.curv')
+    curArrayName = pointData.GetArrayName(arrayIDX)
+    curArrayName = curArrayName.replace(" ", "_")
+    if verbose == True:
+        print(curArrayName)
+    curArray = pointData.GetArray(arrayIDX)
+    curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
+    curArray = numpy.array(curArray)
+    # check the number of columns in the array
+    if curArray.shape[1] == 3:
+        # these are 3d points, save them as a surface
+        curSurf = {'vertices': None, 'faces': None}
+        curSurf['vertices'] = numpy.array(curArray)
+        freesurfer.writeSurf(curSurf, inFilePrefix + '.' + curArrayName + '.surf' , fileFormat = 'binary')
+        del curSurf
+    if curArray.shape[1] == 1:
+        # this is a scalar for each vertex, save as a curvature file
+        curCurv = {'numVertices': curArray.shape[0], 'numFaces': 0}
+        curCurv['values'] = numpy.ravel(curArray)
+        freesurfer.writeCurv(curCurv, inFilePrefix + '.' + curArrayName + '.curv')
 
 cellData = Data.GetCellData()
 for arrayIDX in range(cellData.GetNumberOfArrays()):
@@ -144,22 +142,22 @@ for arrayIDX in range(cellData.GetNumberOfArrays()):
         curCurv['values'] = numpy.ravel(curArray)
         freesurfer.writeCurv(curCurv, inFilePrefix + '.' + curArrayName + '.curv')
 
-	curArrayName = cellData.GetArrayName(arrayIDX)
-	curArrayName = curArrayName.replace(" ", "_")
-	if verbose == True:
-		print(curArrayName)
-	curArray = cellData.GetArray(arrayIDX)
-	curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
-	curArray = numpy.array(curArray)
-	# check the number of columns in the array
-	if curArray.shape[1] == 3:
-		# these are 3d points, save them as a surface
-		curSurf = {'vertices': None, 'faces': None}
-		curSurf['vertices'] = numpy.array(curArray)
-		freesurfer.writeSurf(curSurf, inFilePrefix + '.' + curArrayName + '.surf' , fileFormat = 'binary')
-		del curSurf
-	if curArray.shape[1] == 1:
-		# this is a scalar for each vertex, save as a curvature file
-		curCurv = {'numVertices': curArray.shape[0], 'numFaces': 0}
-		curCurv['values'] = numpy.ravel(curArray)
-		freesurfer.writeCurv(curCurv, inFilePrefix + '.' + curArrayName + '.curv')
+    curArrayName = cellData.GetArrayName(arrayIDX)
+    curArrayName = curArrayName.replace(" ", "_")
+    if verbose == True:
+        print(curArrayName)
+    curArray = cellData.GetArray(arrayIDX)
+    curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
+    curArray = numpy.array(curArray)
+    # check the number of columns in the array
+    if curArray.shape[1] == 3:
+        # these are 3d points, save them as a surface
+        curSurf = {'vertices': None, 'faces': None}
+        curSurf['vertices'] = numpy.array(curArray)
+        freesurfer.writeSurf(curSurf, inFilePrefix + '.' + curArrayName + '.surf' , fileFormat = 'binary')
+        del curSurf
+    if curArray.shape[1] == 1:
+        # this is a scalar for each vertex, save as a curvature file
+        curCurv = {'numVertices': curArray.shape[0], 'numFaces': 0}
+        curCurv['values'] = numpy.ravel(curArray)
+        freesurfer.writeCurv(curCurv, inFilePrefix + '.' + curArrayName + '.curv')

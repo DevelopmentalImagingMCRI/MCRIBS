@@ -52,7 +52,7 @@ mkdir -p ITK
 cd ITK
 git clone https://github.com/InsightSoftwareConsortium/ITK.git
 cd ITK
-git checkout tags/v5.0.1
+git checkout tags/v5.1.0
 cd ..
 mkdir -p ITK-build
 cd ITK-build
@@ -61,9 +61,8 @@ eval $CMAKE $ARCHFLAGS -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTING:BOOL=OFF -DCMAK
 make -j`nproc`
 make install
 cd $MCRIBSDIR
-#exit
 
-# get and build VTK
+ # get and build VTK
 mkdir -p VTK
 #rm -fr VTK/VTK-install VTK/VTK-build
 cd VTK
@@ -78,6 +77,24 @@ then
     #apply the patch
     patch -p0 -N < $PATCHFILE
 fi
+
+PYTHON3VERSION=`python3 --version | awk '{ print $2; }'`
+PYTHON3MAJOR=`echo $PYTHON3VERSION | cut -f1 -d.`
+PYTHON3MINOR=`echo $PYTHON3VERSION | cut -f2 -d.`
+
+echo $PYTHON3VERSION $PYTHON3MAJOR $PYTHON3MINOR
+
+if [ "$PYTHON3MINOR" -ge "8" ]
+then
+	PATCHFILE=lib/0001-Compatibility-for-Python-3.8.patch
+	patch -p0 -N --dry-run --silent < $PATCHFILE 2>/dev/null
+	if [ $? -eq 0 ];
+	then
+	    #apply the patch
+	    patch -p0 -N < $PATCHFILE
+	fi
+fi
+
 cd VTK
 
 LIGHTWEIGHTPYTHON="-DVTK_WRAP_PYTHON:BOOL=ON -DVTK_Group_StandAlone:BOOL=OFF -DVTK_Group_Rendering:BOOL=OFF -DModule_vtkCommonColor:BOOL=ON -DModule_vtkCommonComputationalGeometry:BOOL=ON -DModule_vtkCommonDataModel:BOOL=ON -DModule_vtkCommonExecutionModel:BOOL=ON -DModule_vtkCommonMath:BOOL=ON -DModule_vtkCommonMisc:BOOL=ON -DModule_vtkCommonSystem:BOOL=ON -DModule_vtkCommonTransforms:BOOL=ON -DModule_vtkFiltersCore:BOOL=ON -DModule_vtkFiltersExtraction:BOOL=ON -DModule_vtkFiltersGeneral:BOOL=ON -DModule_vtkFiltersGeneric:BOOL=ON -DModule_vtkFiltersGeometry:BOOL=ON -DModule_vtkFiltersPython:BOOL=ON -DModule_vtkIOCore:BOOL=ON -DModule_vtkIOGeometry:BOOL=ON -DModule_vtkIOLegacy:BOOL=ON -DModule_vtkWrappingPythonCore:BOOL=ON -DModule_vtkIOXML:BOOL=ON -DModule_vtkFiltersHybrid:BOOL=ON -DModule_vtkFiltersModeling:BOOL=ON -DModule_vtkImagingStencil:BOOL=ON -DModule_vtkIOPLY:BOOL=ON -DModule_vtkFiltersFlowPaths:BOOL=ON -DModule_vtkFiltersParallel:BOOL=ON"
@@ -104,7 +121,7 @@ fi
 rm -fr MIRTK/MIRTK-build MIRTK/MIRTK-install
 mkdir -p MIRTK/MIRTK-build
 cd MIRTK/MIRTK-build
-eval $CMAKE $ARCHFLAGS -DMODULE_Deformable=ON -DMODULE_Mapping=ON -DMODULE_PointSet=ON -DMODULE_Scripting=ON -DWITH_TBB=ON -DMODULE_DrawEM=ON -DWITH_VTK=ON -DITK_DIR=$MCRIBSDIR/ITK/ITK-install/lib/cmake/ITK-5.0 -DDEPENDS_VTK_DIR=$MIRTKVTKDEPENDS -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/MIRTK/MIRTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DWITH_FLANN=OFF -DWITH_CCACHE=$WITHCCACHE ../MIRTK
+eval $CMAKE $ARCHFLAGS -DMODULE_Deformable=ON -DMODULE_Mapping=ON -DMODULE_PointSet=ON -DMODULE_Scripting=ON -DWITH_TBB=ON -DMODULE_DrawEM=ON -DWITH_VTK=ON -DITK_DIR=$MCRIBSDIR/ITK/ITK-install/lib/cmake/ITK-5.1 -DDEPENDS_VTK_DIR=$MIRTKVTKDEPENDS -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/MIRTK/MIRTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DWITH_FLANN=OFF -DWITH_CCACHE=$WITHCCACHE ../MIRTK
 make -j`nproc`
 make install
 
