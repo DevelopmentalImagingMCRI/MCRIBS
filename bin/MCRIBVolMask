@@ -23,7 +23,25 @@ then
     echo "ASEG file not found: ${ASEGFILE}.mgz"
     exit 1
 fi
-mris_volmask --aseg_name $ASEGFILE --label_left_white 2 --label_left_ribbon 3 --label_right_white 41 --label_right_ribbon 42  --save_ribbon $SUBJID
+
+# check if ribbon needs to be regenerated
+
+if [ ! -f "ribbon.mgz" ]
+then
+	DORIBBON=YES
+else
+	if [ "../surf/lh.white" -nt "ribbon.mgz" -o "../surf/rh.white" -nt "ribbon.mgz" -o "../surf/lh.pial" -nt "ribbon.mgz" -o "../surf/rh.pial" -nt "ribbon.mgz" -o "$ASEGFILE.mgz" -nt "ribbon.mgz" ]
+	then
+		DORIBBON=YES
+	else
+		DORIBBON=NO
+	fi
+fi
+
+if [ "$DORIBBON" == "YES" ]
+then
+	mris_volmask --aseg_name $ASEGFILE --label_left_white 2 --label_left_ribbon 3 --label_right_white 41 --label_right_ribbon 42  --save_ribbon $SUBJID
+fi
 
 if [ "$ASEGFILE" == "aseg.presurf.preunwmfix" ]
 then
