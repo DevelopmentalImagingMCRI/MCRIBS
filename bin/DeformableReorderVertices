@@ -143,6 +143,7 @@ def replaceUnvisitedVerticesSmooth(S, visitedMask):
 inDir = args[0]
 outDir = args[1]
 
+#print("Loading")
 VTKLoad = True
 if VTKLoad == True:
     WhiteInternalSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white+internal.vtp'))
@@ -222,6 +223,7 @@ if PialRHSurf is None:
 #Pial5VRegionId = vertexRegionId(Pial5Surf['faces'], Pial5RegionId)
 #Pial6VRegionId = vertexRegionId(Pial6Surf['faces'], Pial6RegionId)
 
+#print("Finding mappings")
 WhiteLHWhiteInternalEqual = findEqualPoints(WhiteLHSurf, WhiteInternalSurf)
 WhiteRHWhiteInternalEqual = findEqualPoints(WhiteRHSurf, WhiteInternalSurf)
 
@@ -414,7 +416,7 @@ outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
 #freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.pial.mask.curv'))
 #
 
-print("saving pials")
+#print("saving pials")
 freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
 
 outS = dict()
