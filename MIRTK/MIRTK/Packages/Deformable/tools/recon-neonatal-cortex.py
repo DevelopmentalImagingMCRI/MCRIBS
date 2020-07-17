@@ -871,6 +871,7 @@ neoctx.verbose = max(0, args.verbose - 1)
 neoctx.showcmd = max(0, args.verbose - 1)
 neoctx.debug = max(0, args.debug)
 neoctx.force = args.force
+neoctx.threads = args.threads
 
 # read subject and session IDs from CSV file
 if len(args.sessions) == 1 and os.path.isfile(args.sessions[0]):
