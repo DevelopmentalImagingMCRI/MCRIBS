@@ -693,10 +693,7 @@ def deform_mesh(iname, oname=None, temp=None, opts={}, super_debug = False):
             opts['debug-interval'] = 1
             opts['debug'] = 5
         else:
-            try:
-                del opts['debug-interval']
-            except KeyError:
-                pass
+            opts['debug-interval'] = 999 # prevent output files being made, don't need them
 
         run('deform-mesh', args=[iname, oname], opts=opts)
     return oname
@@ -1546,6 +1543,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                 'max-edge-length'
             ])
         mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts))
+        #mesh = init_mesh.replace('white-1', 'white-2')
         if bs_cb_mesh:
             run('extract-pointset-cells', args=[mesh, mesh], opts=[('where', region_id_array), ('ne', 7)])
 
@@ -1553,20 +1551,21 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
         # dilate the status mask so we don't get weird effects when we smooth at the cortex/non-cortex border
         # copy the status to another array, dilate the other array then set that array for smoothing
 
-        print(status_array)
-        status_array_dilated = status_array + "Dilated"
-        run('copy-pointset-attributes', args=[mesh, mesh], opts={'pointdata': [status_array, status_array_dilated]})
-        run('dilate-scalars', args=[mesh, mesh], opts={'point-data': status_array_dilated, 'iter': 2})
+        #print(status_array)
+        #status_array_dilated = status_array + "Dilated"
+        #run('copy-pointset-attributes', args=[mesh, mesh], opts={'pointdata': [status_array, status_array_dilated]})
+        #run('dilate-scalars', args=[mesh, mesh], opts={'point-data': status_array, 'output-array': status_array_dilated, 'iter': 2})
 
-        smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask=status_array_dilated))
+        #smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask=status_array_dilated))
+        smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True))
 
         # remove intersections if any
         if check:
             remove_intersections(smooth, oname=name, mask=status_array)
 
         # write output mesh
-        del_mesh_attr(smooth, pointdata=status_array)
-        del_mesh_attr(smooth, pointdata=status_array_dilated)
+        #del_mesh_attr(smooth, pointdata=status_array)
+        #del_mesh_attr(smooth, pointdata=status_array_dilated)
         rename(smooth, name)
     return name
 
@@ -1702,6 +1701,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             offset_mesh = push_output(stack, deform_mesh(init_mesh, opts={
                 'normal-force': 1,
                 'curvature': 1,
+                'lowpass': 5,
                 'optimizer': 'EulerMethod',
                     'step': .1,
                     'steps': 100,
@@ -1714,7 +1714,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             }, super_debug = True))
             if debug == 0:
                 try_remove(init_mesh)
-            quit()
+            #quit()
             # blend between original position of non-cortical points and offset surface points
             blended_mesh = push_output(stack, nextname(offset_mesh))
             run('copy-pointset-attributes', args=[offset_mesh, offset_mesh, blended_mesh], opts={'celldata-as-pointdata': cortex_mask_array, 'unanimous': None})
