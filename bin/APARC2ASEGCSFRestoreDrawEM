@@ -31,7 +31,7 @@ ASEGNII = nibabel.load(ASEGFileName)
 DrawEMLabelsNII = nibabel.load(DrawEMLabelsFileName)
 
 ASEGIMG = ASEGNII.get_data()
-DrawEMLabelsIMG = DrawEMLabelsNII.get_data()
+DrawEMLabelsIMG = numpy.squeeze(DrawEMLabelsNII.get_data())
 
 NewASEGIMG = numpy.array(ASEGIMG)
 
@@ -40,7 +40,7 @@ DrawEMCSFLabel = 83
 
 MaskToFill = numpy.logical_or(DrawEMLabelsIMG == DrawEMExtraCranialBackgroundLabel, DrawEMLabelsIMG == DrawEMCSFLabel)
 
-FilledMask = scipy.ndimage.binary_fill_holes(MaskToFill) 
+FilledMask = scipy.ndimage.binary_fill_holes(MaskToFill)
 FSCSFLabel = 24
 
 NewASEGIMG[numpy.logical_and(ASEGIMG == 0, numpy.logical_and(FilledMask > 0, DrawEMLabelsIMG != DrawEMExtraCranialBackgroundLabel))] = FSCSFLabel

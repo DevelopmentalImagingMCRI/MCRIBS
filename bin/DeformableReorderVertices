@@ -325,6 +325,7 @@ def findClosestIDX(SurfSRC, SurfDST, IDX, return_dist = False):
 #LHUpToPial5 = PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]]
 #RHUpToPial5 = PialPial6Equal[PialRHPialEqual[PialRHPialCortexMask]]]
 
+#print(ensureOutside)
 if ensureOutside == True:
     LHIDX = WhiteWhiteLHEqual[Pial4Pial3Equal[PialPial6Equal[PialLHPialEqual[PialLHPialCortexMask]]]]
     RHIDX = WhiteWhiteRHEqual[Pial4Pial3Equal[PialPial6Equal[PialRHPialEqual[PialRHPialCortexMask]]]]
@@ -346,7 +347,9 @@ else:
 # occasionally we get some duplicates in LHIDX and RHIDX
 # this is where 
 
-#print(numpy.where(LHIDX < 0))
+
+#print(numpy.where(LHIDX < 0)[0].size)
+#print(numpy.where(RHIDX < 0)[0].size)
 LHDuplicates = numpy.where(numpy.bincount(LHIDX) > 1)[0]
 RHDuplicates = numpy.where(numpy.bincount(RHIDX) > 1)[0]
 
