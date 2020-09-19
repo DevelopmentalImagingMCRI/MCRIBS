@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+
+import vtk
+import numpy
+import sys
+import os
+import nibabel
+import getopt
+import scipy.ndimage.morphology
+
+# append python paths
+P = os.path.realpath(__file__)
+head, tail = os.path.split(P)
+sys.path.append(os.path.join(head, '..', 'lib', 'python'))
+
+del P
+del head
+del tail
+
+import VTPUtils
+import freesurfer
+import GraphUtils
+#import matplotlib.pyplot as plt
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", [])
+
+if len(args) != 3:
+    print("The number of arguments must be 3")
+    print(sys.argv[0] + " <white-2 surface> <internal surface> <output surface>")
+    exit()
+
+numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
+
+def findEqualPoints(V1, V2):
+    VV = numpy.concatenate((V1['vertices'], V2['vertices']), axis = 1)
+    VVSortedI = numpy.lexsort(VV)
+    VVSorted = VV[:, VVSortedI]
+
+    # find where elements 0:V1['vertices'].shape[1] ended up
+    V1IInSorted = numpy.array(VVSortedI)
+    V1IInSorted[VVSortedI] = numpy.arange(VVSortedI.size)
+    V1IInSorted = V1IInSorted[0:V1['vertices'].shape[1]]
+
+    ValidIDX = numpy.all(VVSorted[:, V1IInSorted] == VVSorted[:, numpy.mod(V1IInSorted + 1, VVSortedI.size)], axis = 0)
+
+    SrcIDX = numpy.zeros(V1['vertices'].shape[1], dtype = numpy.int32)
+    SrcIDX.fill(-1)
+    SrcIDX[ValidIDX] = VVSortedI[V1IInSorted[ValidIDX] + 1] - V1['vertices'].shape[1]
+
+    return SrcIDX
+
+White2SurfName = args[0]
+InternalSurfName = args[1]
+outSurfName = args[2]
+
+if not os.path.isfile(White2SurfName):
+    print("white 2 surface not found")
+    quit()
+
+if not os.path.isfile(InternalSurfName):
+    print("internal surface not found")
+    quit()
+
+White2Reader = vtk.vtkXMLPolyDataReader()
+White2Reader.SetFileName(White2SurfName)
+White2Reader.Update()
+Data = vtk.vtkPolyData()
+Data.DeepCopy(White2Reader.GetOutput())
+
+#D = Vrts.GetData()
+#indices = [D.GetValue(i) for i in range(1, Vrts.GetSize())]
+
+White2Surf = dict()
+#S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
+#S['vertices'] = numpy.stack(S['vertices']).T
+White2Surf['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
+if Data.GetNumberOfPolys() > 0:
+    White2Surf['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPolys().GetData()))
+    White2Surf['faces'] = numpy.reshape(White2Surf['faces'], (int(White2Surf['faces'].size / 4), 4)).T
+    White2Surf['faces'] = White2Surf['faces'][1:]
+
+InternalSurf = VTPUtils.readVTPSurf(InternalSurfName)
+
+F = findEqualPoints(White2Surf, InternalSurf)
+
+NonInternalMask = numpy.uint8(F == -1)
+
+writer = vtk.vtkXMLPolyDataWriter()
+writer.SetFileName(outSurfName)
+array = vtk.util.numpy_support.numpy_to_vtk(NonInternalMask, deep=True)
+array.SetName('NonInternalMask')
+D = Data.GetPointData()
+D.AddArray(array)
+D.Modified()
+writer.SetInputData(Data)
+writer.Update()

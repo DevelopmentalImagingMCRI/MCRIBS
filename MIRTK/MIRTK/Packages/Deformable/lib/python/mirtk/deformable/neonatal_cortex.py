@@ -42,6 +42,7 @@ Note: The merge-surfaces tool failed when MIRTK was built with VTK 6.2.
 import os
 import re
 import sys
+import subprocess
 
 from contextlib import contextmanager
 
@@ -1261,8 +1262,10 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
         # save divider(s) as separate surface mesh such that the inside of the
         # white surface is clearly defined when converting it to a binary mask
         # during the image edge-based refinement step below
+
         if internal_mesh:
             joined_without_dividers = push_output(stack, nextname(joined))
+            
             internal_mesh = os.path.abspath(internal_mesh)
             run('extract-pointset-cells', args=[joined, internal_mesh],           opts=[('where', region_id_array_name), ('lt', 0)])
             run('extract-pointset-cells', args=[joined, joined_without_dividers], opts=[('where', region_id_array_name), ('gt', 0)])
@@ -1273,6 +1276,7 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
                 del_mesh_attr(internal_mesh, celldata=region_id_array_name)
             del_mesh_attr(joined, celldata=region_id_array_name)
         rename(joined, name)
+
     if internal_mesh:
         return (name, internal_mesh)
     return name
@@ -1285,7 +1289,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                         subcortex_labels =[], subcortex_mask =None,
                         ventricles_labels=[], ventricles_mask=None, ventricles_dmap=None,
                         cerebellum_labels=[], cerebellum_mask=None, cerebellum_dmap=None,
-                        opts={}, temp=None, check=True, use_fast_collision=False):
+                        opts={}, temp=None, check=True, use_fast_collision=False, internal_mesh=None):
     """Reconstruct white surface based on WM segmentation and/or WM/cGM image edge distance forces.
 
     By default, the 'distance' weight of the WM segmentation boundary force is zero,
@@ -1372,6 +1376,10 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
         Path of distance image from each voxel to the cortical hull with
         positive values inside the cortical hull. This image is an optional
         output of the `subdivide-brain-image` tool.
+    use_fast_collision : bool, optional
+        Whether to use the fast collision option.
+    internal_mesh : str, optional
+        Path of internal mesh file. Used for smoothing post-processing step.
 
     Returns
     -------
@@ -1380,6 +1388,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
 
     """
 
+    #print(os.environ['MCRIBS_HOME'])
     default_mask_distance_weight = 0.
     default_edge_distance_weight = 1.
 
@@ -1414,7 +1423,8 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
         if bs_cb_mesh:
             append_surfaces(init_mesh, surfaces=[cortex_mesh, bs_cb_mesh], merge=False)
             cortex_mesh = init_mesh
-
+        print "cortex_mesh: " + cortex_mesh
+        print "init_mesh: " + init_mesh
         # initialize node status
         status_array = 'InitialStatus'
         run('copy-pointset-attributes', args=[cortex_mesh, cortex_mesh, init_mesh],
@@ -1542,8 +1552,21 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                 'min-edge-length',
                 'max-edge-length'
             ])
+        #print(init_mesh)
+        #print(stack)
+
+
+        #print(mesh)
+        # push_ou
+        #quit()
+        #
+
+        #mesh = push_output(stack, nextname(init_mesh))
+        # the upper line is ONLY for testing, you would normally deform init_mesh to get mesh
         mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts))
         #mesh = init_mesh.replace('white-1', 'white-2')
+
+        masked_mesh = push_output(stack, nextname(mesh))
         if bs_cb_mesh:
             run('extract-pointset-cells', args=[mesh, mesh], opts=[('where', region_id_array), ('ne', 7)])
 
@@ -1557,17 +1580,55 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
         #run('dilate-scalars', args=[mesh, mesh], opts={'point-data': status_array, 'output-array': status_array_dilated, 'iter': 2})
 
         #smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask=status_array_dilated))
-        smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True))
-
+        #smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True)) # this smooths the part of the surface around the internal surface, causes white to have holes around the internal
+        #print(mesh)
+        #print("mesh: " + mesh)
+        #print("internal_mesh: " + internal_mesh)
+        #print("masked_mesh: " + masked_mesh)
+        if not internal_mesh is None:
+            subprocess.check_call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'VTPMarkInternalOnWhiteForSmoothing'), mesh, internal_mesh, masked_mesh])
+            smooth = push_output(stack, smooth_surface(masked_mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask='NonInternalMask'))
+            #quit()
+        else:
+            smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask=status_array))
         # remove intersections if any
         if check:
             remove_intersections(smooth, oname=name, mask=status_array)
 
         # write output mesh
-        #del_mesh_attr(smooth, pointdata=status_array)
+        del_mesh_attr(smooth, pointdata='NonInternalMask')
+        del_mesh_attr(smooth, pointdata=status_array)
         #del_mesh_attr(smooth, pointdata=status_array_dilated)
         rename(smooth, name)
+        #%quit()
     return name
+
+#import VTPUtils
+#import numpy
+#
+## for each vertex in V1, find the equal point in V2
+#def findEqualPoints(V1, V2):
+#    VV = numpy.concatenate((V1['vertices'], V2['vertices']), axis = 1)
+#    VVSortedI = numpy.lexsort(VV)
+#    VVSorted = VV[:, VVSortedI]
+#
+#    # find where elements 0:V1['vertices'].shape[1] ended up
+#    V1IInSorted = numpy.array(VVSortedI)
+#    V1IInSorted[VVSortedI] = numpy.arange(VVSortedI.size)
+#    V1IInSorted = V1IInSorted[0:V1['vertices'].shape[1]]
+#
+#    ValidIDX = numpy.all(VVSorted[:, V1IInSorted] == VVSorted[:, numpy.mod(V1IInSorted + 1, VVSortedI.size)], axis = 0)
+#
+#    SrcIDX = numpy.zeros(V1['vertices'].shape[1], dtype = numpy.int32)
+#    SrcIDX.fill(-1)
+#    SrcIDX[ValidIDX] = VVSortedI[V1IInSorted[ValidIDX] + 1] - V1['vertices'].shape[1]
+#
+#    #SrcIDX[SortedIDX[D]] = SortedIDX[D + 1]
+#    #for z in range(D.size):
+#    #    SrcIDX[SortedIDX[D[z]]] = SortedIDX[D[z] + 1]
+#
+#    return SrcIDX
+#
 
 # ------------------------------------------------------------------------------
 def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
@@ -1698,10 +1759,10 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             run('calculate-element-wise', args=[init_mesh], opts=[('point-data', status_array), ('label', 7), ('set', 0), ('pad', 1), ('out', init_mesh, 'binary')])
 
             # deform pial surface outwards a few millimeters
+            #    'lowpass': 5,
             offset_mesh = push_output(stack, deform_mesh(init_mesh, opts={
                 'normal-force': 1,
                 'curvature': 1,
-                'lowpass': 5,
                 'optimizer': 'EulerMethod',
                     'step': .1,
                     'steps': 100,
@@ -1711,7 +1772,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                     'min-distance': .1,
                     'min-active': '10%',
                     'delta': .0001
-            }, super_debug = True))
+            }, super_debug = False))
             if debug == 0:
                 try_remove(init_mesh)
             #quit()

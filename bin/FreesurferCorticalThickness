@@ -28,7 +28,6 @@ def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
     DSTVT = DSTSurf['vertices'].T
 
     corticalThickness = numpy.zeros(numVertices)
-    
 
     verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool)
     for z in CortexLabel['index']:
@@ -114,10 +113,10 @@ def main():
     if CortexLabel is None:
         CortexLabel = {'index': numpy.arange(WhiteSurf['vertices'].shape[1])}
 
-    print("Cortical Thickness")
-    print("White to pial")
+    #print("Cortical Thickness")
+    #print("White to pial")
     WhiteToPialThickness = doMinThickness(WhiteSurf, PialSurf, CortexLabel)
-    print("Pial to white")
+    #print("Pial to white")
     PialToWhiteThickness = doMinThickness(PialSurf, WhiteSurf, CortexLabel, invertNormals = True)
     print("Done")
     outC = dict()

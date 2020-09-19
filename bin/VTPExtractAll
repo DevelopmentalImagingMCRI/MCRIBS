@@ -7,6 +7,7 @@ import os
 import freesurfer
 import nibabel
 import getopt
+import vtk.util.numpy_support
 
 # append python paths
 P = os.path.realpath(__file__)

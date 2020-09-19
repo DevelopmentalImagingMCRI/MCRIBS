@@ -1062,7 +1062,8 @@ int main(int argc, char *argv[])
   // ---------------------------------------------------------------------------
   // Initialize I/O library
   InitializeIOLibrary();
-
+  
+  //debug = 1;
   // Read input labels image
   GreyImage labels;
   if (!rhmask_labels.empty() ||

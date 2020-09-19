@@ -36,6 +36,8 @@ import csv
 import argparse
 import traceback
 
+print('MCRIBS_HOME')
+print(os.environ['MCRIBS_HOME'])
 try:
     from contextlib import ExitStack  # Python 3
 except:
@@ -474,11 +476,33 @@ def recon_neonatal_cortex(config, section, config_vars,
 
         recon_pial = with_pial_mesh and (force or not os.path.isfile(pial_mesh))
         recon_white = (with_white_mesh or recon_pial) and (force or not os.path.isfile(white_mesh))
+        # recon_white = True
         recon_cerebrum = (with_cerebrum_mesh or recon_white) and (force or not os.path.isfile(cerebrum_mesh))
         recon_brain = with_brain_mesh and (force or not os.path.isfile(brain_mesh))
         recon_bs_cb_mesh = ((with_bs_cb_mesh or (recon_cerebrum and bs_cb_mesh_1) or (recon_white and bs_cb_mesh_2)) and
                             (force or not os.path.isfile(bs_cb_mesh)))
-
+        # recon_cerebrum = False
+        # recon_white = True
+        # recon_pial = True
+        #
+        # print "force: " + str(force)
+        #
+        # print "with_pial_mesh: " + str(with_pial_mesh)
+        # print "pial_mesh: " + pial_mesh
+        # print "with_cerebrum_mesh: " + str(with_cerebrum_mesh)
+        # print "cerebrum_mesh: " + str(cerebrum_mesh)
+        # print "cerebrum_mesh found: " + str(os.path.isfile(cerebrum_mesh))
+        # print "with_brain_mesh: " + str(with_brain_mesh)
+        # print "brain_mesh: " + str(brain_mesh)
+        # print "with_white_mesh: " + str(with_white_mesh)
+        # print "white_mesh: " + str(white_mesh)
+        # print "keep_regions_mask: " + str(keep_regions_mask)
+        # print "recon_bs_cb_mesh: " + str(recon_bs_cb_mesh)
+        # print "recon_cerebrum: " + str(recon_cerebrum)
+        # print "recon_brain: " + str(recon_brain)
+        # print "recon_pial: " + str(recon_pial)
+        # print "recon_white: " + str(recon_white)
+        # #quit()
         # the surface reconstruction relies on a resampling of the intensity
         # images to the standard RAS space defined by the regions_mask / brain_mask
         if recon_brain or recon_bs_cb_mesh or recon_cerebrum or recon_white or recon_pial:
@@ -601,6 +625,10 @@ def recon_neonatal_cortex(config, section, config_vars,
                 if verbose > 0:
                     print("Merging initial surface with internal mesh")
                 neoctx.append_surfaces(cerebrum_plus_internal_mesh, surfaces=[cerebrum_mesh, internal_mesh], merge=True, tol=0)
+        # output temp/cerebrum.vtp
+        # doesn't contain the internal
+
+        #
 
         # reconstruct inner-cortical surface
         if recon_white:
@@ -619,12 +647,15 @@ def recon_neonatal_cortex(config, section, config_vars,
                                        subcortex_mask=deep_gray_matter_mask,
                                        cortical_hull_dmap=cortical_hull_dmap,
                                        ventricles_dmap=ventricles_dmap,
-                                       opts=white_opts, temp=temp_dir, check=check, use_fast_collision=use_fast_collision)
+                                       opts=white_opts, temp=temp_dir, check=check, use_fast_collision=use_fast_collision, internal_mesh = internal_mesh)
 
             # remove initial surface mesh
             if not with_cerebrum_mesh:
+                # try:
                 os.remove(cerebrum_mesh)
-
+                # except OSError:
+                #     pass
+        #quit()
         # insert internal mesh and cut surface at medial plane
         if with_white_mesh:
             split_white = (cut and (force or not os.path.isfile(right_white_mesh) or not os.path.isfile(left_white_mesh)))

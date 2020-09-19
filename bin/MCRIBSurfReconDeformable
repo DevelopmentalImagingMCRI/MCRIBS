@@ -39,7 +39,7 @@ then
 		# Run N4
 		echo "Running N4"
 		mkdir -p RawT1RadiologicalIsotropicN4
-		 $MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -x TissueSeg/${SUBJID}_brain_mask.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
+		$MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -x TissueSeg/${SUBJID}_brain_mask.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
 		#$MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
 	fi
 	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1.cfg
@@ -67,15 +67,16 @@ then
 	if [ ! -e "TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz" ]
 	then
 		echo "Couldnt find the bias corrected T2 in DrawEM output"
+		exit
 	fi
 
-	ln -sf ../TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_T2w_restore.nii.gz
+	#ln -sf ../TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_T2w_restore.nii.gz
 fi
 
 #echo recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 #econ-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
-
+#exit
 RECONRETURNCODE=${PIPESTATUS[0]}
 
 if [ "$RECONRETURNCODE" != "0" ]
@@ -106,7 +107,8 @@ then
 	HEMIS="lh
 	rh"
 
-	SURFS="white"
+	SURFS="white
+	pial"
 
 	mkdir -p freesurfer/$SUBJID/surf
 	mkdir -p freesurfer/$SUBJID/label
@@ -115,11 +117,9 @@ then
 	do
 		for SURF in $SURFS
 		do
-			`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractAll --surf-volgeom=TissueSeg/${SUBJID}_all_labels.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
-			rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
+			`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+			#rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
 			mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
-			rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.curv
-			rm -f freesurfer/$SUBJID/surf/${SURF}-${HEMI}*.surf
 
 		done
 	done

@@ -46,7 +46,7 @@ def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None, V1Debug
     #SortedT = numpy.take(T, I, axis = 1)
     #ortedT = T[:, I]
     #SortedIDX = IDX[I]
-    
+
 
     if debug == True:
         V2DebugIDXInIDX = V1['vertices'].shape[1] + V2DebugIDX
@@ -70,10 +70,10 @@ def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None, V1Debug
     #print SortedT
     #D = numpy.where(numpy.all(numpy.diff(SortedT, axis = 1) == 0, axis = 0))[0]
     #if debug == True:
-    #    print(D)    
+    #    print(D)
     #SameIDX = dict()
     ValidIDX = numpy.all(VVSorted[:, V1IInSorted] == VVSorted[:, numpy.mod(V1IInSorted + 1, VVSortedI.size)], axis = 0)
-    
+
     SrcIDX = numpy.zeros(V1['vertices'].shape[1], dtype = numpy.int32)
     SrcIDX.fill(-1)
     SrcIDX[ValidIDX] = VVSortedI[V1IInSorted[ValidIDX] + 1] - V1['vertices'].shape[1]
@@ -81,7 +81,7 @@ def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None, V1Debug
     #SrcIDX[SortedIDX[D]] = SortedIDX[D + 1]
     #for z in range(D.size):
     #    SrcIDX[SortedIDX[D[z]]] = SortedIDX[D[z] + 1]
-    
+
     if not V1Mask is None and not V2Mask is None:
         V1MaskIDX = numpy.where(V1Mask)[0]
         V2MaskIDX = numpy.where(V2Mask)[0]
@@ -103,12 +103,12 @@ def vertexFaceIDX(F):
     vertexFaceIDX = list()
     for z in range(numVertices):
         vertexFaceIDX.append(list())
-    
+
     for z in range(F.shape[1]):
         vertexFaceIDX[F[0, z]].append(z)
         vertexFaceIDX[F[1, z]].append(z)
         vertexFaceIDX[F[2, z]].append(z)
-    
+
     for z in range(numVertices):
         vertexFaceIDX[z] = numpy.array(vertexFaceIDX[z])
     return vertexFaceIDX
@@ -128,10 +128,10 @@ def vertexRegionId(F, FaceRegionId):
 def replaceUnvisitedVerticesSmooth(S, visitedMask):
     if numpy.all(visitedMask):
         return S
-    
+
     vertexNeighbours = GraphUtils.getVertexNeighbours(S)
     I = numpy.where(numpy.logical_not(visitedMask))[0]
-    
+
     for Iter in range(50):
         oldVertices = numpy.array(S['vertices'])
         for z in range(I.size):
@@ -163,7 +163,7 @@ if VTKLoad == True:
         Pial6Surf = VTPUtils.readVTPSurf(os.path.join(inDir, 'temp', 'pial-6.vtp'))
     else:
         ensureOutside = False
-    
+
 else:
     WhiteInternalSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white+internal_world.surf'))
     WhiteSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white_world.surf'))
@@ -181,7 +181,7 @@ else:
 if WhiteInternalSurf is None:
     print("WhiteInternalSurf not found")
     exit()
-    
+
 if WhiteSurf is None:
     print("WhiteInternalSurf not found")
     exit()
@@ -317,7 +317,7 @@ def findClosestIDX(SurfSRC, SurfDST, IDX, return_dist = False):
     #ZC = numpy.atleast_2d(T[2]).T - Pial4Surf['vertices'][2]
     #D = numpy.sqrt(XC * XC + YC * YC + ZC * ZC)
     #MinI = numpy.argmin(D, axis = 1)
-    
+
 #    RHUpToPial5[RHUpToPial5 < 0] = MinI
 #    RHMinI = numpy.array(MinI)
 
@@ -345,7 +345,7 @@ else:
 #freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.43.curv'))
 #raise
 # occasionally we get some duplicates in LHIDX and RHIDX
-# this is where 
+# this is where
 
 
 #print(numpy.where(LHIDX < 0)[0].size)
@@ -402,7 +402,7 @@ outS['vertices'][:, LHIDX] = PialLHSurf['vertices'][:, PialLHPialCortexIDX]
 outS['vertices'][:, numpy.logical_not(PialLHPialCortexMask)] = WhiteLHSurf['vertices'][:, numpy.logical_not(PialLHPialCortexMask)]
 outLHMask[LHIDX] = True
 outLHMask = numpy.logical_or(numpy.logical_not(PialLHPialCortexMask), outLHMask)
-    
+
 outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
 #outC = dict()
 #outC['numVertices'] = PialLHSurf['vertices'].shape[1]

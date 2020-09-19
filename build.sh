@@ -38,7 +38,8 @@ do
 	fi
 	if [ "$1" == "-archnative" ]
 	then
-		ARCHFLAGS="-DCMAKE_C_FLAGS=\"-march=native -mtune=native\" -DCMAKE_CXX_FLAGS=\"-march=native -mtune=native\""
+		ARCHFLAGS="-DCMAKE_C_FLAGS=\"-march=native -mtune=native -mno-fma -flto\" -DCMAKE_CXX_FLAGS=\"-march=native -mtune=native -mno-fma -flto\""
+		ARCHFLAGS="-DCMAKE_C_FLAGS=\"-march=native -mtune=native -flto\" -DCMAKE_CXX_FLAGS=\"-march=native -mtune=native -flto\""
 	fi
 	if [ "$1" == "-debug" ]
 	then
@@ -46,7 +47,9 @@ do
 	fi
 	shift;
 done
+ARCHFLAGS="-DCMAKE_C_FLAGS=\"-flto\" -DCMAKE_CXX_FLAGS=\"-flto\""
 
+#COMPILERFLAGS="-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8"
 
 mkdir -p ITK
 cd ITK
@@ -57,7 +60,7 @@ cd ..
 mkdir -p ITK-build
 cd ITK-build
 pwd
-eval $CMAKE $ARCHFLAGS -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTING:BOOL=OFF -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/ITK/ITK-install ../ITK
+eval $CMAKE $COMPILERFLAGS $ARCHFLAGS -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTING:BOOL=OFF -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/ITK/ITK-install ../ITK
 make -j`nproc`
 make install
 cd $MCRIBSDIR
@@ -99,10 +102,10 @@ cd VTK
 
 LIGHTWEIGHTPYTHON="-DVTK_WRAP_PYTHON:BOOL=ON -DVTK_Group_StandAlone:BOOL=OFF -DVTK_Group_Rendering:BOOL=OFF -DModule_vtkCommonColor:BOOL=ON -DModule_vtkCommonComputationalGeometry:BOOL=ON -DModule_vtkCommonDataModel:BOOL=ON -DModule_vtkCommonExecutionModel:BOOL=ON -DModule_vtkCommonMath:BOOL=ON -DModule_vtkCommonMisc:BOOL=ON -DModule_vtkCommonSystem:BOOL=ON -DModule_vtkCommonTransforms:BOOL=ON -DModule_vtkFiltersCore:BOOL=ON -DModule_vtkFiltersExtraction:BOOL=ON -DModule_vtkFiltersGeneral:BOOL=ON -DModule_vtkFiltersGeneric:BOOL=ON -DModule_vtkFiltersGeometry:BOOL=ON -DModule_vtkFiltersPython:BOOL=ON -DModule_vtkIOCore:BOOL=ON -DModule_vtkIOGeometry:BOOL=ON -DModule_vtkIOLegacy:BOOL=ON -DModule_vtkWrappingPythonCore:BOOL=ON -DModule_vtkIOXML:BOOL=ON -DModule_vtkFiltersHybrid:BOOL=ON -DModule_vtkFiltersModeling:BOOL=ON -DModule_vtkImagingStencil:BOOL=ON -DModule_vtkIOPLY:BOOL=ON -DModule_vtkFiltersFlowPaths:BOOL=ON -DModule_vtkFiltersParallel:BOOL=ON"
 
-rm -fr VTK-build VTK-install
+#rm -fr VTK-build VTK-install
 mkdir -p VTK-build
 cd VTK-build
-eval $CMAKE $ARCHFLAGS -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/VTK/VTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DVTK_LEGACY_SILENT=ON -DVTK_WRAP_PYTHON=ON -DVTK_PYTHON_VERSION=3 $LIGHTWEIGHTPYTHON ../VTK
+eval $CMAKE $COMPILERFLAGS $ARCHFLAGS -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/VTK/VTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DVTK_LEGACY_SILENT=ON -DVTK_WRAP_PYTHON=ON -DVTK_PYTHON_VERSION=3 $LIGHTWEIGHTPYTHON ../VTK
 
 make -j`nproc`
 make install
@@ -121,7 +124,7 @@ fi
 rm -fr MIRTK/MIRTK-build MIRTK/MIRTK-install
 mkdir -p MIRTK/MIRTK-build
 cd MIRTK/MIRTK-build
-eval $CMAKE $ARCHFLAGS -DMODULE_Deformable=ON -DMODULE_Mapping=ON -DMODULE_PointSet=ON -DMODULE_Scripting=ON -DWITH_TBB=ON -DMODULE_DrawEM=ON -DWITH_VTK=ON -DITK_DIR=$MCRIBSDIR/ITK/ITK-install/lib/cmake/ITK-5.1 -DDEPENDS_VTK_DIR=$MIRTKVTKDEPENDS -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/MIRTK/MIRTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DWITH_FLANN=OFF -DWITH_CCACHE=$WITHCCACHE ../MIRTK
+eval $CMAKE $ARCHFLAGS $COMPILERFLAGS -DMODULE_Deformable=ON -DMODULE_Mapping=ON -DMODULE_PointSet=ON -DMODULE_Scripting=ON -DWITH_TBB=ON -DMODULE_DrawEM=ON -DWITH_VTK=ON -DITK_DIR=$MCRIBSDIR/ITK/ITK-install/lib/cmake/ITK-5.1 -DDEPENDS_VTK_DIR=$MIRTKVTKDEPENDS -DCMAKE_INSTALL_PREFIX=$MCRIBSDIR/MIRTK/MIRTK-install -DCMAKE_BUILD_TYPE=$BUILDTYPE -DWITH_FLANN=OFF -DWITH_CCACHE=$WITHCCACHE ../MIRTK
 make -j`nproc`
 make install
 
