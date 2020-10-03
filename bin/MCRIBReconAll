@@ -196,6 +196,7 @@ def main():
 
     logFileFID.write('--------------------------------------------\n')
     logFileFID.write('MCRIBReconAll invocation\n')
+    logFileFID.write(" ".join(sys.argv[1:]) + '\n')
     logFileFID.write(str(datetime.datetime.now()) + "\n")
 
     # option 2, run git rev-parse HEAD to get the commit hash
@@ -357,7 +358,7 @@ def main():
         cmd = ["MCRIBSurfReg", options.subjectid, Hemis]
         runCommand(cmd, log_file_name = logFileName)
         pass
-    
+
     if (options.cortribbon == True or options.all == True or options.autoreconaftersurf == True) and options.nocortribbon == False:
         cmd = ["MCRIBVolMask", options.subjectid]
         runCommand(cmd, log_file_name = logFileName)
