@@ -1265,7 +1265,7 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
 
         if internal_mesh:
             joined_without_dividers = push_output(stack, nextname(joined))
-            
+
             internal_mesh = os.path.abspath(internal_mesh)
             run('extract-pointset-cells', args=[joined, internal_mesh],           opts=[('where', region_id_array_name), ('lt', 0)])
             run('extract-pointset-cells', args=[joined, joined_without_dividers], opts=[('where', region_id_array_name), ('gt', 0)])
@@ -1760,9 +1760,24 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
 
             # deform pial surface outwards a few millimeters
             #    'lowpass': 5,
+                            # 'repulsion': 4.,
+                            #     'repulsion-distance': .5,
+                            #     'repulsion-width': 1.,
+                                            # 'repulsion': 4.,
+                                            #     'repulsion-distance': 2,
+                                            #     'repulsion-width': 1.,
+
+#'quadratic-curvature': 1,
             offset_mesh = push_output(stack, deform_mesh(init_mesh, opts={
+                'neighborhood': 3,
                 'normal-force': 1,
-                'curvature': 1,
+                'gauss-curvature': 1,
+                    'gauss-curvature-inside': 2.,
+                    'gauss-curvature-outside': 1.,
+                    'gauss-curvature-minimum': .1,
+                    'gauss-curvature-maximum': .4,
+                    'negative-gauss-curvature-action': 'inflate',
+                'spring': 5,
                 'optimizer': 'EulerMethod',
                     'step': .1,
                     'steps': 100,
@@ -1772,7 +1787,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                     'min-distance': .1,
                     'min-active': '10%',
                     'delta': .0001
-            }, super_debug = False))
+            }, super_debug = True))
             if debug == 0:
                 try_remove(init_mesh)
             #quit()
@@ -1803,10 +1818,11 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
 
             # resolve intersections between white and pial surface if any
             init_mesh = push_output(stack, nextname(cortex_mesh))
-            remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
+            remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array, max_attempt=0)
             #run('copy-pointset-attributes', args=[cortex_mesh, cortex_mesh, init_mesh], opts={'celldata-as-pointdata': cortex_mask_array, 'unanimous': None})
             #remove_intersections(init_mesh, init_mesh, mask=cortex_mask_array)
             #del_mesh_attr(init_mesh, pointdata=cortex_mask_array)
+            quit()
             if debug == 0:
                 try_remove(cortex_mesh)
         else:

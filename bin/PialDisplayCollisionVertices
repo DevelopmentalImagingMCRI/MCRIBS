@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import vtk
 import numpy
@@ -11,8 +11,8 @@ import getopt
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 1:
-	print "The number of arguments must be 1"
-	print sys.argv[0] + " <vtp file>"
+	print("The number of arguments must be 1")
+	print(sys.argv[0] + " <vtp file>")
 	exit()
 
 numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
@@ -56,7 +56,7 @@ for arrayIDX in range(cellData.GetNumberOfArrays()):
 		curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
 		curArray = numpy.array(curArray)
 		FaceIDX = numpy.where(curArray > 0)[0]
-		print S['faces'][0, FaceIDX[0]]
+		print(S['faces'][0, FaceIDX[0]])
 	#S['faces'] = numpy.take(S['faces'], numpy.array([0, 2, 1]), axis = 0)
 
 #if checkForNegativeArea == True:

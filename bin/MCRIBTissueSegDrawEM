@@ -28,7 +28,7 @@ else
 	mkdir -p $DRAWEMOUTDIR
 	#if [ ! -f "$DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz" ]
 	#then
-	#	`dirname $0`/.././MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $DRAWEMOUTDIR -t $OMP_NUM_THREADS -c 0 -p 1 -v 1
+		`dirname $0`/.././MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $DRAWEMOUTDIR -t $OMP_NUM_THREADS -c 0 -p 1 -v 1
 	#fi
 
 	# copy the brain mask and label files to the global tissue seg directory
