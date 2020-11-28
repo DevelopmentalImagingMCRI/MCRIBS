@@ -1787,7 +1787,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                     'min-distance': .1,
                     'min-active': '10%',
                     'delta': .0001
-            }, super_debug = False))
+            }, super_debug = True))
             if debug == 0:
                 try_remove(init_mesh)
             #quit()
@@ -1819,10 +1819,6 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             # resolve intersections between white and pial surface if any
             init_mesh = push_output(stack, nextname(cortex_mesh))
             remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array, max_attempt=10)
-            #run('copy-pointset-attributes', args=[cortex_mesh, cortex_mesh, init_mesh], opts={'celldata-as-pointdata': cortex_mask_array, 'unanimous': None})
-            #remove_intersections(init_mesh, init_mesh, mask=cortex_mask_array)
-            #del_mesh_attr(init_mesh, pointdata=cortex_mask_array)
-            #quit()
             if debug == 0:
                 try_remove(cortex_mesh)
         else:
