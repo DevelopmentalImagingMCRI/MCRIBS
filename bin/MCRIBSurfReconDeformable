@@ -122,6 +122,7 @@ then
 			mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
 
 		done
+		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-${HEMI}.vtp freesurfer/$SUBJID/surf/$HEMI.white freesurfer/$SUBJID/label/$HEMI.cortex.label
 	done
 
 	# make the pial surfaces by reordering the pial vertices in the VTP files
