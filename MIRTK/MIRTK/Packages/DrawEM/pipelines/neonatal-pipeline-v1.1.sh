@@ -27,10 +27,10 @@ This script runs the neonatal segmentation pipeline of Draw-EM.
 
 Arguments:
   subject_T2.nii.gz             Nifti Image: The T2 image of the subject to be segmented.
-  scan_age                      Number: Subject age in weeks. This is used to select the appropriate template for the initial registration. 
+  scan_age                      Number: Subject age in weeks. This is used to select the appropriate template for the initial registration.
 			        If the age is <28w or >44w, it will be set to 28w or 44w respectively.
 Options:
-  -d / -data-dir  <directory>   The directory used to run the script and output the files. 
+  -d / -data-dir  <directory>   The directory used to run the script and output the files.
   -c / -cleanup  <0/1>          Whether cleanup of temporary files is required (default: 1)
   -p / -save-posteriors  <0/1>  Whether the structures' posteriors are required (default: 0)
   -t / -threads  <number>       Number of threads (CPU cores) allowed for the registration to run in parallel (default: 1)
@@ -74,8 +74,8 @@ while [ $# -gt 0 ]; do
     -c|-cleanup)  shift; cleanup=$3; ;;
     -d|-data-dir)  shift; datadir=$3; ;;
     -p|-save-posteriors) shift; posteriors=$3; ;;
-    -t|-threads)  shift; threads=$3; ;; 
-    -v|-verbose)  shift; verbose=$3; ;; 
+    -t|-threads)  shift; threads=$3; ;;
+    -v|-verbose)  shift; verbose=$3; ;;
     -h|-help|--help) usage; ;;
     -*) echo "$0: Unrecognized option $1" >&2; usage; ;;
      *) break ;;
@@ -83,8 +83,8 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-mkdir -p $datadir/T2 
-if [[ "$T2" == *nii ]];then 
+mkdir -p $datadir/T2
+if [[ "$T2" == *nii ]];then
   mirtk convert-image $T2 $datadir/T2/$subj.nii.gz
 else
   cp $T2 $datadir/T2/$subj.nii.gz
@@ -93,11 +93,11 @@ cd $datadir
 
 
 [ $verbose -le 0 ] || { echo "DrawEM multi atlas $version
-Subject:    $subj 
+Subject:    $subj
 Age:        $age
-Directory:  $datadir 
-Posteriors: $posteriors 
-Cleanup:    $cleanup 
+Directory:  $datadir
+Posteriors: $posteriors
+Cleanup:    $cleanup
 Threads:    $threads
 
 $BASH_SOURCE $@
@@ -119,6 +119,7 @@ run()
 
 rm -f logs/$subj logs/$subj-err
 run preprocess.sh        $subj
+#exit
 # phase 1 tissue segmentation
 run tissue-priors.sh     $subj $age $atlasname $threads
 # registration using gm posterior + image

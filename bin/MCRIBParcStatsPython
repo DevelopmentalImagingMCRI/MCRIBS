@@ -95,10 +95,12 @@ for Hemi in Hemis:
     outDF = outDF[outDF.StructName != 'ctx-' + Hemi + '-unknown']
     outDF = outDF[outDF.StructName != 'unknown']
 
-    pd = pandas.DataFrame(columns = outDF.columns)
-    pd['StructName'] = pandas.Series('Medial_Wall')
-    outDF = outDF.append(pd)
+    #pd = pandas.DataFrame(columns = outDF.columns)
+    #pd['StructName'] = pandas.Series('Medial_Wall')
+    pd = dict.fromkeys(outDF.columns, numpy.nan)
+    pd['StructName'] = 'Medial_Wall'
 
+    outDF = outDF.append(pd, ignore_index = True)
     for curStructIDX in outDF.index:
         if outDF.loc[curStructIDX, 'StructName'] == 'Medial_Wall':
             I = numpy.where(numpy.logical_not(CortexLabelMask))[0]
