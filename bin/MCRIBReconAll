@@ -46,6 +46,7 @@ def main():
 
     atlases = ['aparc', 'aparc+DKTatlas']
     defaultAtlas = atlases
+    defaultAtlas = ['aparc+DKTatlas']
 
     argParser = argparse.ArgumentParser(description = "Performs MCRIB preprocessing and parcellation\n\nFor each <subject id>, input data are to be placed as follows:\n\tRawT2/<subject id>.nii.gz: Whole-brain T2-weighted image", usage = sys.argv[0] + " <processing directives> [processing options] <subject id>", formatter_class = argparse.RawTextHelpFormatter)
 
@@ -87,12 +88,11 @@ def main():
     surfParcArgGroup = argParser.add_argument_group('cortparc', 'Perform cortical parcellation, depends on --surfreg')
     surfParcArgGroup.add_argument('--cortparc', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     surfParcArgGroup.add_argument('--nocortparc', help = "DISABLE cortparc", required = False, action = 'store_true')
-    surfParcArgGroup.add_argument('--cortparcatlases', help = "Parcellation scheme to use", required = False, choices = atlases, default = defaultAtlas, nargs = "+")
 
     aparc2asegArgGroup = argParser.add_argument_group('aparc2aseg', 'Perform cortical parcellation, depends on --surfreg')
     aparc2asegArgGroup.add_argument('--aparc2aseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     aparc2asegArgGroup.add_argument('--noaparc2aseg', help = "DISABLE aparc2aseg", required = False, action = 'store_true')
-    aparc2asegArgGroup.add_argument('--aparc2asegatlases', help = "Parcellation scheme to use", required = False, choices = atlases, nargs = '+', default = defaultAtlas)
+    aparc2asegArgGroup.add_argument('--aparc2asegatlases', help = "Parcellation scheme to use for aparc2aseg, DEPRECATED use cortparcatlases", required = False, choices = atlases, nargs = '+', default = [])
 
     cortThicknessArgGroup = argParser.add_argument_group('cortthickness', 'Compute cortical thickness')
     cortThicknessArgGroup.add_argument('--cortthickness', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -123,6 +123,8 @@ def main():
 
     argParser.add_argument('-usegpu', help = "Use the GPU for inflation and spherical projection, affects --inflatesphere", required = False, action = 'store_true')
     argParser.add_argument('-steplist', '--steplist', help = "Prints out the processing step options in order", required = False, action = 'store_true')
+    
+    argParser.add_argument('--cortparcatlases', help = "Parcellation(s) scheme to use for cortical parcellation steps", required = False, choices = atlases, default = defaultAtlas, nargs = "+")
 
     argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
     argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -324,8 +326,6 @@ def main():
     del CWD
 
     logFileFID.write('--------------------------------------------\n\n')
-
-    #quit()
     isFromDHCP = os.path.isfile(os.path.join('freesurfer', options.subjectid, '.isFromDHCP'))
     #print("isFromDHCP: " + str(isFromDHCP))
     if (options.conform == True or options.all == True) and not isFromDHCP and options.noconform == False:
@@ -377,7 +377,7 @@ def main():
 
     if (options.aparc2aseg == True or options.all == True or options.autoreconaftersurf == True) and options.noaparc2aseg == False:
         cmd = ["MCRIBAPARC2ASEG", options.subjectid]
-        cmd.extend(options.aparc2asegatlases)
+        cmd.extend(options.cortparcatlases)
         runCommand(cmd, log_file_name = logFileName)
         pass
     # deprecated, done in aparc2aseg
@@ -398,7 +398,7 @@ def main():
 
     if (options.parcstats == True or options.all == True or options.autoreconaftersurf == True) and options.noparcstats == False:
         cmd = ["MCRIBParcStatsPython", options.subjectid, Hemis]
-        for curAtlas in options.aparc2asegatlases:
+        for curAtlas in options.cortparcatlases:
             curCmd = cmd[:]
             curCmd.extend([curAtlas])
             runCommand(curCmd, isPython = True, log_file_name = logFileName)
