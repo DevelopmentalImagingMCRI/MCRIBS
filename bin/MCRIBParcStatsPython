@@ -75,7 +75,8 @@ for Hemi in Hemis:
     CortexLabelIDX = CortexLabel['index']
     CortexLabelMask = numpy.zeros(Annot['seg'].size, dtype = numpy.bool)
     CortexLabelMask[CortexLabelIDX] = True
-
+    
+    #print(Annot['colortable']['labels'])
     AreaValues = AreaData['values']
     ThicknessValues = ThicknessData['values']
     MeanCurvValues = MeanCurvData['values']
@@ -97,15 +98,19 @@ for Hemi in Hemis:
 
     #pd = pandas.DataFrame(columns = outDF.columns)
     #pd['StructName'] = pandas.Series('Medial_Wall')
-    pd = dict.fromkeys(outDF.columns, numpy.nan)
-    pd['StructName'] = 'Medial_Wall'
+    pd = dict.fromkeys(outDF.columns.names, numpy.nan)
 
+    pd['StructName'] = 'Medial_Wall'
     outDF = outDF.append(pd, ignore_index = True)
+    structsAndLabels = pandas.Series(index = Annot['colortable']['struct_names'], data = Annot['colortable']['labels'])
+    #print(structsAndLabels)
+    #print(outDF)
     for curStructIDX in outDF.index:
         if outDF.loc[curStructIDX, 'StructName'] == 'Medial_Wall':
             I = numpy.where(numpy.logical_not(CortexLabelMask))[0]
         else:
-            I = numpy.where(numpy.logical_and(Annot['seg'] == curStructIDX, CortexLabelMask))[0]
+            curStructName = outDF.loc[curStructIDX, 'StructName']
+            I = numpy.where(numpy.logical_and(Annot['label'] == structsAndLabels.loc[curStructName], CortexLabelMask))[0]
 
         if I.size > 0:
             outDF.loc[curStructIDX, 'NumVert'] = I.size
