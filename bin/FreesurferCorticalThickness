@@ -4,43 +4,54 @@ import numpy
 import sys
 import os
 import freesurfer
-import nibabel
+#import nibabel
 import getopt
 
-import VTPUtils
+#import VTPUtils
 import GraphUtils
 
 # computes the minimum distance for each vertex of SurfaceSRC to SurfaceDST
 
 #@profile
-def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
+def doMinThickness(SRCSurf, DSTSurf, CortexLabel, vertexNeighbours, correspondingDistances, invertNormals = False):
     maxOrder = 5
-    
+
     faceNormals, faceAreas, vertexNormals, vertexAreas = GraphUtils.surfaceAreasNormals(SRCSurf)
     vertexNormals = vertexNormals.T
     if invertNormals == True:
         vertexNormals = -vertexNormals
 
-    vertexNeighbours = GraphUtils.getVertexNeighbours(SRCSurf)
+    #vertexNeighbours = GraphUtils.getVertexNeighbours(SRCSurf)
 
     numVertices = SRCSurf['vertices'].shape[1]
-    
+
     DSTVT = DSTSurf['vertices'].T
 
-    corticalThickness = numpy.zeros(numVertices)
-
+    #if correspondingDistances is None:
+    #    corticalThickness = numpy.zeros(numVertices, dtype = SRCSurf['vertices'].dtype)
+    #else:
+    corticalThickness = numpy.array(correspondingDistances)
     verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool)
+
     for z in CortexLabel['index']:
         curNeighbours = numpy.array([z])
-        
-        curV = SRCSurf['vertices'][:, z] 
-        XC = curV - DSTSurf['vertices'][:, z]
-        minDist = numpy.sqrt(numpy.sum(XC * XC))
-        nextNeighboursMask = numpy.zeros(numVertices, dtype = numpy.bool)
-        
+
+        curV = SRCSurf['vertices'][:, z]
+
+        # if correspondingDistances is None:
+        #     #minDist = correspondingDistances[z]
+        # #else:
+        #     XC = curV - DSTSurf['vertices'][:, z]
+        #     minDist = numpy.sqrt(numpy.sum(XC * XC))
+        #nextNeighboursMask = numpy.zeros(numVertices, dtype = numpy.bool)
+
+        #oldMinDist = minDist
+
         verticesVisited.fill(False)
         verticesVisited[z] = True
         curV = numpy.atleast_2d(curV)
+
+        #VV = [numpy.array([z])]
         for curOrder in range(1, maxOrder + 1):
             # find the next set of neighbours
             nextNeighbours = numpy.concatenate([vertexNeighbours[x] for x in curNeighbours])
@@ -56,26 +67,39 @@ def doMinThickness(SRCSurf, DSTSurf, CortexLabel, invertNormals = False):
             #print GG
             GG[0] = True
             curNeighbours = nextNeighbours[GG]
-            
+
             verticesVisited[curNeighbours] = True
-            XC = numpy.take(DSTVT, curNeighbours, axis = 0) - curV
-            Dots = numpy.dot(XC, numpy.atleast_2d(vertexNormals[z]).T)
-            
-            I = numpy.where(Dots > 0)[0]
-            if I.size > 0:
-                XC = numpy.take(XC, I, axis = 0)
-                #XC = XC[I] #numpy.take(XC, I, axis = 0)
-                D = numpy.sqrt(numpy.sum(XC * XC, axis = 1))
-            
-                #Dots = numpy.sum(XC * numpy.atleast_2d(vertexNormals[z]))
-                #curMinDistIDX = numpy.argmin(D)
-                #curMinDistIDX = I[curMinDistIDX]
-                #curMinDist = D[curMinDistIDX]
-                curMinDist = numpy.min(D)    
-                if curMinDist < minDist:
-                    minDist = curMinDist
-                    #minDistIDX = curNeighbours[curMinDistIDX]
-        corticalThickness[z] = minDist
+            #VV.append(curNeighbours)
+        verticesVisited[z] = False
+        #curNeighbours = numpy.where(verticesVisited)[0]
+        #curNeighbours = numpy.concatenate(VV)
+
+        #XC = numpy.take(DSTVT, curNeighbours, axis = 0) - curV
+        XC = numpy.compress(verticesVisited.ravel(), DSTVT, axis = 0) - curV
+
+        Dots = numpy.dot(XC, numpy.atleast_2d(vertexNormals[z]).T)
+
+        #I = numpy.where(Dots > 0)[0]
+        #if I.size > 0:
+        I = (Dots > 0)
+        I = I.ravel()
+        #print(I.shape)
+        if numpy.any(I):
+            #XC = numpy.take(XC, I, axis = 0)
+            XC = numpy.compress(I, XC, axis = 0) #numpy.take(XC, I, axis = 0)
+            D = numpy.sqrt(numpy.sum(XC * XC, axis = 1))
+
+            #Dots = numpy.sum(XC * numpy.atleast_2d(vertexNormals[z]))
+            #curMinDistIDX = numpy.argmin(D)
+            #curMinDistIDX = I[curMinDistIDX]
+            #curMinDist = D[curMinDistIDX]
+            #c#orticalThickness[z]
+            curMinDist = numpy.min(D)
+            if curMinDist < corticalThickness[z]:
+                corticalThickness[z] = curMinDist
+
+                #minDistIDX = curNeighbours[curMinDistIDX]
+        #corticalThickness[z] = minDist
 
     return corticalThickness
 
@@ -109,23 +133,53 @@ def main():
     WhiteSurf = freesurfer.readSurf(os.path.join(SurfDir, Hemi + '.white'))
     CortexLabel = freesurfer.readLabel(os.path.join(SurfDir, '..', 'label', Hemi + '.cortex.label'))
     PialSurf = freesurfer.readSurf(os.path.join(SurfDir, Hemi + '.pial'))
-    
+
     if CortexLabel is None:
         CortexLabel = {'index': numpy.arange(WhiteSurf['vertices'].shape[1])}
 
     #print("Cortical Thickness")
     #print("White to pial")
-    WhiteToPialThickness = doMinThickness(WhiteSurf, PialSurf, CortexLabel)
+
+    # precompute corresponding vertex distances
+
+    #print(WhiteSurf['vertices'].shape)
+    #correspondingDistances = numpy.zeros((WhiteSurf['vertices'].shape[1]))
+    #XC = numpy.take(WhiteSurf['vertices'], CortexLabel['index'], axis = 1) - numpy.take(PialSurf['vertices'], CortexLabel['index'], axis = 1)
+    XC = WhiteSurf['vertices'] - PialSurf['vertices']
+
+    correspondingDistances = numpy.sqrt(numpy.sum(XC * XC, axis = 0))
+    del XC
+    #%correspondingDistances = None
+    #print("getting neighbours")
+    # import time
+    # start = time.time()
+    vertexNeighbours = GraphUtils.getVertexNeighbours(WhiteSurf)
+    # print("hello")
+    # end = time.time()
+    # print(end - start)
+    # start = time.time()
+    # vertexNeighbours = GraphUtils.getVertexNeighbours2(WhiteSurf)
+    # print("hello")
+    # end = time.time()
+    # print(end - start)
+
+    #veT = GraphUtils.getVertexNeighbours2(WhiteSurf)
+    #print("getting neighbours done")
+    WhiteToPialThickness = doMinThickness(WhiteSurf, PialSurf, CortexLabel, vertexNeighbours, correspondingDistances)
     #print("Pial to white")
-    PialToWhiteThickness = doMinThickness(PialSurf, WhiteSurf, CortexLabel, invertNormals = True)
-    print("Done")
+    PialToWhiteThickness = doMinThickness(PialSurf, WhiteSurf, CortexLabel, vertexNeighbours, correspondingDistances, invertNormals = True)
+    #print("Done")
     outC = dict()
     outC['numVertices'] = PialSurf['vertices'].shape[1]
     outC['numFaces'] = PialSurf['faces'].shape[1]
     outC['values'] = numpy.single((WhiteToPialThickness + PialToWhiteThickness) / 2.0)
+
+    # zero out non-label
+    M = numpy.ones((WhiteToPialThickness.size), dtype = numpy.bool)
+    M[CortexLabel['index']] = False
+    outC['values'][M] = 0
+
     freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.thickness'))
 
 if __name__ == "__main__":
     main()
-
-
