@@ -44,7 +44,7 @@ def structN4DefaultOptions():
 def main():
     doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon', 'inflatesphere', 'cortparc', 'cortthickness', 'surfreg', 'segstats', 'aparc2aseg', 'apas2aseg', 'parcstats'])
 
-    atlases = ['aparc', 'aparc+DKTatlas']
+    atlases = ['aparc', 'aparc+DKTatlas', 'aparc+DKTatlas.manual']
     defaultAtlas = atlases
     defaultAtlas = ['aparc+DKTatlas']
 
