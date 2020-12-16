@@ -30,8 +30,8 @@ if not os.path.isfile(ASEGPresurfFileName):
 ASEGNII = nibabel.load(ASEGFileName)
 ASEGPresurfNII = nibabel.load(ASEGPresurfFileName)
 
-ASEGIMG = ASEGNII.get_data()
-ASEGPresurfIMG = ASEGPresurfNII.get_data()
+ASEGIMG = numpy.int32(ASEGNII.get_fdata())
+ASEGPresurfIMG = numpy.int32(ASEGPresurfNII.get_fdata())
 
 NewASEGIMG = numpy.array(ASEGIMG)
 
