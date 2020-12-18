@@ -37,9 +37,9 @@ ASEGNII = nibabel.load(ASEGFileName)
 RibbonNII = nibabel.load(RibbonFileName)
 DrawEMNII = nibabel.load(DrawEMFileName)
 
-ASEGIMG = numpy.squeeze(ASEGNII.get_data())
-RibbonIMG = numpy.squeeze(RibbonNII.get_data())
-DrawEMIMG = numpy.squeeze(DrawEMNII.get_data())
+ASEGIMG = numpy.int32(numpy.squeeze(ASEGNII.get_fdata()))
+RibbonIMG = numpy.int32(numpy.squeeze(RibbonNII.get_fdata()))
+DrawEMIMG = numpy.int32(numpy.squeeze(DrawEMNII.get_fdata()))
 
 
 NewASEGIMG = numpy.array(ASEGIMG)

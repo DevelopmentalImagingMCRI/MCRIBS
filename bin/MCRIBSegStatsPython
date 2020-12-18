@@ -67,18 +67,18 @@ CTABTable.index.name = 'SegId'
 CTABTable = CTABTable.loc[CTABTable.index > 0]
 
 ASEGNII = nibabel.load(ASEGFileName)
-ASEGIMG = ASEGNII.get_data()
+ASEGIMG = numpy.asanyarray(ASEGNII.dataobj)
 
 voxelSize = numpy.prod(ASEGNII.header.get_zooms())
 
 T2NII = nibabel.load(T2IMGFileName)
-T2IMG = T2NII.get_data()
+T2IMG = numpy.asanyarray(T2NII.dataobj)
 
 RibbonNII = nibabel.load(RibbonIMGFileName)
-RibbonIMG = RibbonNII.get_data()
+RibbonIMG = numpy.int8(RibbonNII.get_fdata())
 
 BrainmaskNII = nibabel.load(BrainmaskIMGFileName)
-BrainmaskIMG = BrainmaskNII.get_data()
+BrainmaskIMG = numpy.asanyarray(BrainmaskNII.dataobj)
 
 doingLabelTable = False
 
@@ -172,7 +172,7 @@ FID.write("# Title Segmentation Statistics\n")
 FID.write("#\n")
 FID.write("# SUBJECTS_DIR " + SubjectsDir + "\n")
 FID.write("# subjectname " + SubjectID + "\n")
- 
+
 # if ribbon == GM and aseg is not WM or GM then erase from GM volume
 
 #        if (ribbonid == 3 && asegid != 3 && asegid != 2 && asegid != 0) lhCtxGMCor += VoxelVol;

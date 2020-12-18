@@ -123,7 +123,7 @@ def main():
 
     argParser.add_argument('-usegpu', help = "Use the GPU for inflation and spherical projection, affects --inflatesphere", required = False, action = 'store_true')
     argParser.add_argument('-steplist', '--steplist', help = "Prints out the processing step options in order", required = False, action = 'store_true')
-    
+
     argParser.add_argument('--cortparcatlases', help = "Parcellation(s) scheme to use for cortical parcellation steps", required = False, choices = atlases, default = defaultAtlas, nargs = "+")
 
     argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)

@@ -18,14 +18,14 @@ RibbonFileName = sys.argv[2]
 OutFileName = sys.argv[3]
 
 if not os.path.isfile(ASEGFileName):
-    print("ASEG file not found " + ASEGFileName) 
+    print("ASEG file not found " + ASEGFileName)
     quit()
 
 ASEGNII = nibabel.load(ASEGFileName)
-ASEGIMG = ASEGNII.get_data()
+ASEGIMG = numpy.int32(ASEGNII.get_fdata())
 
 RibbonNII = nibabel.load(RibbonFileName)
-RibbonIMG = RibbonNII.get_data()
+RibbonIMG = numpy.uint8(RibbonNII.get_fdata())
 
 NewASEGIMG = numpy.array(ASEGIMG)
 
