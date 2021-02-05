@@ -117,13 +117,3 @@ The parameter `<subj id>` is the subject id of a subject that has been processed
  - ?h.aparc.annot (DK parcellation)
  - ?h.aparc+DKTatlas.annot (DKT parcellation)
 
-## TODO
-
-- [x] Labels unmyelinated WM are myelinated PLIC and ALIC???. The regions were correctly labelled as myelinated WM. The main WM labels are kept as "cerebral WM" despite them being unmyelinated. It makes it easier for display purposes.
-- [ ] Make a MCRIB version of the ALBERTs? Working on this.
-- [ ] Folding index
-- [ ] Try MANTIS as a stitching thing with DrawEM.
-- [ ] Make a CSH version of the setup script.
-- [ ] Screenshot generators.
-- [x] Investigate warning message in VTK 8.2.0 during merge-surfaces. vtkCleanPolyData causes an OOB lookup on one of the arrays. I have checked this. It seems to be a warning message that is handled correctly. I have compared vtk-8.1 vs. vtk-8.2 outputs of merge-surface in 4 subjects and they are identical. So this error can be ignored.
-- [x] Fix memory leak in gcc 8 and gcc 9. evaluate-mesh, VTK issue [17722](https://gitlab.kitware.com/vtk/vtk/issues/17722), fixed in commit [95a252c04b52deb4448c02c4bd26d39d3e3688c7](https://github.com/DevelopmentalImagingMCRI/MCRIBS/commit/95a252c04b52deb4448c02c4bd26d39d3e3688c7)
