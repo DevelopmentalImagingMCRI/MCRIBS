@@ -6,6 +6,7 @@
 #
 
   0  Unknown                                 0    0    0    0
+  2   Left-Cerebral-White-Matter              245 245 245 0
   3  Left-Cerebral-Cortex                  205   62   78    0
   4  Left-Lateral-Ventricle                120   18  134    0
   8  Left-Cerebellum-Cortex                230  148   34    0
@@ -17,6 +18,7 @@
  17  Left-Hippocampus                      220  216   20    0
  18  Left-Amygdala                         103  255  255    0
  24  CSF                                    60   60   60    0
+ 41  Right-Cerebral-White-Matter             245 245 245 0
  42  Right-Cerebral-Cortex                 205   62   78    0
  43  Right-Lateral-Ventricle               120   18  134    0
  47  Right-Cerebellum-Cortex               230  148   34    0
@@ -26,8 +28,5 @@
  52  Right-Subthalamic-Nucleus              13   48  255    0
  53  Right-Hippocampus                     220  216   20    0
  54  Right-Amygdala                        103  255  255    0
-159 Left-Cerebral-WM-unmyelinated           0   118   14    0
-160 Right-Cerebral-WM-unmyelinated          0   118   14    0
-161 Left-Cerebral-WM-myelinated             220 216   21    0
-162 Right-Cerebral-WM-myelinated            220 216   21    0
 253 CC                                        0   0  160    0
+258 Head-ExtraCerebral                    150 150 200  0

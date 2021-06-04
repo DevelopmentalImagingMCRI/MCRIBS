@@ -68,6 +68,8 @@ def main():
     surfReconArgGroup.add_argument('--deformablejointhresh', help = "Join threshold parameter for Deformable", required = False, type = float, default = 1)
     surfReconArgGroup.add_argument('--deformablefastcollision', help = "Use Deformable fast collision test", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--deformablenoensurepialoutside', help = "Dont ensure pial is outside white", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--deformablelargeclose', help = "Large close", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--deformablet1only', help = "Use T1 only", required = False, action = 'store_true')
 
     inflateSphereArgGroup = argParser.add_argument_group('inflatesphere', 'Perform inflation, spherical mapping, curv, area, depends --surfrecon')
     inflateSphereArgGroup.add_argument('--inflatesphere', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -121,6 +123,7 @@ def main():
     argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
     argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps after surface reconstruction", required = False, action = 'store_true')
 
+    argParser.add_argument('--bonnie', help = "Bonnies segmetnation", required = False, action = 'store_true')
     argParser.add_argument('-usegpu', help = "Use the GPU for inflation and spherical projection, affects --inflatesphere", required = False, action = 'store_true')
     argParser.add_argument('-steplist', '--steplist', help = "Prints out the processing step options in order", required = False, action = 'store_true')
     
@@ -342,7 +345,7 @@ def main():
         pass
 
     if (options.surfrecon == True or options.all == True) and not isFromDHCP and options.nosurfrecon == False:
-        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision), str(options.useT1), str(options.deformablenoensurepialoutside)]
+        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision), str(options.useT1), str(options.deformablenoensurepialoutside), str(options.bonnie), str(options.deformablelargeclose), str(options.deformablet1only)]
         runCommand(cmd, log_file_name = logFileName)
         pass
 

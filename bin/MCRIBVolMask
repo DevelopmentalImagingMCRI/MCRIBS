@@ -40,7 +40,7 @@ fi
 
 if [ "$DORIBBON" == "YES" ]
 then
-	mris_volmask --aseg_name $ASEGFILE --label_left_white 2 --label_left_ribbon 3 --label_right_white 41 --label_right_ribbon 42  --save_ribbon $SUBJID
+	mris_volmask --parallel --aseg_name $ASEGFILE --label_left_white 2 --label_left_ribbon 3 --label_right_white 41 --label_right_ribbon 42  --save_ribbon $SUBJID
 fi
 
 if [ "$ASEGFILE" == "aseg.presurf.preunwmfix" ]

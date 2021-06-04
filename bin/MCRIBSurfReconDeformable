@@ -54,6 +54,27 @@ else
 	ENSUREPIAL=-ensure-pial-is-outside-white-surface
 fi
 
+if [ "$6" == "True" ]
+then
+	USEBONNIE=YES
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1.cfg
+	T=`mktemp`
+	cat $CONFIGFILE | sed 's/manedit/manedit_bonnie/' > $T
+	sed -i -e 's/brain_mask.nii.gz/brain_mask_bonnie.nii.gz/' $T
+	echo $T
+	if [ "$7" == "True" ]
+	then
+		sed -i -e 's/= 10$/= 15/' $T
+	fi
+	CONFIGFILE=$T
+else
+	USEBONNIE=NO
+fi
+
+if [ "$8" == "True" ]
+then
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1-only.cfg
+fi
 
 OUTDIR=SurfReconDeformable
 
@@ -62,7 +83,7 @@ mkdir -p $OUTDIR/$SUBJID/{temp,meshes,recon}
 #export LD_LIBRARY_PATH=`dirname $0`/../MIRTK/MIRTK-install/lib:$LD_LIBRARY_PATH
 #export PATH=`dirname $0`/../MIRTK/MIRTK-install/bin:$PATH
 
-if [ ! -e "TissueSeg/${SUBJID}_t2w_restore.nii.gz" ]
+if [ ! -e "TissueSeg/${SUBJID}_t2w_restore.nii.gz" -a "$8" != "True" ]
 then
 	if [ ! -e "TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz" ]
 	then
@@ -112,12 +133,19 @@ then
 
 	mkdir -p freesurfer/$SUBJID/surf
 	mkdir -p freesurfer/$SUBJID/label
-
+	
+	if [ "$USEBONNIE" == "YES" ]
+	then
+		VOLGEOM=TissueSeg/${SUBJID}_t2w_restore.nii.gz
+	else
+		VOLGEOM=RawT2RadiologicalIsotropic/$SUBJID.nii.gz
+	fi
+	echo $VOLGEOM
 	for HEMI in $HEMIS
 	do
 		for SURF in $SURFS
 		do
-			`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+			`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
 			#rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
 			mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
 
@@ -126,5 +154,5 @@ then
 	done
 
 	# make the pial surfaces by reordering the pial vertices in the VTP files
-	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=RawT2RadiologicalIsotropic/$SUBJID.nii.gz $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
+	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
 fi
