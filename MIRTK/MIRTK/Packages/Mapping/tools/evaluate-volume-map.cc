@@ -27,6 +27,7 @@
 #include "mirtk/GradientImageFilter.h"
 #include "mirtk/PiecewiseLinearMap.h"
 
+#include "vtkNew.h"
 #include "vtkSmartPointer.h"
 #include "vtkPolyData.h"
 #include "vtkPointData.h"
@@ -103,19 +104,19 @@ int NumberOfFlippedTriangles(const PiecewiseLinearMap *map)
   vtkPolyData  * const surface = vtkPolyData::SafeDownCast(map->Domain());
   if (surface == nullptr || values->GetNumberOfComponents() != 2) return 0;
 
-  vtkIdType npts, *pts;
-  double    a[2], b[2], c[2];
-  double    area;
+  vtkNew<vtkIdList> ptIds;
+  double a[2], b[2], c[2];
+  double area;
 
   int n_negative = 0;
   int n_positive = 0;
 
   for (vtkIdType cellId = 0; cellId < surface->GetNumberOfCells(); ++cellId) {
-    surface->GetCellPoints(cellId, npts, pts);
-    if (npts == 3) {
-      values->GetTuple(pts[0], a);
-      values->GetTuple(pts[1], b);
-      values->GetTuple(pts[2], c);
+    GetCellPoints(surface, cellId, ptIds.GetPointer());
+    if (ptIds->GetNumberOfIds() == 3) {
+      values->GetTuple(ptIds->GetId(0), a);
+      values->GetTuple(ptIds->GetId(1), b);
+      values->GetTuple(ptIds->GetId(2), c);
       area = Triangle::DoubleSignedArea2D(a, b, c);
       if (area < 0.) {
         ++n_negative;

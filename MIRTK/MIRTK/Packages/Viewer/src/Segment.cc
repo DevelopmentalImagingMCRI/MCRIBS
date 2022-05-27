@@ -1,14 +1,20 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Segment.h>
 
@@ -24,7 +30,7 @@ Segment::Segment()
   // Colour
   setColor(0, 0, 0);
 
-  // Transperancy
+  // Transparency
   _trans = 0.0;
 }
 
@@ -39,7 +45,7 @@ Segment::Segment(char* label, unsigned char cr, unsigned char cg, unsigned char 
   // Colour
   setColor(cr, cg, cb);
 
-  // Transperancy
+  // Transparency
   _trans = t;
 }
 
@@ -85,7 +91,7 @@ void Segment::setTrans(double t)
   _trans = t;
 }
 
-void Segment::setVisibility(int vis)
+void Segment::setVisibility(bool vis)
 {
   _visible = vis;
 }
@@ -112,7 +118,7 @@ char *Segment::getLabel() const
   return _label;
 }
 
-int Segment::getVisibility() const
+bool Segment::getVisibility() const
 {
   return _visible;
 }

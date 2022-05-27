@@ -59,15 +59,7 @@ basis_project (
     MIRTK{Common,Numerics,Image,PointSet,IO}
     Boost-1.48 # {math_c99} used, but headers only
     Eigen3
-    "VTK-8|7|6{
-      vtkCommonCore,
-      vtkCommonDataModel,
-      vtkFiltersCore,
-      vtkFiltersHybrid,
-      vtkFiltersModeling,
-      vtkImagingCore,
-      vtkIOXML
-    }"
+    VTK{vtkCommonCore,vtkCommonDataModel,vtkFiltersCore,vtkFiltersHybrid,vtkFiltersModeling,vtkImagingCore,vtkIOXML}
     #<dependency>
   OPTIONAL_DEPENDS
     TBB{tbb}

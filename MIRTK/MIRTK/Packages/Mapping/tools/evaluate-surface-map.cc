@@ -26,6 +26,7 @@
 #include "mirtk/PointSetUtils.h"
 #include "mirtk/PiecewiseLinearMap.h"
 
+#include "mirtk/Vtk.h"
 #include "vtkSmartPointer.h"
 #include "vtkPolyData.h"
 #include "vtkPointData.h"
@@ -137,15 +138,15 @@ ComputeSignedAreaOfMappedPlanarTriangles(const PiecewiseLinearMap *map)
   area->SetNumberOfComponents(1);
   area->SetNumberOfTuples(surface->GetNumberOfCells());
 
-  vtkIdType npts, *pts;
-  double    a[2], b[2], c[2], A;
+  vtkNew<vtkIdList> ptIds;
+  double a[2], b[2], c[2], A;
 
   for (vtkIdType cellId = 0; cellId < surface->GetNumberOfCells(); ++cellId) {
-    surface->GetCellPoints(cellId, npts, pts);
-    if (npts != 3) FatalError("Surface mesh must have triangular faces!");
-    values->GetTuple(pts[0], a);
-    values->GetTuple(pts[1], b);
-    values->GetTuple(pts[2], c);
+    GetCellPoints(surface, cellId, ptIds.GetPointer());
+    if (ptIds->GetNumberOfIds() != 3) FatalError("Surface mesh must have triangular faces!");
+    values->GetTuple(ptIds->GetId(0), a);
+    values->GetTuple(ptIds->GetId(1), b);
+    values->GetTuple(ptIds->GetId(2), c);
     A = Triangle::SignedArea2D(a, b, c);
     if (abs(A) < 1e-9) A = 0.;
     area->SetComponent(cellId, 0, A);
@@ -294,10 +295,12 @@ double EdgeLengthDistortion(const PiecewiseLinearMap *map,
       }
     }
     if (ca) {
-      vtkIdType npts, *pts;
+      vtkNew<vtkIdList> ptIds;
       for (vtkIdType cellId = 0; cellId < surface->GetNumberOfCells(); ++cellId) {
-        surface->GetCellPoints(cellId, npts, pts);
-        if (npts > 0) ca->SetComponent(cellId, 0, ca->GetComponent(cellId, 0) / npts);
+        GetCellPoints(surface, cellId, ptIds.GetPointer());
+        if (ptIds->GetNumberOfIds() > 0) {
+          ca->SetComponent(cellId, 0, ca->GetComponent(cellId, 0) / ptIds->GetNumberOfIds());
+        }
       }
     }
     avg_distortion /= edgeTable.NumberOfEdges();
@@ -348,19 +351,20 @@ double TriangleAreaDistortion(const PiecewiseLinearMap *map,
     double    p1[3], p2[3], p3[3];
     double    u1[3] = {0.}, u2[3] = {0.}, u3[3] = {0.};
     double    scale;
-    vtkIdType npts, *pts;
+
+    vtkNew<vtkIdList> ptIds;
 
     Vector A1(surface->GetNumberOfCells());
     Vector A2(surface->GetNumberOfCells());
     for (vtkIdType cellId = 0; cellId < surface->GetNumberOfCells(); ++cellId) {
-      surface->GetCellPoints(cellId, npts, pts);
-      if (npts != 3) FatalError("Map domain must be triangulated!");
-      surface->GetPoint(pts[0], p1);
-      surface->GetPoint(pts[1], p2);
-      surface->GetPoint(pts[2], p3);
-      u_value->GetTuple(pts[0], u1);
-      u_value->GetTuple(pts[1], u2);
-      u_value->GetTuple(pts[2], u3);
+      GetCellPoints(surface, cellId, ptIds.GetPointer());
+      if (ptIds->GetNumberOfIds() != 3) FatalError("Map domain must be triangulated!");
+      surface->GetPoint(ptIds->GetId(0), p1);
+      surface->GetPoint(ptIds->GetId(1), p2);
+      surface->GetPoint(ptIds->GetId(2), p3);
+      u_value->GetTuple(ptIds->GetId(0), u1);
+      u_value->GetTuple(ptIds->GetId(1), u2);
+      u_value->GetTuple(ptIds->GetId(2), u3);
       A1(static_cast<int>(cellId)) = Triangle::DoubleArea(p1, p2, p3) + eps;
       A2(static_cast<int>(cellId)) = Triangle::DoubleArea(u1, u2, u3) + eps;
     }
@@ -369,9 +373,9 @@ double TriangleAreaDistortion(const PiecewiseLinearMap *map,
     for (vtkIdType cellId = 0; cellId < surface->GetNumberOfCells(); ++cellId) {
       scale = norm * A2(static_cast<int>(cellId)) / A1(static_cast<int>(cellId));
       if (pa) {
-        surface->GetCellPoints(cellId, npts, pts);
-        for (vtkIdType i = 0; i < npts; ++i) {
-          pa->SetComponent(pts[i], 0, pa->GetComponent(pts[i], 0) + scale);
+        GetCellPoints(surface, cellId, ptIds.GetPointer());
+        for (vtkIdType i = 0; i < ptIds->GetNumberOfIds(); ++i) {
+          pa->SetComponent(ptIds->GetId(i), 0, pa->GetComponent(ptIds->GetId(i), 0) + scale);
         }
       }
       if (ca) {
@@ -380,11 +384,12 @@ double TriangleAreaDistortion(const PiecewiseLinearMap *map,
       avg_distortion += pow(scale - 1., 2);
     }
     if (pa) {
-      unsigned short n;
-      vtkIdType *cells;
+      vtkNew<vtkIdList> cellIds;
       for (vtkIdType ptId = 0; ptId < surface->GetNumberOfPoints(); ++ptId) {
-        surface->GetPointCells(ptId, n, cells);
-        if (n > 0) pa->SetComponent(ptId, 0, pa->GetComponent(ptId, 0) / n);
+        surface->GetPointCells(ptId, cellIds.GetPointer());
+        if (cellIds->GetNumberOfIds() > 0) {
+          pa->SetComponent(ptId, 0, pa->GetComponent(ptId, 0) / cellIds->GetNumberOfIds());
+        }
       }
     }
     avg_distortion /= surface->GetNumberOfCells();

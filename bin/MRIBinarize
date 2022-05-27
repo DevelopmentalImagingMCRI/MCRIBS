@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import nibabel
+import scipy.ndimage
+import numpy
+
+inputFile = None
+outputFile = None
+maskFile = None
+dilateIters = 0
+erodeIters = 0
+matchValues = set()
+replaceTable = {}
+minVal = None
+maxVal = None
+binVal = 1
+notBinVal = 0
+
+curIDX = 1
+
+while curIDX < len(sys.argv):
+    #print(curIDX)
+    if sys.argv[curIDX] == '--i':
+        if len(sys.argv) > curIDX + 1:
+            inputFile = sys.argv[curIDX + 1]
+            curIDX = curIDX + 2
+    elif sys.argv[curIDX] == '--o':
+        if len(sys.argv) > curIDX + 1:
+            outputFile = sys.argv[curIDX + 1]
+            curIDX = curIDX + 2
+    elif sys.argv[curIDX] == '--mask':
+        if len(sys.argv) > curIDX + 1:
+            maskFile = sys.argv[curIDX + 1]
+            curIDX = curIDX + 2
+    elif sys.argv[curIDX] == '--binval':
+        if len(sys.argv) > curIDX + 1:
+            try:
+                binVal = float(sys.argv[curIDX + 1])
+            except Exception:
+                pass
+            curIDX = curIDX + 2
+    elif sys.argv[curIDX] == '--notbinval':
+        if len(sys.argv) > curIDX + 1:
+            try:
+                notBinVal = float(sys.argv[curIDX + 1])
+            except Exception:
+                pass
+            curIDX = curIDX + 2
+    elif sys.argv[curIDX] == '--inv':
+        notBinVal = 1
+        binVal = 0
+        curIDX = curIDX + 1
+    elif sys.argv[curIDX] == '--match':
+        if len(sys.argv) > curIDX + 1:
+            for z in range(curIDX + 1, len(sys.argv)):
+                try:
+                    t = int(sys.argv[z])
+                    matchValues.add(t)
+                except:
+                    break
+            curIDX = z
+    elif sys.argv[curIDX] == '--replace':
+        if len(sys.argv) > curIDX + 2:
+            try:
+                replaceTable[int(sys.argv[curIDX + 1])] = int(sys.argv[curIDX + 2])
+            except Exception:
+                pass
+            curIDX = curIDX + 3
+    elif sys.argv[curIDX] == '--min':
+        if len(sys.argv) > curIDX + 1:
+            try:
+                minVal = float(sys.argv[curIDX + 1])
+            except Exception:
+                minVal = None
+            curIDX = curIDX + 2
+    elif sys.argv[curIDX] == '--max':
+        if len(sys.argv) > curIDX + 1:
+            try:
+                maxVal = float(sys.argv[curIDX + 1])
+            except Exception:
+                maxVal = None
+            curIDX = curIDX + 2
+    elif sys.argv[curIDX] == '--dilate':
+        if len(sys.argv) > curIDX + 1:
+            try:
+                dilateIters = int(sys.argv[curIDX + 1])
+            except Exception:
+                pass
+            curIDX = curIDX + 2
+    elif sys.argv[curIDX] == '--erode':
+        if len(sys.argv) > curIDX + 1:
+            try:
+                erodeIters = int(sys.argv[curIDX + 1])
+            except Exception:
+                pass
+            curIDX = curIDX + 2
+    else:
+        curIDX = curIDX + 1
+#print("inputFile: " + str(inputFile))
+#print("outputFile: " + str(outputFile))
+#print("minVal: " + str(minVal))
+#print("maxVal: " + str(maxVal))
+#print("match: " + ", ".join([str(x) for x in matchValues]))
+#print("replace:")
+#print(replaceTable)
+
+if inputFile is None:
+    print("Input file not specified")
+    quit()
+
+if not os.path.isfile(inputFile):
+    print("Input file not found: " + inputFile)
+    quit()
+
+if outputFile is None:
+    print("Output file not specified")
+    quit()
+
+NII = nibabel.load(inputFile)
+IMG = NII.get_fdata()
+
+outIMG = numpy.array(IMG)
+# do replace first
+if len(replaceTable) > 0:
+    S = numpy.array(list(replaceTable.keys()))
+    II = numpy.argsort(S)
+
+    I = numpy.reshape(numpy.in1d(IMG.ravel(), S[II]), IMG.shape)
+    if numpy.any(I):
+        J = numpy.searchsorted(S[II], IMG[I])
+        V = numpy.array(list(replaceTable.values()))[II]
+        outIMG[I] = V[J]
+
+if len(matchValues) > 0:
+    I = numpy.reshape(numpy.in1d(IMG.ravel(), numpy.array(list(matchValues))), IMG.shape)
+    outIMG[I] = binVal
+    outIMG[numpy.logical_not(I)] = notBinVal
+
+if not minVal is None and maxVal is None:
+    I = IMG >= minVal
+    outIMG[I] = binVal
+    outIMG[numpy.logical_not(I)] = notBinVal
+
+if not maxVal is None and minVal is None:
+    I = IMG <= maxVal
+    outIMG[I] = binVal
+    outIMG[numpy.logical_not(I)] = notBinVal
+
+if not maxVal is None and not minVal is None:
+    I = numpy.logical_and(IMG >= minVal, IMG <= maxVal)
+    outIMG[I] = binVal
+    outIMG[numpy.logical_not(I)] = notBinVal
+
+
+SE = numpy.dstack((numpy.array([[False, False, False], [False, True, False], [False, False, False]]), numpy.array([[False, True, False], [True, True, True], [False, True, False]]), numpy.array([[False, False, False], [False, True, False], [False, False, False]])))
+
+if dilateIters > 0:
+    for z in range(dilateIters):
+        outIMG = scipy.ndimage.grey_dilation(outIMG, footprint = SE)
+if erodeIters > 0:
+    for z in range(erodeIters):
+        outIMG = scipy.ndimage.grey_erosion(outIMG, footprint = SE)
+
+if not maskFile is None:
+    if os.path.isfile('maskFile'):
+        maskNII = nibabel.load(maskFile)
+        maskIMG = (maskNII.get_fdata() != 0)
+        outIMG[numpy.logical_not(maskIMG)] = 0
+
+if outputFile.endswith('.nii') or outputFile.endswith('.nii.gz'):
+    outNII = nibabel.Nifti1Image(numpy.int16(outIMG), NII.affine)
+elif outputFile.endswith('.mgh') or outputFile.endswith('.mgz'):
+    outNII = nibabel.MGHImage(numpy.int16(outIMG), NII.affine)
+nibabel.save(outNII, outputFile)

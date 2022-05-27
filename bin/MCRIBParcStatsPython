@@ -105,11 +105,16 @@ for Hemi in Hemis:
     structsAndLabels = pandas.Series(index = Annot['colortable']['struct_names'], data = Annot['colortable']['labels'])
     #print(structsAndLabels)
     #print(outDF)
+    outDF = outDF.loc[outDF.StructName != "None", :]
     for curStructIDX in outDF.index:
         if outDF.loc[curStructIDX, 'StructName'] == 'Medial_Wall':
             I = numpy.where(numpy.logical_not(CortexLabelMask))[0]
         else:
             curStructName = outDF.loc[curStructIDX, 'StructName']
+            #print(Annot['label'].shape)
+            #print(CortexLabelMask.shape)
+            #print(curStructName)
+            #print(structsAndLabels.loc[curStructName])
             I = numpy.where(numpy.logical_and(Annot['label'] == structsAndLabels.loc[curStructName], CortexLabelMask))[0]
 
         if I.size > 0:

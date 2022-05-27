@@ -26,6 +26,7 @@
 #include "mirtk/MeshSmoothing.h"
 #include "mirtk/SurfaceCurvature.h"
 
+#include "mirtk/Vtk.h"
 #include "mirtk/VtkMath.h"
 #include "vtkPointData.h"
 #include "vtkDataArray.h"
@@ -62,26 +63,26 @@ namespace MeanCurvatureConstraintUtils {
 int GetEdgeNeighborPoints(vtkPolyData *surface, int i, int k, int &j, int &l)
 {
   j = l = -1;
-  unsigned short ncells1, ncells2, ncells = 0;
-  vtkIdType      *cells1, *cells2, npts, *pts;
-  surface->GetPointCells(static_cast<vtkIdType>(i), ncells1, cells1);
-  surface->GetPointCells(static_cast<vtkIdType>(k), ncells2, cells2);
-  for (unsigned short idx1 = 0; idx1 < ncells1; ++idx1)
-  for (unsigned short idx2 = 0; idx2 < ncells2; ++idx2) {
-    if (cells1[idx1] == cells2[idx2]) {
+  vtkIdType ncells = 0;
+  vtkNew<vtkIdList> cellIds1, cellIds2, ptIds;
+  surface->GetPointCells(static_cast<vtkIdType>(i), cellIds1.GetPointer());
+  surface->GetPointCells(static_cast<vtkIdType>(k), cellIds2.GetPointer());
+  for (vtkIdType idx1 = 0; idx1 < cellIds1->GetNumberOfIds(); ++idx1)
+  for (vtkIdType idx2 = 0; idx2 < cellIds2->GetNumberOfIds(); ++idx2) {
+    if (cellIds1->GetId(idx1) == cellIds2->GetId(idx2)) {
       ++ncells;
       if (ncells < 3) {
-        surface->GetCellPoints(cells1[idx1], npts, pts);
-        if (npts == 3) {
-          if (pts[0] == i) {
-            if (pts[1] == k) l = pts[2];
-            else             j = pts[1];
-          } else if (pts[1] == i) {
-            if (pts[2] == k) l = pts[0];
-            else             j = pts[2];
+        GetCellPoints(surface, cellIds1->GetId(idx1), ptIds.GetPointer());
+        if (ptIds->GetNumberOfIds() == 3) {
+          if (ptIds->GetId(0) == i) {
+            if (ptIds->GetId(1) == k) l = ptIds->GetId(2);
+            else                      j = ptIds->GetId(1);
+          } else if (ptIds->GetId(1) == i) {
+            if (ptIds->GetId(2) == k) l = ptIds->GetId(0);
+            else                      j = ptIds->GetId(2);
           } else {
-            if (pts[0] == k) l = pts[1];
-            else             j = pts[0];
+            if (ptIds->GetId(0) == k) l = ptIds->GetId(1);
+            else                      j = ptIds->GetId(0);
           }
         }
       }
@@ -166,36 +167,33 @@ struct CalculateMeanCurvature
   void operator ()(const blocked_range<vtkIdType> &cellIds) const
   {
     vtkIdType i, j, k, l;
-    vtkIdType numCellPts, *cellPts, cellPtIdx;
-    vtkIdType numNborPts, *nborPts, nborPtIdx;
-    double    v_i[3], v_j[3], v_k[3], v_l[3];
-    double    A_ijk, A_ikl, A_sum, length, cs, sn, angle, H;
-    Vector3   p_i, e_ij, e_ik, e_il, n_ijk, n_ikl, n_cross;
-
-    vtkSmartPointer<vtkIdList> nborCellIds;
-    nborCellIds = vtkSmartPointer<vtkIdList>::New();
+    vtkIdType cellPtIdx, nborPtIdx;
+    double  v_i[3], v_j[3], v_k[3], v_l[3];
+    double  A_ijk, A_ikl, A_sum, length, cs, sn, angle, H;
+    Vector3 p_i, e_ij, e_ik, e_il, n_ijk, n_ikl, n_cross;
+    vtkNew<vtkIdList> cellPtIds, nborCellIds, nborPtIds;
 
     for (vtkIdType cellId = cellIds.begin(); cellId != cellIds.end(); ++cellId) {
-      _Surface->GetCellPoints(cellId, numCellPts, cellPts);
-      for (cellPtIdx = 0; cellPtIdx < numCellPts; ++cellPtIdx) {
+      GetCellPoints(_Surface, cellId, cellPtIds.GetPointer());
+      for (cellPtIdx = 0; cellPtIdx < cellPtIds->GetNumberOfIds(); ++cellPtIdx) {
 
         // Get start and end point indices of current cell edge
-        i = cellPts[cellPtIdx];
-        k = cellPts[(cellPtIdx + 1) % numCellPts];
+        i = cellPtIds->GetId(cellPtIdx);
+        k = cellPtIds->GetId((cellPtIdx + 1) % cellPtIds->GetNumberOfIds());
 
         // Get neighboring face sharing this edge
-        _Surface->GetCellEdgeNeighbors(cellId, i, k, nborCellIds);
+        _Surface->GetCellEdgeNeighbors(cellId, i, k, nborCellIds.GetPointer());
         if (nborCellIds->GetNumberOfIds() == 1 && nborCellIds->GetId(0) > cellId) {
 
           // Get indices of two other points of this and the neighboring cell,
           // while preserving the order, i.e., orientation for both cells
-          l = cellPts[(cellPtIdx + 2) % numCellPts];
-          _Surface->GetCellPoints(nborCellIds->GetId(0), numNborPts, nborPts);
-          if (numNborPts > 2) {
+          l = cellPtIds->GetId((cellPtIdx + 2) % cellPtIds->GetNumberOfIds());
+          GetCellPoints(_Surface, nborCellIds->GetId(0), nborPtIds.GetPointer());
+          if (nborPtIds->GetNumberOfIds() > 2) {
             nborPtIdx = 0;
-            while (nborPts[nborPtIdx] != i) ++nborPtIdx;
-            j = nborPts[(nborPtIdx + 1) % numNborPts];
-            if (j == k) j = nborPts[(nborPtIdx + numNborPts - 1) % numNborPts];
+            while (nborPtIds->GetId(nborPtIdx) != i) ++nborPtIdx;
+            j = nborPtIds->GetId((nborPtIdx + 1) % nborPtIds->GetNumberOfIds());
+            if (j == k) j = nborPtIds->GetId((nborPtIdx + nborPtIds->GetNumberOfIds() - 1) % nborPtIds->GetNumberOfIds());
 
             // Get vertex points
             _Surface->GetPoint(i, v_i);
@@ -308,38 +306,36 @@ struct EvaluateGradient
   void operator ()(const blocked_range<vtkIdType> &cellIds) const
   {
     vtkIdType i, j, k, l;
-    vtkIdType numCellPts, *cellPts, cellPtIdx;
-    vtkIdType numNborPts, *nborPts, nborPtIdx;
+    vtkIdType cellPtIdx, nborPtIdx; 
     double    v_i[3], v_j[3], v_k[3], v_l[3], cs2_plus_sn2, dangle_dsn, dangle_dcs;
     double    length, length2, A_ijk, A_ikl, A_sum, cs, sn, angle, H;
     Matrix3x3 dnJ_ijk, dnJ_ikl, dn_cross1, dn_cross2, dn_ijk, dn_ikl, T;
     Vector3   p_i, e_ij, e_ik, e_il, n_ijk, n_ikl, n_cross;
     Vector3   dA_sum, dlength, dcs, dsn, dangle, dH;
 
-    vtkSmartPointer<vtkIdList> nborCellIds;
-    nborCellIds = vtkSmartPointer<vtkIdList>::New();
+    vtkNew<vtkIdList> cellPtIds, nborPtIds, nborCellIds;
 
     for (vtkIdType cellId = cellIds.begin(); cellId != cellIds.end(); ++cellId) {
-      _Surface->GetCellPoints(cellId, numCellPts, cellPts);
-      for (cellPtIdx = 0; cellPtIdx < numCellPts; ++cellPtIdx) {
+      GetCellPoints(_Surface, cellId, cellPtIds.GetPointer());
+      for (cellPtIdx = 0; cellPtIdx < cellPtIds->GetNumberOfIds(); ++cellPtIdx) {
 
         // Get start and end point indices of current cell edge
-        i = cellPts[cellPtIdx];
-        k = cellPts[(cellPtIdx + 1) % numCellPts];
+        i = cellPtIds->GetId(cellPtIdx);
+        k = cellPtIds->GetId((cellPtIdx + 1) % cellPtIds->GetNumberOfIds());
 
         // Get neighboring face sharing this edge
-        _Surface->GetCellEdgeNeighbors(cellId, i, k, nborCellIds);
+        _Surface->GetCellEdgeNeighbors(cellId, i, k, nborCellIds.GetPointer());
         if (nborCellIds->GetNumberOfIds() == 1 && nborCellIds->GetId(0) > cellId) {
 
           // Get indices of two other points of this and the neighboring cell,
           // while preserving the order, i.e., orientation for both cells
-          l = cellPts[(cellPtIdx + 2) % numCellPts];
-          _Surface->GetCellPoints(nborCellIds->GetId(0), numNborPts, nborPts);
-          if (numNborPts > 2) {
+          l = cellPtIds->GetId((cellPtIdx + 2) % cellPtIds->GetNumberOfIds());
+          GetCellPoints(_Surface, nborCellIds->GetId(0), nborPtIds.GetPointer());
+          if (nborPtIds->GetNumberOfIds() > 2) {
             nborPtIdx = 0;
-            while (nborPts[nborPtIdx] != i) ++nborPtIdx;
-            j = nborPts[(nborPtIdx + 1) % numNborPts];
-            if (j == k) j = nborPts[(nborPtIdx + numNborPts - 1) % numNborPts];
+            while (nborPtIds->GetId(nborPtIdx) != i) ++nborPtIdx;
+            j = nborPtIds->GetId((nborPtIdx + 1) % nborPtIds->GetNumberOfIds());
+            if (j == k) j = nborPtIds->GetId((nborPtIdx + nborPtIds->GetNumberOfIds() - 1) % nborPtIds->GetNumberOfIds());
 
             // Get vertex points
             _Surface->GetPoint(i, v_i);

@@ -22,8 +22,10 @@
 #include "mirtk/Array.h"
 #include "mirtk/Parallel.h"
 #include "mirtk/Matrix3x3.h"
+#include "mirtk/Vtk.h"
 #include "mirtk/VtkMath.h"
 
+#include "vtkNew.h"
 #include "vtkSmartPointer.h"
 #include "vtkPointSet.h"
 #include "vtkPointData.h"
@@ -146,10 +148,10 @@ public:
     double    v0[3], v1[3], v2[3], v3[3], volume;
 
     vtkPointSet * const pointset = _Filter->Volume();
-    vtkSmartPointer<vtkIdList> ptIds = vtkSmartPointer<vtkIdList>::New();
+    vtkNew<vtkIdList> ptIds;
 
     for (vtkIdType cellId = cellIds.begin(); cellId != cellIds.end(); ++cellId) {
-      pointset->GetCellPoints(cellId, ptIds);
+      GetCellPoints(pointset, cellId, ptIds.GetPointer());
 
       i0 = ptIds->GetId(0);
       i1 = ptIds->GetId(1);

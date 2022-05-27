@@ -1,0 +1,12 @@
+[bB]uild*
+[xX]code
+Debug*
+Release*
+nbproject/private
+nbproject/configurations.xml
+CMakeLists.txt.user*
+.DS_Store
+.project
+.cproject
+.*.swp
+.idea

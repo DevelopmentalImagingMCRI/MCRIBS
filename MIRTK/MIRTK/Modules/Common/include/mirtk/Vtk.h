@@ -27,7 +27,10 @@
 #include "vtkSmartPointer.h"
 #include "vtkDataArray.h"
 #include "vtkDataSetAttributes.h"
+#include "vtkIdList.h"
 #include "vtkVersionMacros.h"
+#include "vtkDataSet.h"
+#include "vtkPolyData.h"
 
 
 namespace mirtk {
@@ -50,35 +53,40 @@ namespace mirtk {
 #define VTK_DATA_FLOAT   "float"
 
 // =============================================================================
-// VTK 5/6 transition
+// Deprecated macros from VTK 5/6 transition - VTK <6 no longer supported
 // =============================================================================
 
 // Auxiliary macros to set/add VTK filter input (connection)
-#if VTK_MAJOR_VERSION >= 6
-#  define SetVTKInput(filter, dataset) (filter)->SetInputData(dataset);
-#  define AddVTKInput(filter, dataset) (filter)->AddInputData(dataset);
-#  define SetVTKConnection(filter2, filter1) (filter2)->SetInputConnection((filter1)->GetOutputPort());
-#  define SetNthVTKInput(filter, n, dataset) (filter)->SetInputData(n, dataset);
-#  define AddNthVTKInput(filter, n, dataset) (filter)->AddInputData(n, dataset);
-#  define SetNthVTKConnection(filter2, n2, filter1, n1) (filter2)->SetInputConnection(n2, (filter1)->GetOutputPort(n1));
-#else
-#  define SetVTKInput(filter, dataset) (filter)->SetInput(dataset);
-#  define AddVTKInput(filter, dataset) (filter)->AddInput(dataset);
-#  define SetVTKConnection(filter2, filter1) (filter2)->SetInput((filter1)->GetOutput());
-#  define SetNthVTKInput(filter, n, dataset) (filter)->SetInput(n, dataset);
-#  define AddNthVTKInput(filter, n, dataset) (filter)->AddInput(n, dataset);
-#  define SetNthVTKConnection(filter2, n2, filter1, n1) (filter2)->SetInput(n2, (filter1)->GetOutput(n1));
-#endif
+#define SetVTKInput(filter, dataset) (filter)->SetInputData(dataset);
+#define AddVTKInput(filter, dataset) (filter)->AddInputData(dataset);
+#define SetVTKConnection(filter2, filter1) (filter2)->SetInputConnection((filter1)->GetOutputPort());
+#define SetNthVTKInput(filter, n, dataset) (filter)->SetInputData(n, dataset);
+#define AddNthVTKInput(filter, n, dataset) (filter)->AddInputData(n, dataset);
+#define SetNthVTKConnection(filter2, n2, filter1, n1) (filter2)->SetInputConnection(n2, (filter1)->GetOutputPort(n1));
 
 // =============================================================================
-// VTK 8/9 transition
+// Transition to VTK 9
 // =============================================================================
 
-#if VTK_MAJOR_VERSION > 8 || (VTK_MAJOR_VERSION == 8 && VTK_MINOR_VERSION == 90)
-  typedef vtkIdType vtkPolyDataGetPointCellsNumCellsType;
-#else
-  typedef unsigned short vtkPolyDataGetPointCellsNumCellsType;
-#endif
+// Fix for https://github.com/Kitware/VTK/commit/eb0113741ce5bcbd493cfa3eda34feba827d0533
+inline void GetCellPoints(vtkDataSet *obj, vtkIdType cellId, vtkIdList *ptIds)
+{
+  #if VTK_MAJOR_VERSION < 9
+    vtkPolyData *pd = vtkPolyData::SafeDownCast(obj);
+    if (pd == nullptr) {
+      obj->GetCellPoints(cellId, ptIds);
+    } else {
+      vtkIdType *pts, npts;
+      pd->GetCellPoints(cellId, npts, pts);
+      ptIds->SetNumberOfIds(npts);
+      for (vtkIdType i = 0; i < npts; ++i) {
+        ptIds->SetId(i, pts[i]);
+      }
+    }
+  #else
+    obj->GetCellPoints(cellId, ptIds);
+  #endif
+}
 
 // =============================================================================
 // Data set attributes

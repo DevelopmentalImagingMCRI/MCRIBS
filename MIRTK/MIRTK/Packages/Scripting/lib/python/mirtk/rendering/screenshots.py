@@ -189,13 +189,13 @@ def slice_view(image, index, width, height, zdir=2, polydata=[], colors=default_
             from nibabel import aff2axcodes
             codes = aff2axcodes(matrix_to_affine(matrix))
         except Exception:
-            codes = ('L', 'A', 'S')
+            codes = ['L', 'A', 'S']
             if matrix.GetElement(0, 0) < 0:
-                codes = 'R'
+                codes[0] = 'R'
             if matrix.GetElement(1, 1) < 0:
-                codes = 'P'
+                codes[1] = 'P'
             if matrix.GetElement(2, 2) < 0:
-                codes = 'I'
+                codes[2] = 'I'
         if codes[0] == 'R':
             flip[0] = True
         if codes[1] == 'P':

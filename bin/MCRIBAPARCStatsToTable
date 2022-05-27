@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+
+import os
+import pandas
+import argparse
+import sys
+
+def main():
+
+    argParser = argparse.ArgumentParser(description = "aparcstats2table port to MCRIBS aparc stats files", usage = sys.argv[0] + " ", formatter_class = argparse.RawTextHelpFormatter)
+     
+    argParser.add_argument('--subjectsfile', help = "List of subjects", required = True, type = str)
+    argParser.add_argument('--meas', help = "Measure to use", required = True, type = str)
+    argParser.add_argument('--hemi', help = "Hemisphere to use", required = True, type = str)
+    argParser.add_argument('--parc', help = "Parcellation scheme to use", required = True, type = str)
+    argParser.add_argument('--tablefile', help = "Table to produce", required = True, type = str)
+    argParser.add_argument('--skip', help = "Table to produce", required = False, action = "store_true")
+
+    options = argParser.parse_args()
+    
+    if not os.path.isfile(options.subjectsfile):
+        print("Subjects file not found: " + options.subjectsfile)
+        quit()
+
+    outDF = None
+    
+    subjectFID = open(options.subjectsfile, 'r')
+    subjectIDs = [x.rstrip() for x in subjectFID.readlines()]
+    subjectFID.close()
+
+    for subjID in subjectIDs:
+        tableFile = os.path.join(os.environ['SUBJECTS_DIR'], subjID, 'stats', options.hemi + "." + options.parc + ".stats")
+        if not os.path.isfile(tableFile) and not options.skip:
+            print(tableFile + " not found and skip was disabled")
+            quit()
+        curDF = pandas.read_csv(tableFile, index_col=0)
+        
+        curMeasDF = pandas.DataFrame(curDF.loc[:, options.meas])
+        # rename the measure column to the subject name
+        curMeasDF.rename(columns={options.meas: subjID}, inplace=True)
+        #print(curMeasDF)
+        if outDF is None:
+            outDF = pandas.DataFrame(curMeasDF)
+        else:
+            outDF = pandas.merge(outDF, curMeasDF, left_index=True, right_index=True, how='outer')
+
+    outDF.to_csv(options.tablefile)
+if __name__ == "__main__":
+    main()

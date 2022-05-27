@@ -1284,6 +1284,14 @@ int main(int argc, char *argv[])
       model.MaxCollisionAngle(farg);
       collision.MaxAngle(farg);
     }
+    else if (OPTION("-adjacent-collision-test")) {
+      if (HAS_ARGUMENT) PARSE_ARGUMENT(barg);
+      else barg = true;
+      model.AdjacentCollisionTest(barg);
+    }
+    else if (OPTION("-noadjacent-collision-test")) {
+      model.AdjacentCollisionTest(false);
+    }
     else if (OPTION("-fast-collision-test")) {
       if (HAS_ARGUMENT) PARSE_ARGUMENT(barg);
       else barg = true;

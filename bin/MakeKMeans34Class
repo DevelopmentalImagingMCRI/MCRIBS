@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import getopt
+
+import scipy.ndimage
+
+def DICEOverlap(A, B):
+    return (2 * numpy.count_nonzero(numpy.logical_and(A, B))) / (numpy.count_nonzero(A) + numpy.count_nonzero(B))
+
+def KMeansInitCentroids(X, initCentroids, numIter = 100):
+
+    XC = numpy.atleast_2d(X)    
+    centroids = numpy.single(numpy.atleast_2d(numpy.array(initCentroids).ravel()).T)
+    
+    forMean = numpy.zeros((centroids.size, X.size), dtype = numpy.single)
+
+    for z in range(numIter):
+        numpy.subtract(XC, centroids, out = forMean)
+        numpy.abs(forMean, out = forMean)
+        Classes = numpy.uint8(numpy.argmin(forMean, axis = 0))
+
+        if z < numIter - 1:
+            for k in range(centroids.size):
+                centroids[k] = numpy.mean(X[Classes == k])
+    return Classes
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", [])
+
+if len(args) != 1:
+        print("The number of arguments must be 1")
+        print(sys.argv[0] + " <subjid>")
+        exit()
+
+largeVentricles = False
+verbose = False
+for o, a in opts:
+        if o == '--largeventricles':
+                largeVentricles = True
+        if o == '-v':
+                verbose = True
+
+
+# makes a CSF mask around the subcortical grey and ventricles
+
+subjID = args[0]
+try:
+    TissueSegDir = os.environ['TISSUESEGDIR']
+except:
+    TissueSegDir = 'TissueSegMCRIBS'
+
+T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
+T2IMG = numpy.single(T2NII.get_fdata())
+
+DKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_skullstrip_reg.nii.gz"))
+DKTIMG = numpy.int16(DKTNII.get_fdata())
+
+BrainMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
+BrainMaskIMG = (BrainMaskNII.get_fdata()) > 0
+
+GMMaskIMG = ismember(DKTIMG, [3, 42])
+GMMaskIMG = numpy.logical_or(GMMaskIMG, numpy.logical_and(DKTIMG >= 1000, DKTIMG <= 1035))
+GMMaskIMG = numpy.logical_or(GMMaskIMG, numpy.logical_and(DKTIMG >= 2000, DKTIMG <= 2035))
+
+GMMaskIMG = numpy.logical_or(GMMaskIMG, ismember(DKTIMG, [9, 11, 12, 13, 18, 48, 49, 50, 51, 52, 54]))
+
+CSFMaskIMG = ismember(DKTIMG, [24, 14, 4, 43])
+
+WMMaskIMG = ismember(DKTIMG, [2, 41])
+
+GMMean = numpy.mean(T2IMG[GMMaskIMG])
+WMMean = numpy.mean(T2IMG[WMMaskIMG])
+CSFMean = numpy.mean(T2IMG[CSFMaskIMG])
+
+KMeans3Classes = KMeansInitCentroids(T2IMG[BrainMaskIMG].ravel(), [GMMean, WMMean, CSFMean])
+KMeans4Classes = KMeansInitCentroids(T2IMG[BrainMaskIMG].ravel(), [0, GMMean, WMMean, CSFMean])
+KMeans3IMG = numpy.zeros(T2IMG.shape, dtype = numpy.uint8)
+KMeans4IMG = numpy.zeros(T2IMG.shape, dtype = numpy.uint8)
+KMeans3IMG[BrainMaskIMG] = KMeans3Classes + 1
+KMeans4IMG[BrainMaskIMG] = KMeans4Classes + 1
+
+Dices3 = numpy.zeros((3))
+Dices4 = numpy.zeros((3))
+
+DICEMask = numpy.logical_and(BrainMaskIMG, numpy.logical_not(ismember(DKTIMG, [74, 75, 76, 90, 91, 93])))
+
+Dices3[0] = DICEOverlap(numpy.logical_and(KMeans3IMG == 1, DICEMask), GMMaskIMG)
+Dices3[1] = DICEOverlap(numpy.logical_and(KMeans3IMG == 2, DICEMask), WMMaskIMG)
+Dices3[2] = DICEOverlap(numpy.logical_and(KMeans3IMG == 3, DICEMask), CSFMaskIMG)
+Dices4[0] = DICEOverlap(numpy.logical_and(KMeans4IMG == 2, DICEMask), GMMaskIMG)
+Dices4[1] = DICEOverlap(numpy.logical_and(KMeans4IMG == 3, DICEMask), WMMaskIMG)
+Dices4[2] = DICEOverlap(numpy.logical_and(KMeans4IMG == 4, DICEMask), CSFMaskIMG)
+#print(Dices3)
+#print(Dices4)
+
+# the 4-class version is better
+# step-down the classes (CSF) 4 -> 3, (WM) 3 -> 2, (GM) 2 -> 1, (CSF super dark) 1 -> 0
+if numpy.mean(Dices4) > numpy.mean(Dices3):
+    print("4 class version better")
+    KMeans3IMG = numpy.array(KMeans4IMG)
+    KMeans3IMG[BrainMaskIMG] = KMeans3IMG[BrainMaskIMG] - 1
+
+NewNII = nibabel.Nifti1Image(KMeans3IMG, DKTNII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz"))

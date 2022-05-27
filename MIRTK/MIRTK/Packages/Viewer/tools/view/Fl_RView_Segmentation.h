@@ -1,14 +1,20 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 private:
 
@@ -57,7 +63,7 @@ Fl_Button *editSegmentColor;
 Fl_Input *editSegmentLabel;
 
 /// Widget for transperancy
-Fl_Slider *editSegmentTransperancy;
+Fl_Slider *editSegmentTransparency;
 
 /// Widget for visibility
 Fl_Check_Button *editSegmentVisibility;
@@ -98,7 +104,7 @@ static void cb_loadSegmentTableConfig(Fl_Button*, void*);
 static void cb_saveSegmentTableConfig(Fl_Button*, void*);
 static void cb_resetSegmentTableConfig(Fl_Button*, void*);
 static void cb_editSegmentLabel(Fl_Input*, void*);
-static void cb_editSegmentTransperancy(Fl_Slider*, void*);
+static void cb_editSegmentTransparency(Fl_Slider*, void*);
 static void cb_editSegmentVisibility(Fl_Check_Button*, void*);
 static void cb_editSegmentPickColor(Fl_Button*, void*);
 static void cb_showHistogram(Fl_Button* o, void* v);

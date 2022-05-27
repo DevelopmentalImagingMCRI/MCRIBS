@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage
+#import matplotlib.pyplot as plt
+#import pylab
+import Otsu
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+if len(sys.argv) < 2:
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+# fills midline WM labels for regions filling
+# replaces small WM components with GM
+
+subjID = sys.argv[1]
+
+TissueSegDir = os.environ['TISSUESEGDIR']
+
+T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
+T2IMG = T2NII.get_fdata()
+
+LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_skullstrip_reg.nii.gz"))
+LabelFusionIMG = numpy.int16(LabelFusionNII.get_fdata())
+
+GMSegNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
+GMSegIMG = GMSegNII.get_fdata() > 0
+
+#GMOtsuNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_segmentation_gm_otsu2.nii.gz"))
+#GMOtsuIMG = numpy.uint8(GMOtsuNII.get_fdata())
+
+LabelFusionLHGM = numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1036)
+LabelFusionRHGM = numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2036)
+
+LabelFusionLHGMDT = scipy.ndimage.distance_transform_edt(numpy.logical_not(LabelFusionLHGM))
+LabelFusionRHGMDT = scipy.ndimage.distance_transform_edt(numpy.logical_not(LabelFusionRHGM))
+
+outIMG = numpy.zeros(GMSegIMG.shape, dtype = numpy.uint8)
+
+outIMG[numpy.logical_and(LabelFusionLHGMDT < LabelFusionRHGMDT, GMSegIMG)] = 1
+outIMG[numpy.logical_and(LabelFusionLHGMDT >= LabelFusionRHGMDT, GMSegIMG)] = 2
+
+NewNII = nibabel.Nifti1Image(outIMG, LabelFusionNII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep.nii.gz"))
+
+NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG == 1), LabelFusionNII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep_lh.nii.gz"))
+NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG == 2), LabelFusionNII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep_rh.nii.gz"))
+
+#H, BINS = numpy.histogram(T2IMG[GMOtsuIMG > 0], bins=200, range=None, normed=None, weights=None, density=True)
+
+#plt.hist(T2IMG[GMOtsuIMG > 0], bins=200)
+#plt.xticks([numpy.min(T2IMG[GMOtsuIMG == 2]), numpy.min(T2IMG[GMOtsuIMG == 3])])
+#F = pylab.gcf()
+#F.set_size_inches((20, 10), forward = True)
+#os.makedirs('GMOtsuHist', exist_ok = True)
+#plt.savefig(os.path.join('GMOtsuHist', subjID + "_gm_hist.png"))
+#NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3)), LabelFusionNII.affine)
+#nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_lh_pericalcarine.nii.gz"))
+
+#NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 2021), axis = 3)), LabelFusionNII.affine)
+#nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_rh_pericalcarine.nii.gz"))
+
+#NewNII = nibabel.Nifti1Image(numpy.uint8(VoxelsToReplace), LabelFusionNII.affine)
+#nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_voxelstoreplace.nii.gz"))

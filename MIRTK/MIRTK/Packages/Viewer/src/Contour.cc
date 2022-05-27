@@ -1,20 +1,26 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Contour.h>
 
 Contour::Contour()
 {
-  _updateAllPoints=1;
+  _updateAllPoints = true;
 }
 
 void Contour::Add(Point p)
@@ -23,7 +29,7 @@ void Contour::Add(Point p)
     AddPointSet();
   }
   _pointSets[_pointSets.size()-1].Add(p);
-  _updateAllPoints=1;
+  _updateAllPoints = true;
 }
 
 void Contour::AddPointSet()
@@ -43,7 +49,7 @@ void Contour::DeleteLastSet()
 {
 
   if (_pointSets.size()>0)_pointSets.pop_back();
-  _updateAllPoints=1;
+  _updateAllPoints = true;
 }
 
 int Contour::IsEmpty()
@@ -66,13 +72,13 @@ int Contour::Size()
 void Contour::Clear()
 {
   _pointSets.clear();
-  _updateAllPoints=1;
+  _updateAllPoints = true;
 }
 int Contour::IsInside(double x, double y)
 {
   if (_updateAllPoints) {
     AllPoints();
-    _updateAllPoints=0;
+    _updateAllPoints = false;
   }
   return _allPoints.IsInside(x,y);
 }

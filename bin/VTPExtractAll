@@ -30,7 +30,13 @@ numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
 
 inFileName = args[0]
 
-Reader = vtk.vtkXMLPolyDataReader()
+path, ext = os.path.splitext(inFileName)
+
+if ext == ".vtp":
+    Reader = vtk.vtkXMLPolyDataReader()
+elif ext == ".vtk":
+    Reader = vtk.vtkPolyDataReader()
+
 Reader.SetFileName(inFileName)
 Reader.Update()
 

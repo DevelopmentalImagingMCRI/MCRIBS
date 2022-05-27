@@ -63,3 +63,11 @@ set(DEPENDS
 )
 
 mirtk_add_library()
+
+target_compile_definitions(LibViewer
+  PRIVATE
+    # 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead.
+    _CRT_SECURE_NO_WARNINGS
+    # 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup.
+    _CRT_NONSTDC_NO_DEPRECATE
+)

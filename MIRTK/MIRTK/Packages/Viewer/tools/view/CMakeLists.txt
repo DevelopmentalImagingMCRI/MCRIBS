@@ -56,7 +56,12 @@ mirtk_add_executable(
     LibTransformation
     LibViewer
     ${FLTK_LIBRARIES}
-    ${GLUT_LIBRARIES}
     ${OPENGL_LIBRARIES}
     ${VTK_LIBRARIES}
+)
+
+target_compile_definitions(view
+  PRIVATE
+    # 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead.
+    _CRT_SECURE_NO_WARNINGS
 )

@@ -1,25 +1,33 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit ()
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _SEGMENT_H
 #define _SEGMENT_H
 
 #define HEX_LENGTH 7
 
+#include <mirtk/ViewerExport.h>
 #include <mirtk/Image.h>
 #include <mirtk/ColorRGBA.h>
 #include <mirtk/Color.h>
 
-class Segment
+
+class MIRTK_Viewer_EXPORT Segment
 {
 
   friend class RView;
@@ -36,11 +44,11 @@ protected:
   /// Name of structure
   char *_label;
 
-  /// Transperancy
+  /// Transparency
   double _trans;
 
   /// Visibility flag
-  int _visible;
+  bool _visible;
 
   void setHexColor(void);
 
@@ -68,7 +76,7 @@ public:
   void setTrans(double);
 
   /// Set to visible
-  void setVisibility(int);
+  void setVisibility(bool);
 
   /// Return color
   void getColor(unsigned char*, unsigned char*, unsigned char*) const;
@@ -83,7 +91,7 @@ public:
   char *getLabel() const;
 
   /// Return if visible
-  int   getVisibility() const;
+  bool getVisibility() const;
 
   // General Methods
   void  rgb2Hex(int, int, int, char*);

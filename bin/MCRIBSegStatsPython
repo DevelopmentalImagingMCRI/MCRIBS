@@ -47,7 +47,7 @@ RHPialSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'rh.pial')
 T2IMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'T1.mgz')
 
 if not os.path.isfile(T2IMGFileName):
-    T2IMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'T2.mgz')
+    T2IMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'norm.mgz')
 
 RibbonIMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'ribbon.mgz')
 BrainmaskIMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'brainmask.mgz')

@@ -1,32 +1,32 @@
-/*=========================================================================
- 
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
- 
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+#include <mirtk/OpenGl.h>
 #include <mirtk/RView.h>
+
 #include <mirtk/Image.h>
 #include <mirtk/Transformation.h>
 #include <mirtk/Registration.h>
 
-#ifdef __APPLE__
-#include <OpenGl/gl.h>
-#include <OpenGl/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
-
 #ifndef WIN32
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/resource.h>
+  #include <sys/types.h>
+  #include <sys/time.h>
+  #include <sys/resource.h>
 #endif
 
 #include <stack>
@@ -316,7 +316,7 @@ void VoxelContour::AddPoint(mirtk::Point p, int width)
 
   // Check if this is the first point
   if (_currentSize > 0) {
-    lineBresenham(_lastx, _lasty, _lastz, x, y, z);
+    LineBresenham(_lastx, _lasty, _lastz, x, y, z);
   } else {
     AddPoint(x, y, z);
     _firstx = x;
@@ -364,7 +364,7 @@ void VoxelContour::AddPointSet(mirtk::Point p, int width)
 void VoxelContour::Close(mirtk::Point p, int width)
 {
   this->AddPoint(p, width);
-  lineBresenham(_firstx, _firsty, _firstz, _lastx, _lasty, _lastz);
+  LineBresenham(_firstx, _firsty, _firstz, _lastx, _lasty, _lastz);
 }
 
 void VoxelContour::FillArea(mirtk::Point p)
@@ -466,7 +466,7 @@ void VoxelContour::Clear()
   _current = 0;
 }
 
-void VoxelContour::lineBresenham(int x0, int y0, int z0, int x1, int y1, int z1)
+void VoxelContour::LineBresenham(int x0, int y0, int z0, int x1, int y1, int z1)
 {
 
   int dy = y1 - y0;
@@ -474,7 +474,7 @@ void VoxelContour::lineBresenham(int x0, int y0, int z0, int x1, int y1, int z1)
   int stepx, stepy;
 
   if (z1 != z0) {
-    cerr << "lineBresenham: Should not happen" << endl;
+    cerr << "LineBresenham: Should not happen" << endl;
   }
 
   if ((dx == 0) && (dy == 0)) return;

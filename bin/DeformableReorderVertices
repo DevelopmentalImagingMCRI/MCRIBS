@@ -15,7 +15,7 @@ opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 2:
     print("The number of arguments must be 1")
-    print(sys.argv[0] + " <deformable directory> <output directory>")
+    print((sys.argv[0] + " <deformable directory> <output directory>"))
     exit()
 
 #numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
@@ -54,16 +54,16 @@ def findEqualPoints(V1, V2, debug = False, V1Mask = None, V2Mask = None, V1Debug
         InverseI[I] = numpy.arange(I.size)
         #print I
         #print InverseI
-        print(InverseI[V1DebugIDX])
-        print(InverseI[V2DebugIDXInIDX])
+        print((InverseI[V1DebugIDX]))
+        print((InverseI[V2DebugIDXInIDX]))
 
 
         X = (numpy.diff(SortedT, axis = 1) == 0)
         S = numpy.all(X == True, axis = 0)
-        print(X[:, InverseI[V1DebugIDX]])
-        print(S[InverseI[V1DebugIDX]])
+        print((X[:, InverseI[V1DebugIDX]]))
+        print((S[InverseI[V1DebugIDX]]))
         DD = numpy.where(S)[0]
-        print(numpy.in1d(InverseI[V1DebugIDX], DD))
+        print((numpy.in1d(InverseI[V1DebugIDX], DD)))
         #print DD
         #print InverseI[V1DebugIDX]
 
@@ -178,6 +178,16 @@ else:
     Pial5Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-5_world.surf'))
     Pial6Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-6_world.surf'))
 
+print("PialLHSurf verts: " + str(PialLHSurf['vertices'].shape))
+print("WhiteLHSurf verts: " + str(WhiteLHSurf['vertices'].shape))
+print("PialRHSurf verts: " + str(PialRHSurf['vertices'].shape))
+print("WhiteRHSurf verts: " + str(WhiteRHSurf['vertices'].shape))
+
+print("PialLHSurf faces: " + str(PialLHSurf['faces'].shape))
+print("WhiteLHSurf faces: " + str(WhiteLHSurf['faces'].shape))
+print("PialRHSurf faces: " + str(PialRHSurf['faces'].shape))
+print("WhiteRHSurf faces: " + str(WhiteRHSurf['faces'].shape))
+
 if WhiteInternalSurf is None:
     print("WhiteInternalSurf not found")
     exit()
@@ -277,7 +287,7 @@ def findAnyEqualVerticesInSameSurface(Surf):
         I = numpy.any(numpy.atleast_2d(Surf['vertices'][:, z]).T == Surf['vertices'][:, (z + 1):], axis = 0)
         IDX = numpy.where(I)[0]
         if IDX.size > 0:
-            print(str(z) + " " + str(IDX))
+            print((str(z) + " " + str(IDX)))
 
 # for each vertex in SurfSRC[IDX], find the closest vertex index in SurfDST
 def findClosestIDX(SurfSRC, SurfDST, IDX, return_dist = False):
@@ -399,25 +409,15 @@ outS['vertices'] = numpy.zeros_like(WhiteLHSurf['vertices'])
 outS['vertices'][:, LHIDX] = PialLHSurf['vertices'][:, PialLHPialCortexIDX]
 #outS['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]] = PialLHSurf['vertices'][:, PialLHPialCortexIDX[LHIDX < 0]]
 
+#print("PialLHPialCortexMask: " + str(PialLHPialCortexMask.size)
+
 outS['vertices'][:, numpy.logical_not(PialLHPialCortexMask)] = WhiteLHSurf['vertices'][:, numpy.logical_not(PialLHPialCortexMask)]
 outLHMask[LHIDX] = True
 outLHMask = numpy.logical_or(numpy.logical_not(PialLHPialCortexMask), outLHMask)
 
 outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
-#outC = dict()
-#outC['numVertices'] = PialLHSurf['vertices'].shape[1]
-#outC['numFaces'] = PialLHSurf['faces'].shape[1]
-#outC['values'] = numpy.single(outLHMask)
-##print(numpy.where(numpy.logical_not(outLHMask)))
-#freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.pial.visited.curv'))
-#
-#outC = dict()
-#outC['numVertices'] = PialLHSurf['vertices'].shape[1]
-#outC['numFaces'] = PialLHSurf['faces'].shape[1]
-#outC['values'] = numpy.single(numpy.logical_not(PialLHPialCortexMask))
-##print(numpy.where(numpy.logical_not(outLHMask)))
-#freesurfer.writeCurv(outC, os.path.join(outDir, 'lh.pial.mask.curv'))
-#
+
+PialLHV = outS['vertices']
 
 #print("saving pials")
 freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
@@ -434,20 +434,69 @@ outRHMask[RHIDX] = True
 outRHMask = numpy.logical_or(numpy.logical_not(PialRHPialCortexMask), outRHMask)
 
 outS = replaceUnvisitedVerticesSmooth(outS, outRHMask)
+
+#PialRHVTKVerts = vtk.util.numpy_support.numpy_to_vtk(outS['vertices'].T, deep = 1)
+
+PialRHV = outS['vertices']
+
 freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
 
-#outC = dict()
-#outC['numVertices'] = PialRHSurf['vertices'].shape[1]
-#outC['numFaces'] = PialRHSurf['faces'].shape[1]
-#outC['values'] = numpy.single(outRHMask)
-##print(numpy.where(numpy.logical_not(outRHMask)))
-#freesurfer.writeCurv(outC, os.path.join(outDir, 'rh.pial.visited.curv'))
-#
-#outC = dict()
-#outC['numVertices'] = PialRHSurf['vertices'].shape[1]
-#outC['numFaces'] = PialRHSurf['faces'].shape[1]
-#outC['values'] = numpy.single(numpy.logical_not(PialRHPialCortexMask))
-##print(numpy.where(numpy.logical_not(outLHMask)))
-#freesurfer.writeCurv(outC, os.path.join(outDir, 'rh.pial.mask.curv'))
-#
-#
+def makeVTKPoints(inV):
+    
+    points = vtk.vtkPoints()
+    
+    for z in range(inV.shape[1]):
+        p = inV[:, z].tolist()
+
+        nextID = points.InsertNextPoint(p)
+    return points
+
+
+WhiteLHReader = vtk.vtkXMLPolyDataReader()
+WhiteLHReader.SetFileName(os.path.join(inDir, 'meshes', 'white-lh.vtp'))
+WhiteLHReader.Update()
+
+D = WhiteLHReader.GetOutput()
+
+#Vrts = D.GetVerts()
+#indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
+p = makeVTKPoints(PialLHV)
+
+#D.SetVerts(v)
+D.SetPoints(p)
+D.Modified()
+
+#ialLHData = PialLHReader.GetOutput()
+#$alLHData.SetVerts(PialLHVTKVerts)
+PialLHWriter = vtk.vtkXMLPolyDataWriter()
+PialLHWriter.SetFileName(os.path.join(inDir, 'meshes', 'pial-lh-reordered.vtp'))
+PialLHWriter.SetInputData(D)
+PialLHWriter.Write()
+
+WhiteRHReader = vtk.vtkXMLPolyDataReader()
+WhiteRHReader.SetFileName(os.path.join(inDir, 'meshes', 'white-rh.vtp'))
+WhiteRHReader.Update()
+
+D = WhiteRHReader.GetOutput()
+
+#Vrts = D.GetVerts()
+#indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
+p = makeVTKPoints(PialRHV)
+
+#D.SetVerts(v)
+D.SetPoints(p)
+D.Modified()
+
+#ialLHData = PialLHReader.GetOutput()
+#$alLHData.SetVerts(PialLHVTKVerts)
+PialRHWriter = vtk.vtkXMLPolyDataWriter()
+PialRHWriter.SetFileName(os.path.join(inDir, 'meshes', 'pial-rh-reordered.vtp'))
+PialRHWriter.SetInputData(D)
+PialRHWriter.Write()
+
+
+# rewrite the pial surfaces with reordered vertices in vtp format
+#PialLHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-lh.vtp'))
+#PialRHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-rh.vtp'))
+
+

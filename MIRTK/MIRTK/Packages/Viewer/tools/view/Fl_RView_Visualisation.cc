@@ -1,14 +1,20 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Image.h>
 #include <mirtk/Transformation.h>
@@ -99,7 +105,7 @@ void Fl_RViewUI::AddSource(char *filename)
 
 void Fl_RViewUI::cb_loadTarget(Fl_Button *, void *)
 {
-  char *filename = fl_file_chooser("Load target image", "*.{gipl,gipl.Z,hdr,hdr.gz,nii,nii.gz}", "");
+  char *filename = fl_file_chooser("Load target image", "*.{gipl,gipl.Z,hdr,hdr.gz,nii,nii.gz,mha,mhd}", "");
   if (filename != NULL) {
     rview->ReadTarget(filename);
     rviewUI->update();
@@ -111,7 +117,7 @@ void Fl_RViewUI::cb_loadTarget(Fl_Button *, void *)
 
 void Fl_RViewUI::cb_loadSource(Fl_Button *, void *)
 {
-  char *filename = fl_file_chooser("Load source image", "*.{gipl,gipl.Z,hdr,hdr.gz,nii,nii.gz}", "");
+  char *filename = fl_file_chooser("Load source image", "*.{gipl,gipl.Z,hdr,hdr.gz,nii,nii.gz,mha,mhd}", "");
   if (filename != NULL) {
     rview->ReadSource(filename);
     rviewUI->update();
@@ -123,7 +129,7 @@ void Fl_RViewUI::cb_loadSource(Fl_Button *, void *)
 
 void Fl_RViewUI::cb_saveTarget(Fl_Button *, void *)
 {
-  char *filename = fl_file_chooser("Save target image", "*.{gipl,hdr,vtk,nii}", "");
+  char *filename = fl_file_chooser("Save target image", "*.{gipl,hdr,vtk,nii,nii.gz,mha,mhd}", "");
   if (filename != NULL) {
     struct stat buffer;
     if (stat(filename, &buffer) == 0) {
@@ -138,7 +144,7 @@ void Fl_RViewUI::cb_saveTarget(Fl_Button *, void *)
 
 void Fl_RViewUI::cb_saveSource(Fl_Button *, void *)
 {
-  char *filename = fl_file_chooser("Save source image", "*.{gipl,hdr,vtk,nii}", "");
+  char *filename = fl_file_chooser("Save source image", "*.{gipl,hdr,vtk,nii,nii.gz,mha,mhd}", "");
   if (filename != NULL) {
     struct stat buffer;
     if (stat(filename, &buffer) == 0) {

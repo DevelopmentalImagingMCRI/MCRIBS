@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+
+import os
+import re
+import subprocess
+import sys
+
+#from nifti import *;
+#import nifti.clib as ncl
+
+import nibabel
+
+import numpy
+
+import scipy.ndimage
+
+import NIFTIOrientationTools
+
+def otsu(IMG):
+    hist, bin_edges = numpy.histogram(IMG, bins=list(range(257)),  density=True)
+    OmegaK = numpy.cumsum(hist)
+    MuK = numpy.cumsum(numpy.arange(0, 256, 1) * hist)
+    MuT = numpy.sum(numpy.arange(0, 256, 1) * hist)
+    OmegaZero = OmegaK
+    OmegaOne = 1 - OmegaK
+    MuZero = numpy.zeros(OmegaZero.shape)
+    MuOne = numpy.zeros(OmegaZero.shape)
+
+    MuZero[numpy.where(OmegaK > 0)] = MuK[numpy.where(OmegaK > 0)] / OmegaK[numpy.where(OmegaK > 0)]
+    MuOne[numpy.where(OmegaK < 1)] = (MuT - MuK[numpy.where(OmegaK < 1)]) / (1 - OmegaK[numpy.where(OmegaK < 1)])
+    
+    SigmaZero = numpy.zeros(OmegaZero.shape)
+    SigmaOne = numpy.zeros(OmegaZero.shape)
+    
+    for i in range(256):
+        if OmegaOne[i] > 0:
+            IndicesAfterI = numpy.arange(i + 1, 255, 1)
+            SigmaOne[i] = numpy.sum(hist[IndicesAfterI] * (IndicesAfterI - MuOne[i]) * (IndicesAfterI - MuOne[i]) / OmegaOne[i])
+    
+    SigmaB = OmegaZero * OmegaOne * (MuOne - MuZero) * (MuOne - MuZero)
+    
+    SigmaB2 = numpy.zeros(OmegaZero.shape)
+
+    SigmaB2Mask = numpy.logical_and(OmegaK > 0, OmegaK < 1)
+    SigmaB2[numpy.where(SigmaB2Mask)] = ((MuT * OmegaK[numpy.where(SigmaB2Mask)] - MuK[numpy.where(SigmaB2Mask)]) * (MuT * OmegaK[numpy.where(SigmaB2Mask)] - MuK[numpy.where(SigmaB2Mask)])) / (OmegaK[numpy.where(SigmaB2Mask)] * (1 - OmegaK[numpy.where(SigmaB2Mask)]))
+
+    return numpy.argmax(SigmaB2)
+
+if len(sys.argv) < 2:
+    print("usage: " + sys.argv[0] + " <subjectid>")
+    quit()
+else:
+    if len(sys.argv) > 2:
+        if sys.argv[2] == '-no-initial-crop':
+            NoZCropping = True
+        else:
+            NoZCropping = False
+    else:
+        NoZCropping = False
+
+    InputDir = 'RawT2'
+    OutputDir = 'T2NeckCropped'
+    
+    NIIFileNameBase = os.path.join(InputDir, sys.argv[1])
+
+    if os.path.isfile(NIIFileNameBase + '.nii') or os.path.isfile(NIIFileNameBase + '.nii.gz'):
+        inputNII = nibabel.load(NIIFileNameBase + ".nii.gz")
+        # reorient to MNI orientation
+        inputAXCodes = nibabel.aff2axcodes(inputNII.affine)
+        inputOrnt = nibabel.orientations.axcodes2ornt(inputAXCodes)
+        
+        #refNII = nibabel.load(os.path.join(os.environ['FSLDIR'], 'data', 'standard', 'MNI152_T1_2mm.nii.gz'))
+        refNII = nibabel.load(os.path.join(os.environ['TEMPLATEDIR'], 'Finaltemplate0.nii.gz'))
+        refAXCodes = nibabel.aff2axcodes(refNII.affine)
+        refOrnt = nibabel.orientations.axcodes2ornt(refAXCodes)
+
+        inputToRefTransformOrnt = nibabel.orientations.ornt_transform(inputOrnt, refOrnt)
+        inputIMG = nibabel.orientations.apply_orientation(numpy.asanyarray(inputNII.dataobj), inputToRefTransformOrnt)
+        
+        outputAffine = NIFTIOrientationTools.applyOrntToNIIAffine(inputNII, inputToRefTransformOrnt)
+        
+        #IMGData = numpy.asarray(inputIMG.flatten())
+        
+        # clip at the 2% and 98% percentiles
+#        ind = IMGData.argsort()
+#        IMGData = IMGData[ind]
+#
+#        SecondPercentile = IMGData[int(numpy.floor(IMGData.size * 0.02))]
+#        NinetyEightPercentile = IMGData[int(numpy.floor(IMGData.size * 0.98))]
+#        IMGData[IMGData < SecondPercentile] = SecondPercentile
+#        IMGData[IMGData > NinetyEightPercentile] = NinetyEightPercentile
+#        
+#        #convert to floating point
+#        IMGData = IMGData.astype(numpy.double)
+#        # scale to 0 - 255
+#        IMGData = (IMGData - numpy.min(IMGData)) / (numpy.max(IMGData) - numpy.min(IMGData)) * 255
+#        # convert to uint8
+#        IMGData = IMGData.astype(numpy.uint8)
+#
+#        # threshold with otsu
+#        Thresh = otsu(IMGData)
+#        OtsuIMGData = numpy.array(inputIMG)
+#        OtsuIMGData[numpy.where(inputIMG < Thresh)] = 0
+#        OtsuIMGData[numpy.where(inputIMG >= Thresh)] = 1
+#        del IMGData
+#        #save otsu threshold
+#        inputNII.data = OtsuIMGData
+#        outNII = nibabel.Nifti1Image(OtsuIMGData, outputAffine)
+#        nibabel.save(outNII, os.path.join(OutputDir, sys.argv[1] + '_otsu.nii.gz'))
+#
+#        
+#        # retain the biggest conncted component
+#        L, NumLabels = scipy.ndimage.measurements.label(OtsuIMGData)
+#        del OtsuIMGData
+#        T = L.flatten()    
+#        # get areas of the labels
+#        hist, bin_edges = numpy.histogram(T[numpy.where(T > 0)], bins=numpy.arange(1, NumLabels + 1))
+#        MaxLabel = numpy.argmax(hist) + 1
+#        S = numpy.zeros(T.shape)
+#        S[numpy.where(T == MaxLabel)] = 1
+#        del T
+#        S = S.astype(numpy.int16)
+#        S.resize(inputIMG.shape)
+#        
+#        outNII = nibabel.Nifti1Image(inputIMG, outputAffine)
+#        nibabel.save(outNII, os.path.join(OutputDir, sys.argv[1] + '_inputimage.nii.gz'))
+#        outNII = nibabel.Nifti1Image(S, outputAffine)
+#        nibabel.save(outNII, os.path.join(OutputDir, sys.argv[1] + '_maxlabel.nii.gz'))
+#
+#        #When accessing NIfTI image data through NumPy arrays the order of the dimensions is reversed. If
+#        #the x, y, z, t dimensions of a NIfTI image are 64, 64, 32, 456 (as for example reported by nifti_tool),
+#        #the shape of the NumPy array (e.g. as returned by NiftiImage.data) will be: 456, 32, 64, 64.
+#        #This is done to be able to slice the data array much easier in the most common cases. For example,
+#        #if you are interested in a certain volume of a timeseries it is much easier to write data[2] instead of
+#        #    data[:,:,:,2], right?
+#
+#        # find the highest slice
+#        I = numpy.nonzero(S)[2]
+#        #del S
+#        MaxSlice = numpy.max(I)
+#        # go down 180mm from highest slice
+#        SliceDownTwentyCM = int(numpy.floor(MaxSlice - 180 / inputNII.header['pixdim'][3]))
+#        if SliceDownTwentyCM < 0:
+#            SliceDownTwentyCM = 0
+#        #print str(MaxSlice) + " " + str(SliceDownTwentyCM)
+#        # crop and save
+#        #boundingBox = list(inputNII.bbox)
+#        #boundingBox[0] = (SliceDownTwentyCM, boundingBox[0][1])
+#
+        I = numpy.where(inputIMG > 0)
+        
+        inputIMG = numpy.take(inputIMG, list(range(  numpy.min(I[0]), numpy.max(I[0]) + 1)), axis = 0)
+        inputIMG = numpy.take(inputIMG, list(range(  numpy.min(I[1]), numpy.max(I[1]) + 1)), axis = 1)
+#        if NoZCropping == False:
+ #           inputIMG = numpy.take(inputIMG, list(range(SliceDownTwentyCM, numpy.max(I[2]) + 1)), axis = 2)
+
+        OutFileNII = nibabel.Nifti1Image(inputIMG, outputAffine)
+        nibabel.save(OutFileNII, os.path.join(OutputDir, sys.argv[1] + '_maxlabel_cropped.nii.gz'))

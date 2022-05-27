@@ -1,14 +1,20 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Image.h>
 #include <mirtk/Transformation.h>
@@ -22,12 +28,16 @@ extern Fl_RViewUI *rviewUI;
 Fl_RView::Fl_RView(int x, int y, int w, int h, const char *name) : Fl_Gl_Window(x, y, w, h, name)
 {
   v = new RView(w, h);
+  // See https://www.fltk.org/doc-1.3/osissues.html#osissues_macos, section "OpenGL and 'retina' displays"
+  #if FL_API_VERSION >= 10304
+    Fl::use_high_res_GL(1);
+  #endif
 }
 
 void Fl_RView::draw()
 {
   if (!valid()) {
-    v->Resize(w(), h());
+    v->Resize(pixel_w(), pixel_h());
   }
   v->Draw();
 }
@@ -35,6 +45,10 @@ void Fl_RView::draw()
 int Fl_RView::handle(int event)
 {
   char buffer1[256], buffer2[256], buffer3[256], buffer4[256], buffer5[256];
+
+  const int event_x = pixel_event_x();
+  const int event_y = pixel_event_y();
+  const int event_dy = pixel_event_dy();
 
   switch (event) {
   case FL_KEYBOARD:
@@ -82,7 +96,7 @@ int Fl_RView::handle(int event)
     }
     if (Fl::event_key() == FL_Tab) {
 #ifdef HAS_SEGMENTATION_PANEL
-      v->RegionGrowContour(Fl::event_x(), Fl::event_y());
+      v->RegionGrowContour(event_x, event_y);
       v->Update();
       rviewUI->update();
       this->redraw();
@@ -96,7 +110,7 @@ int Fl_RView::handle(int event)
     break;
   case FL_PUSH:
     if ((Fl::event_button() == 1) && (Fl::event_shift() != 0)) {
-      v->AddContour(Fl::event_x(), Fl::event_y(), FirstPoint);
+      v->AddContour(event_x, event_y, FirstPoint);
       v->Update();
       rviewUI->update();
       this->redraw();
@@ -104,7 +118,7 @@ int Fl_RView::handle(int event)
     }
 #ifdef HAS_SEGMENTATION_PANEL
     if ((Fl::event_button() == 3) && (Fl::event_shift() != 0)) {
-      v->FillArea(Fl::event_x(), Fl::event_y());
+      v->FillArea(event_x, event_y);
       v->Update();
       rviewUI->update();
       this->redraw();
@@ -112,21 +126,21 @@ int Fl_RView::handle(int event)
     }
 #endif
     if ((Fl::event_button() == 1) && (Fl::event_ctrl() != 0)) {
-      v->UpdateROI1(Fl::event_x(), Fl::event_y());
+      v->UpdateROI1(event_x, event_y);
       v->Update();
       rviewUI->update();
       this->redraw();
       return 1;
     }
     if ((Fl::event_button() == 3) && (Fl::event_ctrl() != 0)) {
-      v->UpdateROI2(Fl::event_x(), Fl::event_y());
+      v->UpdateROI2(event_x, event_y);
       v->Update();
       rviewUI->update();
       this->redraw();
       return 1;
     }
     if (Fl::event_button() == 1) {
-      v->SetOrigin(Fl::event_x(), Fl::event_y());
+      v->SetOrigin(event_x, event_y);
       v->Update();
       rviewUI->update();
       this->redraw();
@@ -135,7 +149,7 @@ int Fl_RView::handle(int event)
     break;
   case FL_DRAG:
     if ((Fl::event_state() & (FL_BUTTON1 | FL_SHIFT)) == (FL_BUTTON1 | FL_SHIFT)) {
-      v->AddContour(Fl::event_x(), Fl::event_y(), NewPoint);
+      v->AddContour(event_x, event_y, NewPoint);
       v->Update();
       rviewUI->info_voxel->value(buffer1);
       rviewUI->info_world->value(buffer2);
@@ -147,14 +161,14 @@ int Fl_RView::handle(int event)
       return 1;
     }
     if ((Fl::event_state() & (FL_BUTTON1 | FL_CTRL)) == (FL_BUTTON1 | FL_CTRL)) {
-      v->UpdateROI1(Fl::event_x(), Fl::event_y());
+      v->UpdateROI1(event_x, event_y);
       v->Update();
       rviewUI->update();
       this->redraw();
       return 1;
     }
     if ((Fl::event_state() & (FL_BUTTON3 | FL_CTRL)) == (FL_BUTTON3 | FL_CTRL)) {
-      v->UpdateROI2(Fl::event_x(), Fl::event_y());
+      v->UpdateROI2(event_x, event_y);
       v->Update();
       rviewUI->update();
       this->redraw();
@@ -163,7 +177,7 @@ int Fl_RView::handle(int event)
     break;
   case FL_RELEASE:
     if ((Fl::event_button() == 1) && (Fl::event_shift() != 0)) {
-      v->AddContour(Fl::event_x(), Fl::event_y(), LastPoint);
+      v->AddContour(event_x, event_y, LastPoint);
       v->Update();
       rviewUI->update();
       this->redraw();
@@ -171,13 +185,13 @@ int Fl_RView::handle(int event)
     }
     return 0;
   case FL_MOVE:
-    v->MousePosition(Fl::event_x(), Fl::event_y());
+    v->MousePosition(event_x, event_y);
     rviewUI->update();
     this->redraw();
     return 1;
     break;
   case FL_MOUSEWHEEL:
-    v->MouseWheel(Fl::event_x(), Fl::event_y(), Fl::event_dy());
+    v->MouseWheel(event_x, event_y, event_dy);
     v->Update();
     rviewUI->update();
     this->redraw();

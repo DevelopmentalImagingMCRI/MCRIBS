@@ -17,7 +17,13 @@ numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
 
 inFileName = args[0]
 
-Reader = vtk.vtkXMLPolyDataReader()
+path, ext = os.path.splitext(inFileName)
+
+if ext == ".vtp":
+    Reader = vtk.vtkXMLPolyDataReader()
+elif ext == ".vtk":
+    Reader = vtk.vtkPolyDataReader()
+
 Reader.SetFileName(inFileName)
 Reader.Update()
 
@@ -41,6 +47,7 @@ indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
 
 S = dict()
 S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
+#print(S)
 S['vertices'] = numpy.stack(S['vertices']).T
 
 if Data.GetNumberOfPolys() > 0:

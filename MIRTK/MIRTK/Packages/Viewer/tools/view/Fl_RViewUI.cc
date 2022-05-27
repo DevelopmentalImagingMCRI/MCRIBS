@@ -1,14 +1,20 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Image.h>
 #include <mirtk/Transformation.h>
@@ -17,9 +23,9 @@
 // Local includes
 #include "Fl_RViewUI.h"
 
-extern Fl_RViewUI  *rviewUI;
-extern Fl_RView    *viewer;
-extern RView    *rview;
+extern Fl_RViewUI *rviewUI;
+extern Fl_RView *viewer;
+extern RView *rview;
 
 #include "bitmaps/fileopen.xpm"
 #include "bitmaps/filesave.xpm"
@@ -160,7 +166,7 @@ void Fl_RViewUI::cb_viewCursorMode(Fl_Button *, void* v)
 Fl_RViewUI::Fl_RViewUI()
 {
   // Create main window
-  Fl_Window* o = mainWindow = new Fl_Window(1060, 780, "rview");
+  Fl_Window* o = mainWindow = new Fl_Window(1060, 780, "MIRTK Viewer");
   o->labeltype(FL_NORMAL_LABEL);
   o->box(FL_ENGRAVED_BOX);
   o->user_data((void*)(this));
@@ -576,7 +582,8 @@ void Fl_RViewUI::update()
 void Fl_RViewUI::InitializeMainWindow()
 {
   {
-    Fl_RView* o = viewer = new Fl_RView(24, 84, 612, 612, "RViewer");
+    Fl_RView* o = new Fl_RView(24, 84, 612, 612, "RViewer");
+    viewer = o;
     rview = viewer->v;
     Fl_Group::current()->resizable(o);
     o->end();

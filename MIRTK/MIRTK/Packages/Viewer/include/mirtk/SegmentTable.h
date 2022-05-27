@@ -1,23 +1,31 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit ()
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _SEGMENTTABLE_H
 #define _SEGMENTTABLE_H
 
 #include <limits>
+
+#include <mirtk/ViewerExport.h>
 #include <mirtk/Segment.h>
 
 
-class SegmentTable
+class MIRTK_Viewer_EXPORT SegmentTable
 {
 
   friend class RView;
@@ -73,10 +81,10 @@ public:
   char *GetLabel(int);
 
   /// Is method that finds whether a segment is visible
-  int GetVisibility(int);
+  bool GetVisibility(int);
 
   /// Find if entry contains valid value
-  int IsValid(int);
+  bool IsValid(int);
 
   /// Remove segment with index
   void Clear(int);
@@ -90,6 +98,7 @@ public:
   /// Writes a segmentTable to a file
   void Write(char *);
 };
+
 
 inline void SegmentTable::GetColor(int id, unsigned char* r, unsigned char* g, unsigned char* b)
 {
@@ -111,14 +120,14 @@ inline char *SegmentTable::GetLabel(int id)
   return _entry[id].getLabel();
 }
 
-inline int SegmentTable::GetVisibility(int id)
+inline bool SegmentTable::GetVisibility(int id)
 {
   return _entry[id].getVisibility();
 }
 
-inline int SegmentTable::IsValid(int id)
+inline bool SegmentTable::IsValid(int id)
 {
-  if (_entry[id].getLabel() != NULL) {
+  if (_entry[id].getLabel()) {
     return true;
   } else {
     return false;

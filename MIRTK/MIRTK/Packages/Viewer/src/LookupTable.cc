@@ -1,25 +1,26 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
-
-#ifdef __APPLE__
-#include <OpenGl/gl.h>
-#include <OpenGl/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Image.h>
+
+#include <mirtk/OpenGl.h>
 #include <mirtk/LookupTable.h>
+
 
 LookupTable::LookupTable(int minData, int maxData)
 {
@@ -101,8 +102,7 @@ void LookupTable::SetColorModeToLuminance()
     lookupTable[i].a = 1;
   }
   for (i = _minDisplay; i <= _maxDisplay; i++) {
-    lookupTable[i] = round(((i - _minDisplay) /
-                            (double)(_maxDisplay - _minDisplay) * 255));
+    lookupTable[i] = static_cast<int>(round(((i - _minDisplay) / (double)(_maxDisplay - _minDisplay) * 255)));
     lookupTable[i].a = 1;
   }
   for (i = _maxDisplay+1; i < _maxData; i++) {
@@ -122,8 +122,7 @@ void LookupTable::SetColorModeToInverseLuminance()
 
   }
   for (i = _minDisplay; i <= _maxDisplay; i++) {
-    lookupTable[i] = round(((_maxDisplay - i) /
-                            (double)(_maxDisplay - _minDisplay) * 255));
+    lookupTable[i] = static_cast<int>(round(((_maxDisplay - i) / (double)(_maxDisplay - _minDisplay) * 255)));
     lookupTable[i].a = 1;
 
   }
@@ -148,8 +147,7 @@ void LookupTable::SetColorModeToHotMetal()
   }
   for (i = _minDisplay; i <= _maxDisplay; i++) {
     lookupTable[i].r = 255;
-    lookupTable[i].g = round(((i - _minDisplay) /
-                              (double)(_maxDisplay - _minDisplay) * 255));
+    lookupTable[i].g = static_cast<unsigned char>(round(((i - _minDisplay) / (double)(_maxDisplay - _minDisplay) * 255)));
     lookupTable[i].b = 0;
     lookupTable[i].a = 1;
   }
@@ -207,7 +205,7 @@ void LookupTable::SetColorModeToJacobianExpansion()
   }
   for (i = _min; i <= _max; i++) {
     lookupTable[i].HSVtoRGB((i - _min) / (double)(_max - _min + 1) * 60.0 / 360.0, 1, 1);
-    lookupTable[i].a = (i - _min) / (double)(_max - _min + 1);
+    lookupTable[i].a = float(i - _min) / float(_max - _min + 1);
   }
   for (i = _max+1; i < _maxData; i++) {
     lookupTable[i].HSVtoRGB(60.0 / 360.0, 1, 1);
@@ -232,7 +230,7 @@ void LookupTable::SetColorModeToJacobianContraction()
   }
   for (i = _min; i <= _max; i++) {
     lookupTable[i].HSVtoRGB((i - _max) / (double)(_max - _min + 1) * 60.0 / 360.0 + 240.0 / 360.0, 1, 1);
-    lookupTable[i].a = -(i - _max) / (double)(_max - _min + 1);
+    lookupTable[i].a = -float(i - _max) / float(_max - _min + 1);
   }
   for (i = _max+1; i < _maxData; i++) {
     lookupTable[i].r = 0;
@@ -258,8 +256,7 @@ void LookupTable::SetColorModeToRed()
     lookupTable[i].a = 1;
   }
   for (i = _minDisplay; i <= _maxDisplay; i++) {
-    lookupTable[i].r = round(((i - _minDisplay) /
-                              (double)(_maxDisplay - _minDisplay) * 255));
+    lookupTable[i].r = static_cast<unsigned char>(round(((i - _minDisplay) / (double)(_maxDisplay - _minDisplay) * 255)));
     lookupTable[i].g = 0;
     lookupTable[i].b = 0;
     lookupTable[i].a = 1;
@@ -288,8 +285,7 @@ void LookupTable::SetColorModeToGreen()
     lookupTable[i].a = 1;
   }
   for (i = _minDisplay; i <= _maxDisplay; i++) {
-    lookupTable[i].g = round(((i - _minDisplay) /
-                              (double)(_maxDisplay - _minDisplay) * 255));
+    lookupTable[i].g = static_cast<unsigned char>(round(((i - _minDisplay) / (double)(_maxDisplay - _minDisplay) * 255)));
     lookupTable[i].r = 0;
     lookupTable[i].b = 0;
     lookupTable[i].a = 1;
@@ -318,8 +314,7 @@ void LookupTable::SetColorModeToBlue()
     lookupTable[i].a = 1;
   }
   for (i = _minDisplay; i <= _maxDisplay; i++) {
-    lookupTable[i].b = round(((i - _minDisplay) /
-                              (double)(_maxDisplay - _minDisplay) * 255));
+    lookupTable[i].b = static_cast<unsigned char>(round(((i - _minDisplay) / (double)(_maxDisplay - _minDisplay) * 255)));
     lookupTable[i].g = 0;
     lookupTable[i].r = 0;
     lookupTable[i].a = 1;

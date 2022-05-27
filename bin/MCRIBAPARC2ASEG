@@ -28,7 +28,18 @@ then
 	#v aseg_tmp.mgz aseg.mgz
 	mri_mask -transfer 3 aseg.mgz ribbon.mgz aseg.mgz
 	mri_mask -transfer 42 aseg.mgz ribbon.mgz aseg.mgz
-	`dirname $0`/APARC2ASEGCSFRestoreDrawEM aseg.mgz $SUBJECTS_DIR/../TissueSeg/${SUBJID}_all_labels_manedit_bonnie.nii.gz aseg.mgz
+	mri_binarize --i aseg.mgz --o aseg_wm_lh.mgz --match 254 24 --noverbose
+	mri_binarize --i ribbon.mgz --o ribbon_wm_lh.mgz --match 2 --noverbose
+	mri_and aseg_wm_lh.mgz ribbon_wm_lh.mgz aseg_ribbon_wm_lh.mgz
+	mri_binarize --i aseg_ribbon_wm_lh.mgz --o aseg_ribbon_wm_lh.mgz --match 1 --binval 2 --noverbose
+	mri_mask -transfer 2 aseg.mgz aseg_ribbon_wm_lh.mgz aseg.mgz
+	mri_binarize --i aseg.mgz --o aseg_wm_rh.mgz --match 255 24 --noverbose
+	mri_binarize --i ribbon.mgz --o ribbon_wm_rh.mgz --match 41 --noverbose
+	mri_and aseg_wm_rh.mgz ribbon_wm_rh.mgz aseg_ribbon_wm_rh.mgz
+	mri_binarize --i aseg_ribbon_wm_rh.mgz --o aseg_ribbon_wm_rh.mgz --match 1 --binval 41 --noverbose
+	mri_mask -transfer 41 aseg.mgz aseg_ribbon_wm_rh.mgz aseg.mgz
+	rm -f aseg_ribbon_wm_rh.mgz aseg_ribbon_wm_rh.mgz aseg_wm_rh.mgz aseg_ribbon_wm_lh.mgz aseg_ribbon_wm_lh.mgz aseg_wm_lh.mgz
+	#`dirname $0`/APARC2ASEGCSFRestoreDrawEM aseg.mgz $SUBJECTS_DIR/../TissueSeg/${SUBJID}_all_labels_manedit_bonnie.nii.gz aseg.mgz
 fi
 
 for ANNOT in $ANNOTS
@@ -51,7 +62,7 @@ do
 		#mri_binarize --i ${ANNOT}+aseg.mgz --o ${ANNOT}+aseg_tmp.mgz --replace 159 2 --replace 160 41
 		#mv ${ANNOT}+aseg_tmp.mgz ${ANNOT}+aseg.mgz
 		# restore the CSF
-		`dirname $0`/APARC2ASEGCSFRestoreDrawEM ${ANNOT}+aseg.mgz $SUBJECTS_DIR/../TissueSeg/${SUBJID}_all_labels_manedit_bonnie.nii.gz ${ANNOT}+aseg.mgz
+		#`dirname $0`/APARC2ASEGCSFRestoreDrawEM ${ANNOT}+aseg.mgz $SUBJECTS_DIR/../TissueSeg/${SUBJID}_all_labels_manedit_bonnie.nii.gz ${ANNOT}+aseg.mgz
 	fi
 done
 
