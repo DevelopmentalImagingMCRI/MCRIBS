@@ -1,0 +1,79 @@
+#!/bin/bash
+
+if [ -z "$1" -o -z "$2" ]
+then
+	echo "Usage: $0 <infile> <outfile>"
+	exit
+fi
+
+INFILE=$1
+OUTFILE=$2
+
+CMD="MRIBinarize --i $INFILE --o $OUTFILE"
+
+# replace the left cortical labels with 5
+for i in `seq 1000 1035`
+do
+	CMD="$CMD --replace $i 5"
+done
+
+# replace the right cortical labels with 20
+for i in `seq 2000 2035`
+do
+	CMD="$CMD --replace $i 22"
+done
+
+CMD="$CMD --replace 42 22 --replace 3 5"
+
+# WM
+CMD="$CMD --replace 41 58 --replace 2 57"
+
+# brainstem
+CMD="$CMD --replace 170 19"
+
+# cerebellum
+CMD="$CMD --replace 91 17 --replace 93 18"
+CMD="$CMD --replace 75 17 --replace 90 17 --replace 76 17"
+
+# 3rd ventricles
+CMD="$CMD --replace 14 83 --replace 15 83"
+
+# Corpus Callosum
+CMD="$CMD --replace 192 48 --replace 253 48"
+
+# ventricles
+CMD="$CMD --replace 4 49 --replace 43 50 --replace 31 49 --replace 63 50"
+
+# hippocampus
+CMD="$CMD --replace 53 2 --replace 17 1"
+
+# caudate
+CMD="$CMD --replace 50 40 --replace 11 41"
+
+# accumbens
+CMD="$CMD --replace 58 40 --replace 26 41"
+
+# putamen/lentiform nucleus
+CMD="$CMD --replace 51 46 --replace 12 47 --replace 52 46 --replace 13 47"
+
+# thalamus
+CMD="$CMD --replace 48 42 --replace 9 87"
+
+#CSF
+CMD="$CMD --replace 24 83"
+
+# cranial background?
+CMD="$CMD --replace 89 85 --replace 92 85"
+
+# amygdala
+CMD="$CMD --replace 54 4 --replace 18 3"
+
+# VENTRAL DC
+CMD="$CMD --replace 60 58 --replace 28 57"
+
+#CMD="$CMD --replace 60 58 --replace 28 57"
+
+
+$CMD
+
+#slorient -setsformcode 0 -setsform 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 $OUTFILE

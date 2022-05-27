@@ -585,8 +585,18 @@ MakeKMeans34Class $SUBJID
 	fslmaths ${OUTPUTPREFIX}_t2w_dark_wm_prob_skullstrip_reg.nii.gz -thr 0.3 -bin -mul -1 -add 1 -mas ${OUTPUTPREFIX}_segmentation_gm ${OUTPUTPREFIX}_segmentation_gm -odt char
 	#rm -f ${OUTPUTPREFIX}_t2w_dark_wm_prob_skullstrip_reg.nii.gz
 	#fslmaths ${OUTPUTPREFIX}_segmentation_gm ${OUTPUTPREFIX}_segmentation_gm_before_last -odt char
+	
+	VOXSIZE=`fslsize ${OUTPUTPREFIX}_brain_mask.nii.gz | grep -e "^pixdim1" | awk '{ print $2 }'`
 
-	MRIBinarize --i ${OUTPUTPREFIX}_brain_mask.nii.gz --o ${OUTPUTPREFIX}_brain_mask_border.nii.gz --match 0 --dilate 3 --noverbose
+	B=`echo "$VOXSIZE <= 0.7" | bc`
+	
+	if [ "$B" == "1" ]
+	then
+		MRIBinarize --i ${OUTPUTPREFIX}_brain_mask.nii.gz --o ${OUTPUTPREFIX}_brain_mask_border.nii.gz --match 0 --dilate 3 --noverbose
+	else
+		# for lower res images
+		MRIBinarize --i ${OUTPUTPREFIX}_brain_mask.nii.gz --o ${OUTPUTPREFIX}_brain_mask_border.nii.gz --match 0 --dilate 0 --noverbose
+	fi
 
 	MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz --o ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation_csf.nii.gz --match 3 --dilate 5 --noverbose
 
