@@ -120,7 +120,10 @@ def main():
     WMForceIMG[scipy.ndimage.binary_erosion(numpy.logical_and(LabelFusionEditedIMG != LabelFusionIMG, ismember(LabelFusionEditedIMG, [2, 41])))] = -1
     WMForceIMG[LabelFusionEditedIMG == 254] = -1
     WMForceIMG[LabelFusionEditedIMG == 255] = -1
-    
+    WMForceIMG[scipy.ndimage.binary_dilation(numpy.logical_not(BrainmaskIMG), iterations = 4)] = 2
+    PialForceIMG[numpy.logical_not(BrainmaskIMG)] = 2
+
+
     NewNII = nibabel.Nifti1Image(numpy.single(WMForceIMG), T2NII.affine)
     nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'))
     NewNII = nibabel.Nifti1Image(numpy.single(PialForceIMG), T2NII.affine)
