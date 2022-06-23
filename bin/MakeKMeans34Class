@@ -26,6 +26,8 @@ def KMeansInitCentroids(X, initCentroids, numIter = 100):
         if z < numIter - 1:
             for k in range(centroids.size):
                 centroids[k] = numpy.mean(X[Classes == k])
+    II = numpy.argsort(centroids.ravel())
+    Classes = II[Classes]
     return Classes
 
 def ismember(A, B):
