@@ -689,7 +689,7 @@ def white_refinement_mask(name, subcortex_mask):
     return name
 
 # ------------------------------------------------------------------------------
-def deform_mesh(iname, oname=None, temp=None, opts={}, super_debug = False):
+def deform_mesh(iname, oname=None, temp=None, opts={}, super_debug = True):
     """Deform mesh with the specified options."""
     if not temp:
         temp = os.path.dirname(iname)
@@ -711,7 +711,7 @@ def deform_mesh(iname, oname=None, temp=None, opts={}, super_debug = False):
                 try_remove(os.path.join(temp, fname))
         makedirs(oname)
         if super_debug == True:
-            opts['debug-interval'] = 1
+            opts['debug-interval'] = 5
             opts['debug'] = 2
         else:
             opts['debug-interval'] = 999 # prevent output files being made, don't need them
@@ -1132,7 +1132,7 @@ def recon_cortical_surface(name, mask=None, regions=None,
             mask = '{}-{}-mask.nii.gz'.format(base, hemi)
             mask = push_output(stack, binarize_white_matter(regions, name=mask, hemisphere=hemisphere, temp=temp))
         dmap = push_output(stack, calculate_distance_map(mask, temp=temp))
-        hull = push_output(stack, extract_convex_hull(dmap, temp=temp))
+        hull = push_output(stack, extract_convex_hull(dmap, blur=1, temp=temp))
         model_opts = {
             'threads': threads,
             'implicit-surface': dmap,
@@ -1175,7 +1175,7 @@ def recon_cortical_surface(name, mask=None, regions=None,
         else:
             out1 = hull
             out2 = nextname(name, temp=temp)
-        out2 = push_output(stack, deform_mesh(out1, out2, opts=model_opts))
+        out2 = push_output(stack, deform_mesh(out1, out2, opts=model_opts, super_debug = False))
         if corpus_callosum_mask:
             out3 = push_output(stack, del_corpus_callosum_mask(out2))
         else:
@@ -1929,13 +1929,13 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'edge-distance-median': 1,
                 'edge-distance-smoothing': 1,
                 'edge-distance-averaging': [4, 2, 1],
-            'curvature': 2.,
             'gauss-curvature': .8,
                 'gauss-curvature-inside': 2.,
                 'gauss-curvature-outside': 1.,
                 'gauss-curvature-minimum': .1,
                 'gauss-curvature-maximum': .4,
                 'negative-gauss-curvature-action': 'inflate',
+            'curvature': 2.,
             'repulsion': 2.,
                 'repulsion-distance': .5,
                 'repulsion-width': 1.,
@@ -1948,9 +1948,9 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'reset-status': True,
                 'non-self-intersection': True,
                 'adjacent-collision-test': False,
-                'fast-collision-test': use_fast_collision,
+                'fast-collision-test': True,  # trying fast collision
                 'min-distance': .1,
-            'remesh': remesh,
+            'remesh': 0,
                 'min-edge-length': .3,
                 'max-edge-length': 2.,
                 # Inversion may cause edges at the bottom of sulci to change from running
@@ -1959,6 +1959,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 # contributes to smoothing out the sulci which should actually be preserved.
                 'triangle-inversion': False
         }
+        
         model_opts.update(opts)
         if use_mask_distance:
             pial_mask = push_output(stack, os.path.join(temp, os.path.basename(base) + '-mask.nii.gz'))
