@@ -188,6 +188,8 @@ def main():
     T[ismember(NewRegionsIMG, [90, 91, 93, 70, 71, 72, 73, 74, 75, 76, 170])] = 4
     T[ismember(NewRegionsIMG, [24, 258, 14, 15, 165])] = 0
     
+    T[NewRegionsIMG == 999] = 1 
+
     NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_brainstem_cut.nii.gz"))
     
