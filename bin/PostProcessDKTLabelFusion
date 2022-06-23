@@ -27,6 +27,16 @@ def dilateWithMaskBarrier(BW, M, nDilate = 20):
     labelsInOriginal = numpy.unique(L[BW])
     return ismember(L, labelsInOriginal)
 
+def maskInBetweenLabels(DKTIMG, labelA, labelB, nDilate=2):
+    """Create a mask for the voxels "in between" two labels. Dilates the labels and then returns the voxels that overlap but not from the original labels."""
+    labelAMask = DKTIMG == labelA
+    labelBMask = DKTIMG == labelB
+
+    labelAMaskDilated = scipy.ndimage.binary_dilation(labelAMask, iterations = nDilate)
+    labelBMaskDilated = scipy.ndimage.binary_dilation(labelBMask, iterations = nDilate)
+    
+    return numpy.logical_and(numpy.logical_and(labelAMaskDilated, labelBMaskDilated), numpy.logical_not(numpy.logical_or(labelAMask, labelBMask)))
+
 if len(sys.argv) < 2:
     print("Usage: " + sys.argv[0] + " <subject id>")
     quit()
@@ -231,6 +241,10 @@ def main():
     #T = dilateWithMaskBarrier(allLHPericalcarineMask, maskForThisLoop, 20)
     # replace the dilated voxels in the WM with the LH "unknown" cortex label
     T = scipy.ndimage.binary_closing(numpy.logical_or(allLHPericalcarineMask, T), iterations = 2)
+    
+    NewNII = nibabel.Nifti1Image(numpy.uint8(numpy.logical_and(numpy.logical_and(numpy.logical_not(allLHPericalcarineMask), T), allLHGMNotPericalcarine)), LabelFusionNII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_tt.nii.gz"))
+
     NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_not(allLHPericalcarineMask), T), allLHGMNotPericalcarine)] = 1000
 
     # all RH GM labels that aren't pericalcarine
@@ -430,9 +444,70 @@ def main():
     NewLabelFusionIMG[numpy.logical_and(RibbonBoundaryToFill, RibbonIMG == 41)] = 41
     #RibbonBoundary[RibbonIMG == 0] = 0
     #NewLabelFusionIMG[RibbonBoundary] = RibbonIMG[RibbonBoundary]
+    
+    # remove WM inbetween insula and neighbours, replace with CSF
+    # insula and precentral 
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1035, 1024)] = 999
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2035, 2024)] = 999
+    # insula and postcentral 
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1035, 1022)] = 999
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2035, 2022)] = 999
+    # insula and transverse temporal
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1035, 1034)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2035, 2034)] = 24
+    # postcentral and transverse temporal
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1022, 1034)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2022, 2034)] = 24
+    # postcentral and superior temporal
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1022, 1030)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2022, 2030)] = 24
+    # lingual and isthmus
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1010, 1013)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2010, 2013)] = 24
+    # superior temporal and middle temporal 
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1015, 1030)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2015, 2030)] = 24
+    # insula and superior temporal
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1035, 1030)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2035, 2030)] = 24
+    # pericalcarine and cuneus
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1005, 1021)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2005, 2021)] = 24
+    # precuneus and cuneus
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1005, 1025)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2005, 2025)] = 24
+    # precentral and postcentral
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1022, 1024)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2022, 2024)] = 24
 
+    # isthmus and cuneus
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1010, 1025)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2010, 2025)] = 24
 
+    # cuneus and superior parietal
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1005, 1029)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2005, 2029)] = 24
+
+    # cuneus and superior parietal
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1008, 1029)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2008, 2029)] = 24
+    
+    # insula and pars opercularis
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1018, 1035)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2018, 2035)] = 24
+    
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1018, 1024)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2018, 2024)] = 24
+    
+    # pars triangularis and RMF
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1020, 1027)] = 24
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2020, 2027)] = 24
+
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 1030, 1031)] = 999
+    NewLabelFusionIMG[maskInBetweenLabels(NewLabelFusionIMG, 2030, 2031)] = 999
+    
     #RibbonBoundaryDilated = scipy.ndimage.binary_dilation(RibbonBoundary, iterations = 2)
+
     #NewLabelFusionIMG[RibbonBoundaryDilated] = RibbonIMG[RibbonBoundaryDilated]
     #NewNII = nibabel.Nifti1Image(numpy.uint8(RibbonBoundary), LabelFusionNII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_ribbonboundaryclosedlargest.nii.gz"))
