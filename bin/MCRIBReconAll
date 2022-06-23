@@ -65,6 +65,7 @@ def main():
     tissueSegArgGroup.add_argument('--tissueseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--notissueseg', help = "DISABLE tissueseg", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--largeventricles', help = "Large ventricle options", required = False, action = 'store_true')
+    tissueSegArgGroup.add_argument('--betmask', help = "Use BET for brain mask", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM', 'MCRIBS'], default = 'MCRIBS')
     tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 
@@ -364,6 +365,8 @@ def main():
             cmd = ["MCRIBTissueSegMCRIBS", options.subjectid]
             if options.largeventricles:
                 cmd.append('-largeventricles')
+            if options.betmask:
+                cmd.append('-betmask')
             print(" ".join(cmd))
             runCommand(cmd, log_file_name = logFileName)
         pass

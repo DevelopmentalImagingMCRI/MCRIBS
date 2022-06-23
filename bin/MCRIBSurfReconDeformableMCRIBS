@@ -71,12 +71,12 @@ done
 export TISSUESEGDIR=TissueSegMCRIBS
 export OUTPUTPREFIX=${TISSUESEGDIR}/${SUBJID}/${SUBJID}
 
-antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/FinaltemplateRibbonMajority.nii.gz \
-	--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
-	--transform ${OUTPUTPREFIX}_skullstrip_reg1InverseWarp.nii.gz \
-	--interpolation GenericLabel \
-	--output-data-type uchar \
-	--output ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
+# antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/FinaltemplateRibbonMajority.nii.gz \
+# 	--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
+# 	--transform ${OUTPUTPREFIX}_skullstrip_reg1InverseWarp.nii.gz \
+# 	--interpolation GenericLabel \
+# 	--output-data-type uchar \
+# 	--output ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 
 #antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/FinaltemplateRibbonMajorityMidlineFill.nii.gz \
 #	--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
@@ -98,7 +98,8 @@ MakeRegionsBSCutting $SUBJID
 #rm -f ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon_midlinefill.nii.gz ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 FSToDrawEMLabels $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusionimage_regions.nii.gz TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
 cp $TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore.nii.gz TissueSeg/${SUBJID}_t2w_restore.nii.gz
-cp $TISSUESEGDIR/${SUBJID}/${SUBJID}_brain_mask.nii.gz TissueSeg/${SUBJID}_brain_mask.nii.gz
+#cp $TISSUESEGDIR/${SUBJID}/${SUBJID}_brain_mask.nii.gz TissueSeg/${SUBJID}_brain_mask.nii.gz
+fslmaths $TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore_brain_dn_atropos3_priors_segmentation -bin TissueSeg/${SUBJID}_brain_mask
 
 mkdir -p freesurfer/${SUBJID}/mri
 mkdir -p SurfReconDeformable/${SUBJID}/temp SurfReconDeformable/${SUBJID}/meshes SurfReconDeformable/${SUBJID}/recon

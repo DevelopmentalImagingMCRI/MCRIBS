@@ -236,7 +236,10 @@ fi
 		#fi
 		#rm -f ${OUTPUTPREFIX}_to_P${i}_antsinit_reg0InverseWarp.nii.gz ${OUTPUTPREFIX}_to_P${i}_antsinit_reg1InverseWarp.nii.gz 
 		#rm -f ${OUTPUTPREFIX}_to_P${i}_antsinit_reg0Warp.nii.gz ${OUTPUTPREFIX}_to_P${i}_antsinit_reg1Warp.nii.gz 
-		mv ${OUTPUTPREFIX}_to_P${i}_antsinit_reg5InverseWarp.nii.gz ${OUTPUTPREFIX}_to_P${i}_antsinit_reg6InverseWarp.nii.gz 
+		if [ -f "${OUTPUTPREFIX}_to_P${i}_antsinit_reg5InverseWarp.nii.gz" ]
+        then
+            mv ${OUTPUTPREFIX}_to_P${i}_antsinit_reg5InverseWarp.nii.gz ${OUTPUTPREFIX}_to_P${i}_antsinit_reg6InverseWarp.nii.gz 
+        fi
 		rm -f ${OUTPUTPREFIX}_to_P${i}_antsinit_reg5Warp.nii.gz
 		antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/P${i}_t2.nii.gz \
 			--transform ${OUTPUTPREFIX}_from_P${i}_ventexpand_reg4Warp.nii.gz  \
@@ -249,7 +252,7 @@ fi
 			--output-data-type short \
 			--output $TISSUESEGDIR/$SUBJID/P${i}_t2_antsinit_to_$SUBJID.nii.gz
 		
-		antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/P${i}_dkt.nii.gz \
+		antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/P${i}_dkt_with_skull_label.nii.gz \
 			--transform ${OUTPUTPREFIX}_from_P${i}_ventexpand_reg4Warp.nii.gz  \
 			--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
 			--transform ${OUTPUTPREFIX}_skullstrip_reg1InverseWarp.nii.gz \
@@ -258,7 +261,7 @@ fi
 			--transform ${OUTPUTPREFIX}_to_P${i}_antsinit_reg6InverseWarp.nii.gz \
 			--interpolation GenericLabel \
 			--output-data-type short \
-			--output $TISSUESEGDIR/$SUBJID/P${i}_dkt_antsinit_to_$SUBJID.nii.gz
+			--output $TISSUESEGDIR/$SUBJID/P${i}_dkt_antsinit_with_skull_label_to_$SUBJID.nii.gz
 		antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/P${i}_vent_and_centre_bright.nii.gz \
 			--transform ${OUTPUTPREFIX}_from_P${i}_ventexpand_reg4Warp.nii.gz  \
 			--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
