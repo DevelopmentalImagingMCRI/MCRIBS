@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import vtk
+from vtk.util import numpy_support
+import nibabel
+import freesurfer
+import numpy
+
+def surfFillMGH(MGHImage, inSurf):
+    
+    # transform vertices from TKR to VOX
+
+    #voxverts = nb.affines.apply_affine(numpy.linalg.inv(mat), vertices)
+    
+    vox2ras_tkr = numpy.linalg.inv(MGHImage.header.get_vox2ras_tkr())
+
+    voxverts = (numpy.matrix(vox2ras_tkr[0:3, 0:3]) * numpy.matrix(inSurf['vertices'])) + numpy.atleast_2d(vox2ras_tkr[0:3, 3].ravel()).T
+
+    points = vtk.vtkPoints()
+    points.SetNumberOfPoints(inSurf['vertices'].shape[1])
+    for z in range(inSurf['vertices'].shape[1]):
+        points.InsertPoint(z, voxverts[:, z])
+
+    tris = vtk.vtkCellArray()
+    for z in range(inSurf['faces'].shape[1]):
+        tris.InsertNextCell(3)
+        for v in range(3):
+            tris.InsertCellPoint(inSurf['faces'][v, z])
+
+    pd = vtk.vtkPolyData()
+    pd.SetPoints(points)
+    pd.SetPolys(tris)
+    del points, tris
+
+    whiteimg = vtk.vtkImageData()
+    whiteimg.SetDimensions(MGHImage.shape)
+    whiteimg.SetExtent([0, MGHImage.shape[0] - 1, 0, MGHImage.shape[1] - 1, 0, MGHImage.shape[2] - 1])
+
+    if vtk.VTK_MAJOR_VERSION <= 5:
+        whiteimg.SetScalarType(vtk.VTK_UNSIGNED_CHAR)
+    else:
+        info = vtk.vtkInformation()
+        whiteimg.SetPointDataActiveScalarInfo(info, vtk.VTK_UNSIGNED_CHAR, 1)
+
+
+    ones = numpy.ones(numpy.prod(MGHImage.shape), dtype=numpy.uint8)
+    whiteimg.GetPointData().SetScalars(numpy_support.numpy_to_vtk(ones))
+
+    pdtis = vtk.vtkPolyDataToImageStencil()
+    if vtk.VTK_MAJOR_VERSION <= 5:
+        pdtis.SetInput(pd)
+    else:
+        pdtis.SetInputData(pd)
+
+    pdtis.SetOutputWholeExtent(whiteimg.GetExtent())
+    pdtis.Update()
+
+    imgstenc = vtk.vtkImageStencil()
+    if vtk.VTK_MAJOR_VERSION <= 5:
+        imgstenc.SetInput(whiteimg)
+        imgstenc.SetStencil(pdtis.GetOutput())
+    else:
+        imgstenc.SetInputData(whiteimg)
+        imgstenc.SetStencilConnection(pdtis.GetOutputPort())
+    imgstenc.SetBackgroundValue(0)
+
+    imgstenc.Update()
+
+    data = (
+        numpy_support.vtk_to_numpy(imgstenc.GetOutput().GetPointData().GetScalars()).reshape([MGHImage.shape[2], MGHImage.shape[1], MGHImage.shape[0]]).transpose(2, 1, 0)
+    )
+    del pd, voxverts, whiteimg, pdtis, imgstenc
+    return (data > 0)
+
+if len(sys.argv) < 2:
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    print("Replacement for mri_volmask")
+    quit()
+
+SubjectID = sys.argv[1]
+
+ASEGPresurfMGZ = nibabel.load(os.path.join('freesurfer', SubjectID, 'mri', 'aseg.internal.mgz'))
+
+LHWhiteSurf = freesurfer.readSurf(os.path.join('freesurfer', SubjectID, 'surf', 'lh.white'))
+LHWhiteMask = surfFillMGH(ASEGPresurfMGZ, LHWhiteSurf)
+RHWhiteSurf = freesurfer.readSurf(os.path.join('freesurfer', SubjectID, 'surf', 'rh.white'))
+RHWhiteMask = surfFillMGH(ASEGPresurfMGZ, RHWhiteSurf)
+LHPialSurf = freesurfer.readSurf(os.path.join('freesurfer', SubjectID, 'surf', 'lh.pial'))
+LHPialMask = surfFillMGH(ASEGPresurfMGZ, LHPialSurf)
+RHPialSurf = freesurfer.readSurf(os.path.join('freesurfer', SubjectID, 'surf', 'rh.pial'))
+RHPialMask = surfFillMGH(ASEGPresurfMGZ, RHPialSurf)
+
+outRibbon = numpy.zeros(ASEGPresurfMGZ.shape, dtype=numpy.uint8)
+outRibbon[LHPialMask] = 3
+outRibbon[RHPialMask] = 42
+outRibbon[LHWhiteMask] = 2
+outRibbon[RHWhiteMask] = 41
+
+outMGH = nibabel.MGHImage(outRibbon, ASEGPresurfMGZ.affine, header=ASEGPresurfMGZ.header)
+nibabel.save(outMGH, os.path.join('freesurfer', SubjectID, 'mri', 'ribbon.vtk.mgz'))

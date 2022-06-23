@@ -402,7 +402,7 @@ def main():
         pass
 
     if (options.cortribbon == True or options.all == True or options.autoreconaftersurf == True) and options.nocortribbon == False:
-        cmd = ["MCRIBVolMask", options.subjectid]
+        cmd = ["MCRIBVolMaskPython", options.subjectid]
         runCommand(cmd, log_file_name = logFileName)
         pass
 
