@@ -5,6 +5,7 @@ import sys
 import os
 import nibabel
 import scipy.ndimage
+import getopt
 
 def largestComponent(BW):
     if not numpy.any(BW):
@@ -45,11 +46,22 @@ if len(sys.argv) < 2:
 # replaces small WM components with GM
 #@profile
 def main():
-    subjID = sys.argv[1]
+        
+    opts, args = getopt.getopt(sys.argv[1:], 'l')
+
+    largeVentricles = False
+
+    for o, a in opts:
+        if o == '-l':
+            largeVentricles = True
+    
+    print("Using large ventricles: " + str(largeVentricles))
     try:
         TissueSegDir = os.environ['TISSUESEGDIR']
     except Exception:
         TissueSegDir = 'TissueSegMCRIBS'
+
+    subjID = args[0]
 
     if not os.path.isdir(os.path.join(TissueSegDir, subjID)):
         print("Tissue segmentation directory not found")
@@ -77,6 +89,9 @@ def main():
 
     DarkWMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_dark_wm_bright_gm_to_remove.nii.gz"))
     DarkWMIMG = numpy.logical_not(DarkWMNII.get_fdata() > 0)
+
+    BrainMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
+    BrainMaskIMG = (BrainMaskNII.get_fdata() > 0)
 
     #BrightMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_dark_wm_bright_gm_to_remove.nii.gz"))
     #BrightMaskIMG = BrightMaskNII.get_fdata() > 0
@@ -213,56 +228,60 @@ def main():
     #allDKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'all_dkt_antsinit_to_' + subjID + '.nii.gz'))
     #allDKTIMG = numpy.int16(allDKTNII.get_fdata())
     # change to read the transformed volumes individually    
-    allDKTIMG = []
-    for z in range(10):
-        zStr = str(z + 1).zfill(2)
-        curNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'P' + zStr + '_dkt_antsinit_with_skull_label_to_' + subjID + '.nii.gz'))
-        allDKTIMG.append(numpy.int16(curNII.get_fdata()))
-        del curNII
-    allDKTIMG = numpy.stack(allDKTIMG, axis = 3)
-    # find high probability of LH pericalcarine cortex from all the registered training images
-    allLHPericalcarineMask = numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3) >= 0.4
-    allRHPericalcarineMask = numpy.mean(numpy.single(allDKTIMG == 2021), axis = 3) >= 0.4
-    del allDKTIMG
-    #del allDKTNII
-    # all LH GM labels that aren't pericalcarine
-    allLHGMNotPericalcarine = numpy.logical_not(scipy.ndimage.binary_dilation(numpy.logical_and(numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035), LabelFusionIMG != 1021)))
-    #NewNII = nibabel.Nifti1Image(numpy.uint8(allLHGMNotPericalcarine), LabelFusionNII.affine)
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_lh_notpericalicarine.nii.gz"))
+    # only do this if we arent doing large ventricles
+    if largeVentricles == False:
+        allDKTIMG = []
+        for z in range(10):
+            zStr = str(z + 1).zfill(2)
+            curNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'P' + zStr + '_dkt_antsinit_with_skull_label_to_' + subjID + '.nii.gz'))
+            allDKTIMG.append(numpy.int16(curNII.get_fdata()))
+            del curNII
+        allDKTIMG = numpy.stack(allDKTIMG, axis = 3)
+        # find high probability of LH pericalcarine cortex from all the registered training images
+        allLHPericalcarineMask = numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3) >= 0.4
+        allRHPericalcarineMask = numpy.mean(numpy.single(allDKTIMG == 2021), axis = 3) >= 0.4
+        del allDKTIMG
+        #del allDKTNII
 
-    # dilate the pericalcarine mask within the GM class of the atropos segmentation, not into other GM or the dark WM voxels
-    T = allLHPericalcarineMask
-    maskForThisLoop = numpy.logical_and(numpy.logical_and(numpy.logical_and(Atropos3IMG == 1, LabelFusionIMG == 2), allLHGMNotPericalcarine), DarkWMIMG)
-    for z in range(20):
-         oldT = numpy.array(T)
-         T = numpy.logical_and(scipy.ndimage.binary_dilation(T, iterations = 1), maskForThisLoop)
-         if numpy.array_equal(T, oldT):
-             break
-    #T = dilateWithMaskBarrier(allLHPericalcarineMask, maskForThisLoop, 20)
-    # replace the dilated voxels in the WM with the LH "unknown" cortex label
-    T = scipy.ndimage.binary_closing(numpy.logical_or(allLHPericalcarineMask, T), iterations = 2)
-    
-    NewNII = nibabel.Nifti1Image(numpy.uint8(numpy.logical_and(numpy.logical_and(numpy.logical_not(allLHPericalcarineMask), T), allLHGMNotPericalcarine)), LabelFusionNII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_tt.nii.gz"))
+        # all LH GM labels that aren't pericalcarine
+        allLHGMNotPericalcarine = numpy.logical_not(scipy.ndimage.binary_dilation(numpy.logical_and(numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035), LabelFusionIMG != 1021)))
+        #NewNII = nibabel.Nifti1Image(numpy.uint8(allLHGMNotPericalcarine), LabelFusionNII.affine)
+        #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_lh_notpericalicarine.nii.gz"))
 
-    NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_not(allLHPericalcarineMask), T), allLHGMNotPericalcarine)] = 1000
+        # dilate the pericalcarine mask within the GM class of the atropos segmentation, not into other GM or the dark WM voxels
+        T = allLHPericalcarineMask
+        maskForThisLoop = numpy.logical_and(numpy.logical_and(numpy.logical_and(Atropos3IMG == 1, LabelFusionIMG == 2), allLHGMNotPericalcarine), DarkWMIMG)
+        for z in range(20):
+            oldT = numpy.array(T)
+            T = numpy.logical_and(scipy.ndimage.binary_dilation(T, iterations = 1), maskForThisLoop)
+            if numpy.array_equal(T, oldT):
+                break
+        #T = dilateWithMaskBarrier(allLHPericalcarineMask, maskForThisLoop, 20)
+        # replace the dilated voxels in the WM with the LH "unknown" cortex label
+        T = scipy.ndimage.binary_closing(numpy.logical_or(allLHPericalcarineMask, T), iterations = 2)
+        
+        NewNII = nibabel.Nifti1Image(numpy.uint8(numpy.logical_and(numpy.logical_and(numpy.logical_not(allLHPericalcarineMask), T), allLHGMNotPericalcarine)), LabelFusionNII.affine)
+        nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_tt.nii.gz"))
 
-    # all RH GM labels that aren't pericalcarine
-    allRHGMNotPericalcarine = numpy.logical_not(scipy.ndimage.binary_dilation(numpy.logical_and(numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035), LabelFusionIMG != 2021)))
+        NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_not(allLHPericalcarineMask), T), allLHGMNotPericalcarine)] = 1000
 
-    # dilate the pericalcarine mask within the GM class of the atropos segmentation, not into other GM or the dark WM voxels
-    #T = allRHPericalcarineMask
-    maskForThisLoop = numpy.logical_and(numpy.logical_and(numpy.logical_and(Atropos3IMG == 1, LabelFusionIMG == 2), allRHGMNotPericalcarine), DarkWMIMG)
-    for z in range(20):
-        oldT = numpy.array(T)
-        T = numpy.logical_and(scipy.ndimage.binary_dilation(T, iterations = 1), maskForThisLoop)
-        if numpy.array_equal(T, oldT):
-            break
-    #T = dilateWithMaskBarrier(allRHPericalcarineMask, numpy.logical_not(maskForThisLoop), 20)
-    del maskForThisLoop
+        # all RH GM labels that aren't pericalcarine
+        allRHGMNotPericalcarine = numpy.logical_not(scipy.ndimage.binary_dilation(numpy.logical_and(numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035), LabelFusionIMG != 2021)))
 
-    T = scipy.ndimage.binary_closing(numpy.logical_or(allRHPericalcarineMask, T), iterations = 2)
-    NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_not(allRHPericalcarineMask), T), allRHGMNotPericalcarine)] = 2000
+        # dilate the pericalcarine mask within the GM class of the atropos segmentation, not into other GM or the dark WM voxels
+        #T = allRHPericalcarineMask
+        maskForThisLoop = numpy.logical_and(numpy.logical_and(numpy.logical_and(Atropos3IMG == 1, LabelFusionIMG == 2), allRHGMNotPericalcarine), DarkWMIMG)
+        for z in range(20):
+            oldT = numpy.array(T)
+            T = numpy.logical_and(scipy.ndimage.binary_dilation(T, iterations = 1), maskForThisLoop)
+            if numpy.array_equal(T, oldT):
+                break
+        #T = dilateWithMaskBarrier(allRHPericalcarineMask, numpy.logical_not(maskForThisLoop), 20)
+        del maskForThisLoop
+
+        T = scipy.ndimage.binary_closing(numpy.logical_or(allRHPericalcarineMask, T), iterations = 2)
+        NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_not(allRHPericalcarineMask), T), allRHGMNotPericalcarine)] = 2000
+
 
     LatVentsDilated = scipy.ndimage.binary_dilation(ismember(LabelFusionIMG, [4, 43]), iterations = 5)
 
@@ -344,6 +363,46 @@ def main():
     NewLabelFusionIMG[T] = 41
     #BoundaryRibbonDT = scipy.ndimage.distance_transform_edt(numpy.logical_not(BoundaryRibbon))
 
+    # expand WM into "bright" regions to mostly fix CSF penetrating into WM
+
+    G = scipy.ndimage.gaussian_laplace(T2IMG, 2)
+
+    # G > 0 is the WM
+
+    # barrier for the WM dilation
+    BrainMaskIMGWMBorder = scipy.ndimage.binary_erosion(BrainMaskIMG, iterations = 4)
+    # remove CSF, subcortial grey and ventricles
+    WMDilateBarrierMask = numpy.logical_and(numpy.logical_and(Atropos3IMG != 3, BrainMaskIMGWMBorder), G < 0)
+    SubcortClosedMask = scipy.ndimage.binary_opening(numpy.logical_not(ismember(LabelFusionIMG, [9, 17, 18, 14, 48, 28, 60, 4, 31, 63, 51, 52, 53, 54, 12, 13, 170])), iterations = 10)
+    WMDilateBarrierMask = numpy.logical_and(WMDilateBarrierMask, SubcortClosedMask)
+    WMDilateBarrierMask = numpy.logical_and(WMDilateBarrierMask, numpy.logical_not(GMSEGIMG))
+    LHWMDilateBarrierMask = numpy.logical_and(WMDilateBarrierMask, NewLabelFusionIMG != 41)
+    RHWMDilateBarrierMask = numpy.logical_and(WMDilateBarrierMask, NewLabelFusionIMG != 2)
+    
+    LHWMMask = largestComponent(LabelFusionIMG == 2)
+    RHWMMask = largestComponent(LabelFusionIMG == 41)
+    
+    for z in range(10):
+        LHWMMask = numpy.logical_and(scipy.ndimage.binary_dilation(LHWMMask), LHWMDilateBarrierMask)
+        RHWMMask = numpy.logical_and(scipy.ndimage.binary_dilation(RHWMMask), RHWMDilateBarrierMask)
+    
+    NewNII = nibabel.Nifti1Image(numpy.uint8(LHWMMask), LabelFusionNII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_LHWMMask.nii.gz"))
+    NewNII = nibabel.Nifti1Image(numpy.uint8(RHWMMask), LabelFusionNII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_RHWMMask.nii.gz"))
+
+    NewNII = nibabel.Nifti1Image(numpy.uint8(WMDilateBarrierMask), LabelFusionNII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_barriermask.nii.gz"))
+
+    NewLabelFusionIMG[LHWMMask] = 2
+    NewLabelFusionIMG[RHWMMask] = 41
+    del LHWMMask
+    del RHWMMask
+    del LHWMDilateBarrierMask
+    del RHWMDilateBarrierMask
+    del WMDilateBarrierMask
+    del SubcortClosedMask
+    
     # replace any component of WM that isnt the largest one with CSF, this is buggy but whatevs
     T = numpy.logical_and(NewLabelFusionIMG == 41, numpy.logical_not(GMSEGIMG))
     L, numLabels = scipy.ndimage.label(T)
@@ -542,6 +601,14 @@ def main():
     NewLabelFusionIMG[ismember(LabelFusionIMG, [43, 63])] = 31
 
     NewLabelFusionIMG[LabelFusionIMG == 93] = 93
+
+
+
+
+    NewNII = nibabel.Nifti1Image(numpy.single(G), LabelFusionNII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_laplacian2.nii.gz"))
+
+
     NewNII = nibabel.Nifti1Image(NewLabelFusionIMG, LabelFusionNII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions.nii.gz"))
 

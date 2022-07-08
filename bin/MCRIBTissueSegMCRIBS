@@ -593,7 +593,7 @@ MakeKMeans34Class $SUBJID
 
 	# remove subcortical
 	MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_remove.nii.gz --match 28 60 170 11 50 51 52 12 13 9 48 54 18 --dilate 7 --erode 3 --noverbose
-
+	
 	MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_hippo.nii.gz --match 17 53 --noverbose
 	fslmaths ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_remove -add ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_hippo.nii.gz -bin ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_remove -odt char
 	MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_cerebellum_remove.nii.gz --match 91 93 --dilate 3 --erode 3 --noverbose
@@ -623,7 +623,7 @@ MakeKMeans34Class $SUBJID
 		# for lower res images
 		MRIBinarize --i ${OUTPUTPREFIX}_brain_mask.nii.gz --o ${OUTPUTPREFIX}_brain_mask_border.nii.gz --match 0 --dilate 0 --noverbose
 	fi
-
+	MRIBinarize --i ${OUTPUTPREFIX}_brain_mask.nii.gz --o ${OUTPUTPREFIX}_brain_mask_border.nii.gz --match 0 --dilate 0 --noverbose
 	MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz --o ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation_csf.nii.gz --match 3 --dilate 5 --noverbose
 
 	MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_skull_dilated.nii.gz --match 165 --dilate 7 --noverbose
@@ -648,13 +648,14 @@ MakeKMeans34Class $SUBJID
 	MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_choroid_mask.nii.gz --match 2 41 31 63 4 43
 
 	fslmaths ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_isthmus_bigdilate.nii.gz -mas ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_choroid_bigdilate.nii.gz -mas ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_choroid_mask.nii.gz ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_isthmus_to_remove.nii.gz
-
+	rm -f ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_choroid_bigdilate.nii.gz
 	#cp ${OUTPUTPREFIX}_segmentation_gm.nii.gz ${OUTPUTPREFIX}_segmentation_gm1.nii.gz
 
 	# remove GM between CSF and brain border
-	MRIBinarize --i ${OUTPUTPREFIX}_brain_mask.nii.gz --o ${OUTPUTPREFIX}_brain_mask_inv_dilated.nii.gz --match 0 --dilate 4
+	#MRIBinarize --i ${OUTPUTPREFIX}_brain_mask.nii.gz --o ${OUTPUTPREFIX}_brain_mask_inv_dilated.nii.gz --match 0 --dilate 4
 
 	#MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz --o  --match 0 --dilate 4
+	MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_cc.nii.gz --match 192 --noverbose
 
 	fslmaths \
 		${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_remove.nii.gz \
@@ -685,7 +686,7 @@ MakeKMeans34Class $SUBJID
 	ComponentAreaFilter -a 500 ${OUTPUTPREFIX}_segmentation_gm.nii.gz ${OUTPUTPREFIX}_segmentation_gm.nii.gz
 	#ComponentAreaFilter -a 500 ${OUTPUTPREFIX}_segmentation_gm_no_dark_wm_remove.nii.gz ${OUTPUTPREFIX}_segmentation_gm_old_no_dark_wm_remove.nii.gz
 	#fslmaths ${OUTPUTPREFIX}_segmentation_gm.nii.gz ${OUTPUTPREFIX}_segmentation_gm_lapinit.nii.gz
-
+	#mri_binarize --i ${OUTPUTPREFIX}_segmentation_gm.nii.gz --o ${OUTPUTPREFIX}_segmentation_gm.nii.gz --match 1 --dilate 2 --noverbose
 	if [ "YES" == "YES" ]
 	then
 		rm -f \
@@ -712,6 +713,7 @@ MakeKMeans34Class $SUBJID
 		${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_lateral_ventricles.nii.gz \
 		${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_remove.nii.gz \
 		${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad.nii.gz \
+		${OUTPUTPREFIX}_segmentation_gm_init.nii.gz \
 		${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad_laplacian1.nii.gz \
 		${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_not_3rd_ventricle.nii.gz \
 		${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos5_segmentation_45.nii.gz \
@@ -719,6 +721,7 @@ MakeKMeans34Class $SUBJID
 		${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos5_segmentation_border.nii.gz
 	fi
 	SeparateGMSegHemis $SUBJID
+	rm -f ${OUTPUTPREFIX}_segmentation_gm_sep.nii.gz
 	#####
 	#fslmaths ${OUTPUTPREFIX}_segmentation_gm.nii.gz ${OUTPUTPREFIX}_segmentation_gm_atroposinit.nii.gz
 	#MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos5_segmentation.nii.gz --o ${OUTPUTPREFIX}_segmentation_csf.nii.gz --match 4 5 --noverbose
@@ -769,7 +772,7 @@ fi
 NUMTHREADS=2
 NUMTHREADS=`expr $(nproc) / 5 + 1`
 #NUMTHREADS=2
-
+#DOPARALLEL=YES
 if [ "$DOPARALLEL" == "YES" ]
 then
 	export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$NUMTHREADS
@@ -926,19 +929,19 @@ mri_binarize --i ${TISSUESEGDIR}/${SUBJID}/all_dkt_antsinit_to_${SUBJID}_gm_mask
 
 fslmaths ${TISSUESEGDIR}/${SUBJID}/all_dkt_antsinit_to_${SUBJID}_gm_mask.nii.gz -mul 2 -add ${OUTPUTPREFIX}_labelfusion_radius_image -mas ${OUTPUTPREFIX}_brain_mask ${OUTPUTPREFIX}_labelfusion_radius_image
 
-#if [ ! -f "${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz" ]
-#then
+if [ ! -f "${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz" ]
+then
 	antsJointFusion $ATLAST2IMAGES $ATLASDKTIMAGES --target-image ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz -d 3 -x ${OUTPUTPREFIX}_brain_mask.nii.gz --output ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz -v --patch-metric PC -s ${OUTPUTPREFIX}_labelfusion_radius_image.nii.gz -p 2
-#fi
+fi
 fslmaths ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz -odt short
 
-#imrm ${OUTPUTPREFIX}_labelfusion_radius_image.nii.gz
+imrm ${OUTPUTPREFIX}_labelfusion_radius_image.nii.gz
 imrm ${TISSUESEGDIR}/${SUBJID}/all_dkt_antsinit_to_${SUBJID}_gm_mask.nii.gz
 #imrm $TISSUESEGDIR/$SUBJID/all_dkt_antsinit_to_${SUBJID}
-#if [ ! -f "${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz" ]
-#then
-	#antsJointFusion $ATLAST2IMAGES $ATLASDKTIMAGES --target-image ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz -d 3 -x ${OUTPUTPREFIX}_brain_mask.nii.gz --output ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz -v --patch-metric PC -s 2 -p 2
-#fi
+if [ ! -f "${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz" ]
+then
+	antsJointFusion $ATLAST2IMAGES $ATLASDKTIMAGES --target-image ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz -d 3 -x ${OUTPUTPREFIX}_brain_mask.nii.gz --output ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz -v --patch-metric PC -s 2 -p 2
+fi
 #fslmaths ${OUTPUTPREFIX}_labelfusionimage_newmask.nii.gz ${OUTPUTPREFIX}_labelfusionimage_newmask.nii.gz -odt short
 #fslmaths ${OUTPUTPREFIX}_labelfusionimage_dkt2.nii.gz ${OUTPUTPREFIX}_labelfusionimage_dkt2.nii.gz -odt short
 
@@ -968,7 +971,7 @@ antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz
 	--output-data-type uchar \
 	--output ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 
-#rm -f ${TISSUESEGDIR}/${SUBJID}/*reg6*
+rm -f ${TISSUESEGDIR}/${SUBJID}/*reg6*
 #rm ${TISSUESEGDIR}/${SUBJID}/P*
 
 # MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_wm.nii.gz --match 2 41 --noverbose

@@ -23,6 +23,7 @@ ENSUREPIAL=-ensure-pial-is-outside-white-surface
 LARGECLOSE=
 USEFASTCOLLISION=
 JOINTHRESHOLD=1
+LARGEVENTRICLES=
 
 while (( "$#" ))
 do
@@ -35,6 +36,9 @@ do
 		;;
 		--fastcollision)
 		USEFASTCOLLISION=-use-fast-collision
+		;;
+		--largeventricles)
+		LARGEVENTRICLES=-l
 		;;
 		--jointhreshold)
 		JOINTHRESHOLD=$2
@@ -93,7 +97,7 @@ fi
 export TEMPLATEREGSUFFIX=skullstrip_reg
 #RemoveDarkWMFromGMSegmentation $SUBJID
 mkdir -p TissueSeg
-PostProcessDKTLabelFusion $SUBJID
+PostProcessDKTLabelFusion $LARGEVENTRICLES $SUBJID
 MakeRegionsBSCutting $SUBJID
 #rm -f ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon_midlinefill.nii.gz ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 FSToDrawEMLabels $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusionimage_regions.nii.gz TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
