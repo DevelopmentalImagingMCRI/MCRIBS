@@ -43,7 +43,7 @@ def structN4DefaultOptions():
     return ['-v', '-c', '[100x100x100x100,0]', '-b', '[200]', '-s', '3']
 
 def main():
-    doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon', 'inflatesphere', 'cortparc', 'cortthickness', 'surfreg', 'segstats', 'aparc2aseg', 'apas2aseg', 'parcstats'])
+    doProcessingSteps = dict.fromkeys(['neckcrop', 'tissueseg', 'surfrecon', 'inflatesphere', 'cortparc', 'cortthickness', 'surfreg', 'segstats', 'aparc2aseg', 'apas2aseg', 'parcstats'])
 
     atlases = ['aparc', 'aparc+DKTatlas', 'aparc+DKTatlas.manual']
     defaultAtlas = atlases
@@ -55,11 +55,6 @@ def main():
     neckCropArgGroup.add_argument('--neckcrop', help = "PROCESSING DIRECTIVE", action = 'store_true')
     neckCropArgGroup.add_argument('--noneckcrop', help = "PROCESSING DIRECTIVE", action = 'store_true')
     neckCropArgGroup.add_argument('--voxelsize', help = "Voxel size to use for isotropic resampling. Use \"volumepreserve\" to preserve original voxel volume", required = False, type = str, action = 'store', default = 'volumepreserve')
-
-    conformArgGroup = argParser.add_argument_group('conform', "PROCESSING DIRECTIVE. Reorients to radiological, axial slice orientation. Resamples to isotropic voxels")
-    conformArgGroup.add_argument('--conform', help = "PROCESSING DIRECTIVE", action = 'store_true')
-    conformArgGroup.add_argument('--noconform', help = "DISABLE conform", action = 'store_true')
-    #conformArgGroup.add_argument('--voxelsize', help = "Voxel size to use for isotropic resampling. Use \"volumepreserve\" to preserve original voxel volume", required = False, type = str, action = 'store', default = 'volumepreserve')
 
     tissueSegArgGroup = argParser.add_argument_group('tissueseg', "Perform tissue type segmentation, depends --conform")
     tissueSegArgGroup.add_argument('--tissueseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -131,7 +126,6 @@ def main():
     argParser.add_argument('-all', '--all', help = "Do all steps", required = False, action = 'store_true')
     argParser.add_argument('-autoreconaftersurf', '--autoreconaftersurf', help = "Do all steps after surface reconstruction", required = False, action = 'store_true')
 
-    argParser.add_argument('--bonnie', help = "Bonnies segmetnation", required = False, action = 'store_true')
     argParser.add_argument('-usegpu', help = "Use the GPU for inflation and spherical projection, affects --inflatesphere", required = False, action = 'store_true')
     argParser.add_argument('-steplist', '--steplist', help = "Prints out the processing step options in order", required = False, action = 'store_true')
 
@@ -350,12 +344,6 @@ def main():
         pass
 
 
-    if (options.conform == True or options.all == True) and not isFromDHCP and options.noconform == False:
-        cmd = ["MCRIBConform", os.path.join('RawT2', options.subjectid + ".nii.gz"), options.voxelsize, os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz")]
-        #runCommand(cmd, log_file_name = logFileName)
-        print("--conform no longer needed, ignoring")
-        pass
-
     if (options.tissueseg == True or options.all == True) and not isFromDHCP and options.notissueseg == False:
         if options.tissuesegmethod == 'DrawEM':
             cmd = ["MCRIBTissueSegDrawEM", options.subjectid, str(options.subjectage)]
@@ -383,6 +371,8 @@ def main():
             cmd.append('--noensureoutsidepial')
         if options.deformablelargeclose == True:
             cmd.append('--largeclose')
+        if options.largeventricles:
+            cmd.append('--largeventricles')
 
         cmd.extend(['--jointhreshold', str(options.deformablejointhresh)])
         runCommand(cmd, log_file_name = logFileName)
@@ -401,14 +391,15 @@ def main():
         runCommand(cmd, log_file_name = logFileName)
         pass
 
-    if (options.cortribbon == True or options.all == True or options.autoreconaftersurf == True) and options.nocortribbon == False:
-        cmd = ["MCRIBVolMaskPython", options.subjectid]
-        runCommand(cmd, log_file_name = logFileName)
-        pass
-
     if (options.cortparc == True or options.all == True or options.autoreconaftersurf == True) and options.nocortparc == False:
         cmd = ["MCRIBCortParc", options.subjectid, Hemis]
         cmd.extend(options.cortparcatlases)
+        runCommand(cmd, log_file_name = logFileName)
+        pass
+
+
+    if (options.cortribbon == True or options.all == True or options.autoreconaftersurf == True) and options.nocortribbon == False:
+        cmd = ["MCRIBVolMaskPython", options.subjectid]
         runCommand(cmd, log_file_name = logFileName)
         pass
 

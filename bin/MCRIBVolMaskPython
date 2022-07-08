@@ -101,4 +101,4 @@ outRibbon[LHWhiteMask] = 2
 outRibbon[RHWhiteMask] = 41
 
 outMGH = nibabel.MGHImage(outRibbon, ASEGPresurfMGZ.affine, header=ASEGPresurfMGZ.header)
-nibabel.save(outMGH, os.path.join('freesurfer', SubjectID, 'mri', 'ribbon.vtk.mgz'))
+nibabel.save(outMGH, os.path.join('freesurfer', SubjectID, 'mri', 'ribbon.mgz'))
