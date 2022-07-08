@@ -55,7 +55,7 @@ for Hemi in Hemis:
 
     R = checkFilesReturnNameOnFailure([LabelFileName, AreaFileName, ThicknessFileName, AnnotFileName, MeanCurvFileName, GaussCurvFileName])
 
-    if not R is None:
+    if R is not None:
         print("Could not find: " + R)
         quit()
 
