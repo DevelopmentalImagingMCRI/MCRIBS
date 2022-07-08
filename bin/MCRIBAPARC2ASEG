@@ -6,6 +6,7 @@ then
 	exit
 fi
 
+P=`pwd`
 SUBJID=$1
 shift;
 ANNOTS=$@
@@ -20,25 +21,29 @@ fi
 
 if [ -f "$FREESURFER_HOME/bin/mri_surf2volseg" ]
 then
-	cd $SUBJECTS_DIR/$SUBJID/mri
-	mri_surf2volseg --i aseg.presurf.mgz --fix-presurf-with-ribbon ribbon.mgz --o aseg.mgz --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
-	#`dirname $0`/APARC2ASEGZeroToCSFFix aseg.mgz aseg.presurf.mgz aseg.mgz
-	# left over "intra-cranial background" needs to be made CSF
-	#mri_binarize --i aseg.mgz --replace 85 24 --o aseg_tmp.mgz
-	#v aseg_tmp.mgz aseg.mgz
-	mri_mask -transfer 3 aseg.mgz ribbon.mgz aseg.mgz
-	mri_mask -transfer 42 aseg.mgz ribbon.mgz aseg.mgz
-	mri_binarize --i aseg.mgz --o aseg_wm_lh.mgz --match 254 24 --noverbose
-	mri_binarize --i ribbon.mgz --o ribbon_wm_lh.mgz --match 2 --noverbose
-	mri_and aseg_wm_lh.mgz ribbon_wm_lh.mgz aseg_ribbon_wm_lh.mgz
-	mri_binarize --i aseg_ribbon_wm_lh.mgz --o aseg_ribbon_wm_lh.mgz --match 1 --binval 2 --noverbose
-	mri_mask -transfer 2 aseg.mgz aseg_ribbon_wm_lh.mgz aseg.mgz
-	mri_binarize --i aseg.mgz --o aseg_wm_rh.mgz --match 255 24 --noverbose
-	mri_binarize --i ribbon.mgz --o ribbon_wm_rh.mgz --match 41 --noverbose
-	mri_and aseg_wm_rh.mgz ribbon_wm_rh.mgz aseg_ribbon_wm_rh.mgz
-	mri_binarize --i aseg_ribbon_wm_rh.mgz --o aseg_ribbon_wm_rh.mgz --match 1 --binval 41 --noverbose
-	mri_mask -transfer 41 aseg.mgz aseg_ribbon_wm_rh.mgz aseg.mgz
-	rm -f aseg_ribbon_wm_rh.mgz aseg_ribbon_wm_rh.mgz aseg_wm_rh.mgz aseg_ribbon_wm_lh.mgz aseg_ribbon_wm_lh.mgz aseg_wm_lh.mgz
+	
+	#cd $SUBJECTS_DIR/$SUBJID/mri
+	#mri_surf2volseg --i aseg.presurf.mgz --fix-presurf-with-ribbon ribbon.mgz --o aseg.mgz --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
+	#cd $P
+	MakeASEG $SUBJID
+	# cd $SUBJECTS_DIR/$SUBJID/mri
+	# #`dirname $0`/APARC2ASEGZeroToCSFFix aseg.mgz aseg.presurf.mgz aseg.mgz
+	# # left over "intra-cranial background" needs to be made CSF
+	# #mri_binarize --i aseg.mgz --replace 85 24 --o aseg_tmp.mgz
+	# #v aseg_tmp.mgz aseg.mgz
+	# mri_mask -transfer 3 aseg.mgz ribbon.mgz aseg.mgz
+	# mri_mask -transfer 42 aseg.mgz ribbon.mgz aseg.mgz
+	# mri_binarize --i aseg.mgz --o aseg_wm_lh.mgz --match 254 24 --noverbose
+	# mri_binarize --i ribbon.mgz --o ribbon_wm_lh.mgz --match 2 --noverbose
+	# mri_and aseg_wm_lh.mgz ribbon_wm_lh.mgz aseg_ribbon_wm_lh.mgz
+	# mri_binarize --i aseg_ribbon_wm_lh.mgz --o aseg_ribbon_wm_lh.mgz --match 1 --binval 2 --noverbose
+	# mri_mask -transfer 2 aseg.mgz aseg_ribbon_wm_lh.mgz aseg.mgz
+	# mri_binarize --i aseg.mgz --o aseg_wm_rh.mgz --match 255 24 --noverbose
+	# mri_binarize --i ribbon.mgz --o ribbon_wm_rh.mgz --match 41 --noverbose
+	# mri_and aseg_wm_rh.mgz ribbon_wm_rh.mgz aseg_ribbon_wm_rh.mgz
+	# mri_binarize --i aseg_ribbon_wm_rh.mgz --o aseg_ribbon_wm_rh.mgz --match 1 --binval 41 --noverbose
+	# mri_mask -transfer 41 aseg.mgz aseg_ribbon_wm_rh.mgz aseg.mgz
+	# rm -f aseg_ribbon_wm_rh.mgz aseg_ribbon_wm_rh.mgz aseg_wm_rh.mgz aseg_ribbon_wm_lh.mgz aseg_ribbon_wm_lh.mgz aseg_wm_lh.mgz ribbon_wm_lh.mgz ribbon_wm_rh.mgz
 	#`dirname $0`/APARC2ASEGCSFRestoreDrawEM aseg.mgz $SUBJECTS_DIR/../TissueSeg/${SUBJID}_all_labels_manedit_bonnie.nii.gz aseg.mgz
 fi
 
@@ -55,8 +60,54 @@ do
 		cd mri
 		apas2aseg --i ${ANNOT}+aseg.mgz --o aseg.mgz 2>&1 > /dev/null
 	else
+		cd $P
+		MakeAPARCASEG $SUBJID $ANNOT
+		
 		cd $SUBJECTS_DIR/$SUBJID/mri
-		mri_surf2volseg --i aseg.mgz --label-cortex --o ${ANNOT}+aseg.mgz --lh-annot ../label/lh.${ANNOT}.annot 1000 --rh-annot ../label/rh.${ANNOT}.annot 2000 --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
+		#mri_surf2volseg --i aseg.mgz --label-cortex --o ${ANNOT}+aseg.mgz --lh-annot ../label/lh.${ANNOT}.annot 1000 --rh-annot ../label/rh.${ANNOT}.annot 2000 --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
+
+		# change the labels to correspond to aparc ones
+		# the indices are incorrect because of the missing numbers in the DKT LUT
+		# e.g. bankssts not being present means ctx-rh-caudalanteriorcingulate will be ctx-rh-bankssts
+		#0    ctx-rh-unknown                      25  5   25  0
+		#2    ctx-rh-caudalanteriorcingulate      125 100 160 0
+		#3    ctx-rh-caudalmiddlefrontal          100 25  0   0
+
+		if [ "$ANNOT" == "aparc+DKTatlas" ]
+		then
+			MRIBinarize --i ${ANNOT}+aseg.mgz --o ${ANNOT}+aseg.mgz \
+			--replace 1001 1002 --replace 2001 2002 \
+			--replace 1002 1003 --replace 2002 2003 \
+			--replace 1003 1005 --replace 2003 2005 \
+			--replace 1004 1006 --replace 2004 2006 \
+			--replace 1005 1007 --replace 2005 2007 \
+			--replace 1006 1008 --replace 2006 2008 \
+			--replace 1007 1009 --replace 2007 2009 \
+			--replace 1008 1010 --replace 2008 2010 \
+			--replace 1009 1011 --replace 2009 2011 \
+			--replace 1010 1012 --replace 2010 2012 \
+			--replace 1011 1013 --replace 2011 2013 \
+			--replace 1012 1014 --replace 2012 2014 \
+			--replace 1013 1015 --replace 2013 2015 \
+			--replace 1014 1016 --replace 2014 2016 \
+			--replace 1015 1017 --replace 2015 2017 \
+			--replace 1016 1018 --replace 2016 2018 \
+			--replace 1017 1019 --replace 2017 2019 \
+			--replace 1018 1020 --replace 2018 2020 \
+			--replace 1019 1021 --replace 2019 2021 \
+			--replace 1020 1022 --replace 2020 2022 \
+			--replace 1021 1023 --replace 2021 2023 \
+			--replace 1022 1024 --replace 2022 2024 \
+			--replace 1023 1025 --replace 2023 2025 \
+			--replace 1024 1026 --replace 2024 2026 \
+			--replace 1025 1027 --replace 2025 2027 \
+			--replace 1026 1028 --replace 2026 2028 \
+			--replace 1027 1029 --replace 2027 2029 \
+			--replace 1028 1030 --replace 2028 2030 \
+			--replace 1029 1031 --replace 2029 2031 \
+			--replace 1030 1034 --replace 2030 2034 \
+			--replace 1031 1035 --replace 2031 2035
+		fi
 		#`dirname $0`/APARC2ASEGZeroToCSFFix ${ANNOT}+aseg.mgz aseg.presurf.mgz ${ANNOT}+aseg.mgz
 		#mri_binarize --i ${ANNOT}+aseg.mgz --o ${ANNOT}+aseg_tmp.mgz --replace 2 159 --replace 41 160
 		#mri_binarize --i ${ANNOT}+aseg.mgz --o ${ANNOT}+aseg_tmp.mgz --replace 159 2 --replace 160 41
