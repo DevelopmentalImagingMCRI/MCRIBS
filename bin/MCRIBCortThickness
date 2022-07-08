@@ -30,6 +30,15 @@ do
 	#	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
 	#fi
 	cd $SUBJECTS_DIR/$SUBJID/surf
-	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/FreesurferCorticalThickness $SUBJID $CURHEMI
+	if [ "$OMP_NUM_THREADS" == "1" ]
+	then
+		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/FreesurferCorticalThickness $SUBJID $CURHEMI
+	else
+		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/FreesurferCorticalThickness $SUBJID $CURHEMI &
+	fi
 	cd $P
 done
+if [ "$OMP_NUM_THREADS" != "1" ]
+then
+	wait;
+fi
