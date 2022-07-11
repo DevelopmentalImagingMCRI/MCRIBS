@@ -83,6 +83,7 @@ NewIMG[NotGM] = 0
 DIndices = scipy.ndimage.morphology.distance_transform_edt(NewIMG == 0, sampling=ASEGMGZ.header.get_zooms(), return_distances=False, return_indices=True)
 
 NewIMG = NewIMG[(DIndices[0], DIndices[1], DIndices[2])]
+del DIndices
 NewIMG[NotGM] = ASEGIMG[NotGM]
 
 NewMGZ = nibabel.MGHImage(NewIMG, ASEGMGZ.affine, ASEGMGZ.header)
