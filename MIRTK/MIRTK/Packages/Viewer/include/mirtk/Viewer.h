@@ -1,34 +1,36 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit ()
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _VIEWER_H
 #define _VIEWER_H
 
-#ifdef __APPLE__
-#include <OpenGl/gl.h>
-#include <OpenGl/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
-
+#include <mirtk/OpenGl.h>
 #include <mirtk/IOConfig.h>
+#include <mirtk/ViewerExport.h>
+
 
 class RView;
 class VoxelContour;
 class MultiLevelTransformation;
 class FreeFormTransformation;
 
-class Viewer
+
+class MIRTK_Viewer_EXPORT Viewer
 {
 
   /// Screen corrdinates
@@ -136,7 +138,7 @@ public:
   ViewerMode GetViewerMode();
 
   /// Clipping of a drawable to the viewport
-  void  Clip();
+  void Clip();
 
 };
 

@@ -42,13 +42,14 @@ Note: The merge-surfaces tool failed when MIRTK was built with VTK 6.2.
 import os
 import re
 import sys
+import subprocess
 
 from contextlib import contextmanager
-
 try:
     from contextlib import ExitStack  # Python 3
 except:
     from contextlib2 import ExitStack  # Python 2 backport
+
 
 from mirtk.subprocess import flatten, check_call, check_output
 from mirtk.subprocess import run as _run
@@ -129,9 +130,10 @@ def nextname(name, temp=None):
 # ------------------------------------------------------------------------------
 def makedirs(name):
     """Make directories for output file if not existent."""
-    path = os.path.dirname(name)
-    if not os.path.isdir(path):
-        os.makedirs(path)
+    try:
+        os.makedirs(os.path.dirname(name))
+    except FileExistsError:
+        pass
 
 # ------------------------------------------------------------------------------
 def rename(src, dst):
@@ -210,7 +212,7 @@ def output(name_or_func, delete=False):
 
     """
     if isinstance(name_or_func, str): path = name_or_func
-    elif isinstance(name_or_func, unicode): path = str(name_or_func) 
+    elif isinstance(name_or_func, unicode): path = str(name_or_func)
     else:                             path = name_or_func()
     if path:
         try:
@@ -402,7 +404,7 @@ def remove_intersections(iname, oname=None, mask=None, max_attempt=10, smooth_it
             pre = cur
             cur = check_intersections(oname, oname)
             if cur >= pre: nbr += 1
-        del_mesh_attr(oname, oname, pointdata=_collision_mask_array, celldata=_collision_type_array)
+        #del_mesh_attr(oname, oname, pointdata=_collision_mask_array, celldata=_collision_type_array)
     return oname
 
 # ------------------------------------------------------------------------------
@@ -485,6 +487,25 @@ def calculate_distance_map(iname, oname=None, temp=None, distance='euclidean', i
     return oname
 
 # ------------------------------------------------------------------------------
+def clean_cortical_surface(iname, oname=None, merge_points=False, remove_spikes=False, remove_boundaries=False, remove_duplicates=False, temp=None):
+    """Fix up geometry and/or topology of cortical surface mesh."""
+    if not merge_points and not remove_spikes and not remove_boundaries and not remove_duplicates:
+        return iname
+    if not oname:
+        if not temp:
+            temp = os.path.dirname(iname)
+        oname = os.path.join(temp, nextname(os.path.basename(iname)))
+    makedirs(oname)
+    if force:
+        try_remove(oname)
+    if not os.path.isfile(oname):
+        makedirs(oname)
+        run('clean-surface', args=[iname, oname],
+            opts={'merge-points': merge_points, 'remove-spikes': remove_spikes,
+                  'remove-duplicates': remove_duplicates, 'remove-boundaries': remove_boundaries})
+    return oname
+
+# ------------------------------------------------------------------------------
 def extract_isosurface(iname, oname=None, temp=None, isoval=0, blur=0, close=True):
     """Extract iso-surface from image."""
     if not oname:
@@ -563,7 +584,7 @@ def extract_convex_hull(iname, oname=None, temp=None, isoval=0, blur=0):
 # ------------------------------------------------------------------------------
 def add_corpus_callosum_mask(iname, mask, oname=None):
     """Add ImplicitSurfaceFillMask point data array to surface file.
-    
+
     This mask is considered by the ImplicitSurfaceDistance force when deforming
     the convex hull towards the WM segmentation boundary. Distance values of points
     with a zero mask value are excluded from the clustering based hole filling.
@@ -668,7 +689,7 @@ def white_refinement_mask(name, subcortex_mask):
     return name
 
 # ------------------------------------------------------------------------------
-def deform_mesh(iname, oname=None, temp=None, opts={}):
+def deform_mesh(iname, oname=None, temp=None, opts={}, super_debug = True):
     """Deform mesh with the specified options."""
     if not temp:
         temp = os.path.dirname(iname)
@@ -689,6 +710,12 @@ def deform_mesh(iname, oname=None, temp=None, opts={}):
             if fname.startswith(fname_prefix):
                 try_remove(os.path.join(temp, fname))
         makedirs(oname)
+        if super_debug == True:
+            opts['debug-interval'] = 5
+            opts['debug'] = 2
+        else:
+            opts['debug-interval'] = 999 # prevent output files being made, don't need them
+            #opts['debug'] = 5
         run('deform-mesh', args=[iname, oname], opts=opts)
     return oname
 
@@ -772,7 +799,12 @@ def binarize_cortex(regions, name=None, temp=None):
     if not temp:
         temp = os.path.dirname(regions)
     name = os.path.join(temp, name)
-    return binarize(name=name, segmentation=regions, labels=1)
+    tempSplit = temp.split(os.sep);
+    subjectID = tempSplit[-2]
+    # make better cortex mask
+    subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'MakeCortexMaskDilatedDKT'), subjectID])
+    #return binarize(name=name, segmentation=regions, labels=1)
+    return name
 
 # ------------------------------------------------------------------------------
 def binarize_white_matter(regions, hemisphere=Hemisphere.Unspecified, name=None, temp=None):
@@ -826,10 +858,10 @@ def subdivide_brain(name, segmentation, white_labels, cortex_labels, right_label
                     subcortex_labels=[], subcortex_closing=5,
                     brainstem_labels=[], brainstem_closing=5,
                     cerebellum_labels=[], cerebellum_closing=5,
-                    tissues=None, brain_mask=None, merge_bs_cb=True,
-                    cortical_hull_dmap=None, temp=None):
+                    tissues=None, brain_mask=None, fill_wm_holes=False, merge_bs_cb=True,
+                    cortical_hull_dmap=None, temp=None, threads = 0):
     """Subdivide brain into major building blocks, nicely cut disjoint regions.
-    
+
     Parameters
     ----------
     name : str
@@ -869,6 +901,8 @@ def subdivide_brain(name, segmentation, white_labels, cortex_labels, right_label
     brain_mask : str
         Path of brain extraction mask used to ensure that the resampled
         image grid contains the whole of the brain.
+    fill_wm_holes : bool
+        Whether to fill large holes in interhemisphere WM mask.
     merge_bs_cb : bool
         Whether to merge brainstem and cerebellum labels into a single output region.
     cortical_hull_dmap : str, optional
@@ -899,9 +933,7 @@ def subdivide_brain(name, segmentation, white_labels, cortex_labels, right_label
         opts = {
             'rh': right_labels, 'lh': left_labels,
             'wm': white_labels, 'gm': cortex_labels,
-            'sb': subcortex_labels,
-            'bs': brainstem_labels,
-            'cb': cerebellum_labels,
+            'fill-wm-holes': fill_wm_holes,
             'bs+cb': merge_bs_cb,
             'subcortical-closing': subcortex_closing,
             'brainstem-closing': brainstem_closing,
@@ -918,6 +950,7 @@ def subdivide_brain(name, segmentation, white_labels, cortex_labels, right_label
         if cortical_hull_dmap:
             opts['output-inner-cortical-distance'] = os.path.abspath(cortical_hull_dmap)
             makedirs(opts['output-inner-cortical-distance'])
+        opts['threads'] = str(threads)
         makedirs(name)
         run('subdivide-brain-image', args=[segmentation, name], opts=opts)
     return name
@@ -975,9 +1008,10 @@ def recon_brainstem_plus_cerebellum_surface(name, mask=None, regions=None,
 # ------------------------------------------------------------------------------
 def recon_cortical_surface(name, mask=None, regions=None,
                            hemisphere=Hemisphere.Unspecified,
-                           corpus_callosum_mask=None, temp=None):
+                           corpus_callosum_mask=None,
+                           temp=None, opts={}, threads=0):
     """Reconstruct initial surface of right and/or left cerebrum.
- 
+
     The input is either a regions label image generated by `subdivide-brain-image`
     or a custom binary mask created from a given brain segmentation. The boundary of
     the mask must be sufficiently close to the WM/cGM interface.
@@ -996,7 +1030,7 @@ def recon_cortical_surface(name, mask=None, regions=None,
         File path of regions image with right and left cerebrum labelled.
         Ignored when a custom `mask` image is given instead.
     hemisphere : Hemisphere
-        Which hemisphere of the cerebral cortex to reconstruct. If Hemisphere.Both, 
+        Which hemisphere of the cerebral cortex to reconstruct. If Hemisphere.Both,
         the surfaces of both hemispheres are reconstructed and the two file paths
         returned as a 2-tuple. When Hemisphere.Unspecified, the hemisphere is
         determined from the output file `name` if possible.
@@ -1009,6 +1043,25 @@ def recon_cortical_surface(name, mask=None, regions=None,
         this directory and deleted on exit unless the global `debug` flag is set.
         When not specified, intermediate files are written to the same directory
         as the output mesh file, i.e., the directory of `name`.
+    opts : dict, optional
+        Dictionary of advanced options (see below).
+
+    Advanced options
+    ----------------
+
+    remove_spikes : bool
+        Whether to fix up geometry of deformed surface mesh by removing pointy spikes
+        caused by self-collisions. This also avoids introduction of redundant or boundary
+        triangles after joining of surface meshes of left/right hemispheres due to merging
+        of coincident points later on.
+    resolve_intersections_lambda : float
+        Lambda value used for smoothing of self-intersections.
+    resolve_intersections_iterations : int
+        Number of smoothing iterations for each attempt to resolve self-intersections.
+    resolve_intersections_attempts : int
+        Maximum number of attempts to resolve self-intersections of joined surface mesh.
+    opts : dict
+        All other options override option arguments passed to `deform-mesh` command.
 
     Returns
     -------
@@ -1021,6 +1074,7 @@ def recon_cortical_surface(name, mask=None, regions=None,
     if debug > 0:
         assert name, "Invalid 'name' argument"
         assert mask or regions, "Either 'regions' or 'mask' argument required"
+    #print(opts)
     name = os.path.abspath(name)
     (base, ext) = splitext(name)
     if not ext:
@@ -1051,21 +1105,36 @@ def recon_cortical_surface(name, mask=None, regions=None,
     if not mask and hemisphere == Hemisphere.Both:
         rname = recon_cortical_surface('{}-{}{}'.format(base, hemi2str(Hemisphere.Right), ext),
                                        regions=regions, hemisphere=Hemisphere.Right,
-                                       corpus_callosum_mask=corpus_callosum_mask, temp=temp)
+                                       corpus_callosum_mask=corpus_callosum_mask,
+                                       opts=opts, temp=temp, threads = threads)
         lname = recon_cortical_surface('{}-{}{}'.format(base, hemi2str(Hemisphere.Left), ext),
                                        regions=regions, hemisphere=Hemisphere.Left,
-                                       corpus_callosum_mask=corpus_callosum_mask, temp=temp)
+                                       corpus_callosum_mask=corpus_callosum_mask,
+                                       opts=opts, temp=temp, threads = threads)
         return (rname, lname)
     base = os.path.basename(base)
     hemi = hemi2str(hemisphere)
+
+    opts = {k.replace('_', '-'): v for k, v in opts.items()}
+    opts = {k[1:] if k.startswith('-') else k: v for k, v in opts.items()}
+
+    clean_kwargs = {
+        "remove_spikes": False, #opts.pop("remove-spikes", True),
+    }
+    fixup_kwargs = {
+        "smooth_iter": opts.pop("resolve-intersections-iterations", 5),
+        "smooth_lambda": opts.pop("resolve-intersections-lambda", 1),
+        "max_attempt": opts.pop("resolve-intersections-attempts", 10),
+    }
+
     with ExitStack() as stack:
         if not mask:
             mask = '{}-{}-mask.nii.gz'.format(base, hemi)
             mask = push_output(stack, binarize_white_matter(regions, name=mask, hemisphere=hemisphere, temp=temp))
         dmap = push_output(stack, calculate_distance_map(mask, temp=temp))
-        hull = push_output(stack, extract_convex_hull(dmap, temp=temp))
-
-        opts = {
+        hull = push_output(stack, extract_convex_hull(dmap, blur=1, temp=temp))
+        model_opts = {
+            'threads': threads,
             'implicit-surface': dmap,
             'distance': 1,
                 'distance-measure': 'normal',
@@ -1089,15 +1158,16 @@ def recon_cortical_surface(name, mask=None, regions=None,
                 'min-active': '1%',
                 'min-width': .2,
                 'min-distance': .5,
+                'adjacent-collision-test': False,
                 'fast-collision-test': True,
                 'non-self-intersection': True,
             'remesh': 1,
                 'min-edge-length': .5,
                 'max-edge-length': 1,
                 'triangle-inversion': True,
-                'reset-status': True
+                'reset-status': True,
         }
-
+        model_opts.update(opts)
         if corpus_callosum_mask:
             out1 = nextname(name, temp=temp)
             out1 = push_output(stack, add_corpus_callosum_mask(hull, mask=corpus_callosum_mask, oname=out1))
@@ -1105,18 +1175,19 @@ def recon_cortical_surface(name, mask=None, regions=None,
         else:
             out1 = hull
             out2 = nextname(name, temp=temp)
-        out2 = push_output(stack, deform_mesh(out1, out2, opts=opts))
+        out2 = push_output(stack, deform_mesh(out1, out2, opts=model_opts, super_debug = False))
         if corpus_callosum_mask:
             out3 = push_output(stack, del_corpus_callosum_mask(out2))
         else:
             out3 = out2
-        remove_intersections(out3, oname=name, max_attempt=10)
+        out4 = push_output(stack, clean_cortical_surface(out3, **clean_kwargs))
+        remove_intersections(out4, oname=name, **fixup_kwargs)
     return name
 
 # ------------------------------------------------------------------------------
 def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None,
                            region_id_array=_region_id_array, cortex_mask_array=_cortex_mask_array,
-                           internal_mesh=None, temp=None, check=True, join_tol = 1):
+                           internal_mesh=None, temp=None, check=True, opts={}, join_tol = 1):
     """Join cortical surfaces of right and left hemisphere at medial cut.
 
     Optionally, the brainstem plus cerebellum surface can be joined with the
@@ -1162,6 +1233,25 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
         as the output mesh file, i.e., the directory of `name`.
     check : bool
         Check topology and consistency of output surface mesh.
+    opts : dict
+        Advanced options passed to merge-surfaces and other commands.
+
+    Advanced options
+    ----------------
+
+    remove_duplicates : bool
+        Whether to delete redundant faces when boundary edges were detected.
+    remove_boundaries : bool
+        Whether to delete faces with boundary edges if detected after joining the hemispheres.
+    resolve_intersections_lambda : float
+        Lambda value used for smoothing of self-intersections.
+    resolve_intersections_iterations : int
+        Number of smoothing iterations for each attempt to resolve self-intersections.
+    resolve_intersections_attempts : int
+        Maximum number of attempts to resolve self-intersections of joined surface mesh.
+    opts : dict
+        All other options override option arguments passed to `merge-surfaces` command
+        when joining the right and left hemisphere mesh.
 
     Returns
     -------
@@ -1177,7 +1267,7 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
         assert left_mesh, "Input 'left_mesh' required"
 
     join_bs_cb = True # deprecated option, always True when bs_cb_mesh not None
- 
+
     name = os.path.abspath(name)
     if not temp:
         temp = os.path.dirname(name)
@@ -1189,6 +1279,19 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
     else:
         region_id_array_name = _region_id_array
 
+    opts = {k.replace('_', '-'): v for k, v in opts.items()}
+    opts = {k[1:] if k.startswith('-') else k: v for k, v in opts.items()}
+
+    clean_kwargs = {
+        "remove_duplicates": opts.pop("remove-duplicates", True),
+        "remove_boundaries": opts.pop("remove-boundaries", True),
+    }
+    fixup_kwargs = {
+        "smooth_lambda": opts.pop("resolve-intersections-lambda", 1),
+        "smooth_iter": opts.pop("resolve-intersections-iterations", 10),
+        "max_attempt": opts.pop("resolve-intersections-attempts", 10),
+    }
+
     with ExitStack() as stack:
         # merge surface meshes
         joined = push_output(stack, nextname(name, temp=temp))
@@ -1196,11 +1299,19 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
             surfaces = [right_mesh, left_mesh]
             if bs_cb_mesh and join_bs_cb:
                 surfaces.append(bs_cb_mesh)
-            run('merge-surfaces',
-                opts={'input': surfaces, 'output': joined, 'labels': regions, 'source-array': region_id_array_name,
-                      'tolerance': join_tol, 'largest': True, 'dividers': (internal_mesh != None), 'snap-tolerance': .1,
-                      'smoothing-iterations': 100, 'smoothing-lambda': 1})
+            merge_opts = {
+              'tolerance': join_tol,
+              'snap-tolerance': .1,
+              'smoothing-iterations': 10,
+              'smoothing-lambda': 0.1,
+              'smoothing-remesh-iterations': 3,
+            }
+            merge_opts.update(opts)
+
+            run('merge-surfaces', opts={'input': surfaces, 'output': joined, 'labels': regions, 'source-array': region_id_array_name, 'dividers': True, 'largest': True, 'verbose': 2, 'debug': 0, **merge_opts})
+
             if bs_cb_mesh and join_bs_cb:
+
                 run('calculate-element-wise', args=[joined], opts=[('cell-data', region_id_array_name),
                                                                    ('map', (-1, -3), (-2, -1), (-3, -2), (3, 7)),
                                                                    ('out', joined)])
@@ -1210,7 +1321,12 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
             info = evaluate_surface(joined, mesh=True, topology=True)
             num_boundaries = get_num_boundaries(info)
             if num_boundaries != 0:
-                raise Exception('Merged surface is non-closed, no. of boundaries: {}'.format(num_boundaries))
+                cleaned = push_output(stack, clean_cortical_surface(joined, **clean_kwargs))
+                info = evaluate_surface(cleaned, mesh=True, topology=True, intersections = True)
+                num_boundaries = get_num_boundaries(info)
+                if num_boundaries != 0:
+                    raise Exception('Merged surface is non-closed, no. of boundaries: {}'.format(num_boundaries))
+                joined = cleaned
             euler = get_euler_characteristic(info)
             if internal_mesh:
                 if bs_cb_mesh: expect_euler = 4
@@ -1219,9 +1335,10 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
             if euler != expect_euler:
                 raise Exception('Merged surface with dividers has unexpected Euler characteristic: {} (expected {})'.format(euler, expect_euler))
         # ensure there are no self-intersections of the joined surface mesh
+        #quit()
         checked = push_output(stack, nextname(joined))
         if force or not os.path.isfile(checked):
-            remove_intersections(joined, checked, max_attempt=10, smooth_iter=10)
+            remove_intersections(joined, checked, **fixup_kwargs)
         joined = checked
         # when brainstem+cerebellum surface given, but it should not be joined with the
         # cerebrum surface, remove triangles near brainstem cut and any triangles of the
@@ -1247,11 +1364,21 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
         if cortex_mask_array:
             with output(binarize_cortex(regions, temp=temp), delete=True) as mask:
                 joined = push_output(stack, add_cortex_mask(joined, mask, name=cortex_mask_array, region_id_array=region_id_array_name))
+            #quit()
             if check:
                 info = evaluate_surface(joined, mesh=True, opts=[('where', cortex_mask_array), ('gt', 0)])
                 num_components = get_num_components(info)
-                if num_components != 2:
+                if num_components > 2:
                     raise Exception("No. of cortex mask components: {} (expected 2)".format(num_components))
+                elif num_components == 1:
+                    # open the cortex mask
+                    print("num_components == 1, opening CortexMask")
+                    run('erode-scalars', args=[joined, joined], opts={'cell-data': cortex_mask_array, 'iterations': 3})
+                    run('dilate-scalars', args=[joined, joined], opts={'cell-data': cortex_mask_array, 'iterations': 3})
+                    info = evaluate_surface(joined, mesh=True, opts=[('where', cortex_mask_array), ('gt', 0)])
+                    num_components2 = get_num_components(info)
+                    if num_components2 != 2:
+                        raise Exception("No. of cortex mask components after opening: {} (expected 2)".format(num_components))
         # save divider(s) as separate surface mesh such that the inside of the
         # white surface is clearly defined when converting it to a binary mask
         # during the image edge-based refinement step below
@@ -1279,7 +1406,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                         subcortex_labels =[], subcortex_mask =None,
                         ventricles_labels=[], ventricles_mask=None, ventricles_dmap=None,
                         cerebellum_labels=[], cerebellum_mask=None, cerebellum_dmap=None,
-                        opts={}, temp=None, check=True, use_fast_collision=False):
+                        temp=None, check=True, use_fast_collision=False, opts={}, threads = 0):
     """Reconstruct white surface based on WM segmentation and/or WM/cGM image edge distance forces.
 
     By default, the 'distance' weight of the WM segmentation boundary force is zero,
@@ -1311,8 +1438,6 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
     cortex_mask_array : str
         Name of cortex mask cell data array. Only nodes adjacent to only cortical
         faces are deformed. Non-cortical surface nodes remain unchanged.
-    opts : dict, optional
-        Override default deform_mesh options.
     temp : str
         Path of temporary working directory. Intermediate files are written to
         this directory and deleted on exit unless the global `debug` flag is set.
@@ -1320,6 +1445,8 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
         as the output mesh file, i.e., the directory of `name`.
     check : bool
         Check final surface mesh for self-intersections and try to remove these.
+    opts : dict, optional
+        Override default deform_mesh options.
 
     Parameters of WM boundary distance force
     ----------------------------------------
@@ -1400,6 +1527,9 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
     else:
         temp = os.path.abspath(temp)
 
+    opts = {k.replace('_', '-'): v for k, v in opts.items()}
+    opts = {k[1:] if k.startswith('-') else k: v for k, v in opts.items()}
+
     with ExitStack() as stack:
 
         init_mesh = push_output(stack, nextname(name, temp=temp))
@@ -1417,6 +1547,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
 
         # deform surface towards WM/cGM image edges and/or WM segmentation boundary
         model_opts = {
+            'threads': threads,
             'distance': default_mask_distance_weight,
                 'distance-measure': 'normal',
                 'distance-threshold': 2.,
@@ -1446,6 +1577,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                 'min-active': '1%',
                 'reset-status': True,
                 'non-self-intersection': True,
+                'adjacent-collision-test': False,
                 'fast-collision-test': use_fast_collision,
                 'min-width': .1,
             'remesh': 1,
@@ -1455,7 +1587,8 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
         }
         model_opts.update(opts)
         if use_mask_distance:
-            model_opts['implicit-surface'] = push_output(stack, calculate_distance_map(wm_mask, temp=temp))
+            #model_opts['implicit-surface'] = push_output(stack, calculate_distance_map(wm_mask, temp=temp))
+            model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force.nii.gz'))
         else:
             remove_keys(model_opts, [
                 'distance',
@@ -1480,6 +1613,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                         ventricles_mask = push_output(stack, binarize(name=ventricles_mask, segmentation=segmentation, labels=ventricles_labels))
                     ventricles_dmap = push_output(stack, calculate_distance_map(ventricles_mask, temp=temp))
                 model_opts['ventricles-distance-image'] = ventricles_dmap
+                del model_opts['ventricles-distance-image']
             if (segmentation and cerebellum_labels) or cerebellum_mask or cerebellum_dmap:
                 if not cerebellum_dmap:
                     if not cerebellum_mask:
@@ -1536,7 +1670,21 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                 'min-edge-length',
                 'max-edge-length'
             ])
-        mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts))
+        first_white_mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug = False))
+
+        # select voxels that are in bright pericalcarine underneath the surface
+        # select connected components of pericalcarine pos image to add to the wm-force image
+        # rerun deform-mesh
+
+        # get the subject id from the temp directory
+        tempSplit = temp.split(os.sep);
+        subjectID = tempSplit[-2]
+        # print("subjectID: " + subjectID)
+        subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'SelectBrightPericalcarineFromWhite'), subjectID])
+
+        model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force_second.nii.gz'))
+        mesh = push_output(stack, deform_mesh(first_white_mesh, opts=model_opts, super_debug = False))
+
         if bs_cb_mesh:
             run('extract-pointset-cells', args=[mesh, mesh], opts=[('where', region_id_array), ('ne', 7)])
 
@@ -1548,7 +1696,11 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
             remove_intersections(smooth, oname=name, mask=status_array)
 
         # write output mesh
+        #del_mesh_attr(smooth, pointdata='NonInternalMask')
         del_mesh_attr(smooth, pointdata=status_array)
+
+
+        #$remesh_surface(smooth, name)
         rename(smooth, name)
 
     return name
@@ -1557,7 +1709,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
 def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                        bs_cb_mesh=None, brain_mask=None, remesh=0, outside_white_mesh=True,
                        region_id_array=_region_id_array, cortex_mask_array=_cortex_mask_array,
-                       opts={}, temp=None, check=True, use_fast_collision=False):
+                       temp=None, check=True, use_fast_collision=False, opts={}, threads = 0):
     """Reconstruct pial surface based on cGM/CSF image edge distance forces.
 
     When the pial surface is not allowed to intersect the white surface mesh
@@ -1606,15 +1758,15 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
         surface mesh, i.e., the pial surface may not intersect the `white_mesh`.
         This is recommended, but may currently fail for some cases when the
         blended offset surface intersects the white surface mesh after step 3.
-    opts : dict, optional
-        Override default deform_mesh options.
     temp : str, optional
         Path of temporary working directory. Intermediate files are written to
         this directory and deleted on exit unless the global `debug` flag is set.
         When not specified, intermediate files are written to the same directory
         as the output mesh file, i.e., the directory of `name`.
     check : bool
-        Check topology and consistency of intermediate surface meshes.
+        Check topology and consistency of intermediate surface meshes (unused).
+    opts : dict, optional
+        Override default deform_mesh options.
 
     Parameters of cGM boundary distance force
     -----------------------------------------
@@ -1651,9 +1803,8 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
         assert name, "Output file 'name' required"
         assert white_mesh, "White surface mesh required"
         assert gm_mask, "Gray matter segmentation mask required"
-        if use_edge_distance:
-            assert wm_mask, "White matter segmentation mask required"
-            assert t2w_image, "T2-weighted intensity image required"
+        assert wm_mask, "White matter segmentation mask required"
+        assert not use_edge_distance or t2w_image, "T2-weighted intensity image required"
 
     name = os.path.abspath(name)
     (base, ext) = splitext(name)
@@ -1664,6 +1815,9 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
         temp = os.path.dirname(name)
     else:
         temp = os.path.abspath(temp)
+
+    opts = {k.replace('_', '-'): v for k, v in opts.items()}
+    opts = {k[1:] if k.startswith('-') else k: v for k, v in opts.items()}
 
     with ExitStack() as stack:
 
@@ -1681,10 +1835,26 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             run('copy-pointset-attributes', args=[white_mesh, white_mesh, init_mesh], opts={'celldata-as-pointdata': [region_id_array, status_array], 'unanimous': None})
             run('calculate-element-wise', args=[init_mesh], opts=[('point-data', status_array), ('label', 7), ('set', 0), ('pad', 1), ('out', init_mesh, 'binary')])
 
-            # deform pial surface outwards a few millimeters
+            if brain_mask:
+               pial_mask = push_output(stack, os.path.join(temp, os.path.basename(base) + '-mask.nii.gz'))
+               run('calculate-element-wise', args=[
+                   wm_mask, '-mask', mask, '-pad', 1, '-reset-mask', '-mul', brain_mask,
+                   '-add', gm_mask, '-clamp', 0, 1, '-out', pial_mask, 'binary'
+               ])
             offset_mesh = push_output(stack, deform_mesh(init_mesh, opts={
+                'threads': threads,
+                'neighborhood': 3,
                 'normal-force': 1,
-                'curvature': 1,
+                'distance': default_mask_distance_weight,
+                    'distance-measure': 'normal',
+                    'distance-threshold': 2.,
+                    'distance-max-depth': 4.,
+                    'distance-hole-filling': False,
+                    'distance-averaging': 1,
+                'implicit-surface': pial_mask,
+                'mean-curvature': 1,
+                'mean-curvature-inside': 0.,
+                'mean-curvature-outside': 0.5,
                 'optimizer': 'EulerMethod',
                     'step': .1,
                     'steps': 100,
@@ -1694,7 +1864,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                     'min-distance': .1,
                     'min-active': '10%',
                     'delta': .0001
-            }))
+            }, super_debug = False))
             if debug == 0:
                 try_remove(init_mesh)
 
@@ -1709,16 +1879,19 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             # merge white surface mesh with initial pial surface mesh
             cortex_mesh = push_output(stack, nextname(blended_mesh))
             append_surfaces(cortex_mesh, surfaces=[white_mesh, blended_mesh], merge=True, tol=0)
+
+            # this in an attempt to fix the pial dfferent vertices problem
+            #append_surfaces(cortex_mesh, surfaces=[white_mesh, blended_mesh], merge=False)
             info = evaluate_surface(cortex_mesh, cortex_mesh, mesh=True, opts=[('where', cortex_mask_array), ('gt', 0)])
             run('calculate-element-wise', args=[cortex_mesh], opts=[('cell-data', cortex_mask_array), ('mask', 'BoundaryMask'), ('set', 0), ('out', cortex_mesh)])
             run('calculate-element-wise', args=[cortex_mesh], opts=[('cell-data', region_id_array),   ('mask', 'BoundaryMask'), ('add', 4), ('out', cortex_mesh)])
-            num_components = get_num_components(info)
-            if num_components < 2:
-                raise Exception("No. of cortex mask components: {} (expected 2)".format(num_components))
-            elif num_components > 2:
-                run('calculate-element-wise', args=[cortex_mesh],
-                    opts=[('cell-data', 'ComponentId'), ('threshold-gt', 2), ('pad', 0), ('mul', cortex_mask_array),
-                          ('clamp-above', 1), ('out', cortex_mesh, 'binary', cortex_mask_array)])
+            # num_components = get_num_components(info)
+            # if num_components < 2:
+            #     raise Exception("No. of cortex mask components: {} (expected 2)".format(num_components))
+            # elif num_components > 2:
+            #     run('calculate-element-wise', args=[cortex_mesh],
+            #         opts=[('cell-data', 'ComponentId'), ('threshold-gt', 2), ('pad', 0), ('mul', cortex_mask_array),
+            #               ('clamp-above', 1), ('out', cortex_mesh, 'binary', cortex_mask_array)])
             del_mesh_attr(cortex_mesh, name=['ComponentId', 'BoundaryMask'], celldata='DuplicatedMask')
             if debug == 0:
                 try_remove(blended_mesh)
@@ -1744,6 +1917,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
 
         # deform pial surface towards cGM segmentation boundary and/or cGM/CSF image edges
         model_opts = {
+            'threads': threads,
             'distance': default_mask_distance_weight,
                 'distance-measure': 'normal',
                 'distance-threshold': 2.,
@@ -1755,13 +1929,13 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'edge-distance-median': 1,
                 'edge-distance-smoothing': 1,
                 'edge-distance-averaging': [4, 2, 1],
-            'curvature': 2.,
             'gauss-curvature': .8,
                 'gauss-curvature-inside': 2.,
                 'gauss-curvature-outside': 1.,
                 'gauss-curvature-minimum': .1,
                 'gauss-curvature-maximum': .4,
                 'negative-gauss-curvature-action': 'inflate',
+            'curvature': 2.,
             'repulsion': 2.,
                 'repulsion-distance': .5,
                 'repulsion-width': 1.,
@@ -1773,9 +1947,10 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'min-active': '5%',
                 'reset-status': True,
                 'non-self-intersection': True,
-                'fast-collision-test': use_fast_collision,
+                'adjacent-collision-test': False,
+                'fast-collision-test': True,  # trying fast collision
                 'min-distance': .1,
-            'remesh': remesh,
+            'remesh': 0,
                 'min-edge-length': .3,
                 'max-edge-length': 2.,
                 # Inversion may cause edges at the bottom of sulci to change from running
@@ -1784,24 +1959,15 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 # contributes to smoothing out the sulci which should actually be preserved.
                 'triangle-inversion': False
         }
+        
         model_opts.update(opts)
         if use_mask_distance:
             pial_mask = push_output(stack, os.path.join(temp, os.path.basename(base) + '-mask.nii.gz'))
             makedirs(pial_mask)
-            if brain_mask:
-                run('calculate-element-wise', args=[
-                    wm_mask, '-mask', mask, '-pad', 1, '-reset-mask', '-mul', brain_mask,
-                    '-add', gm_mask, '-clamp', 0, 1, '-out', pial_mask, 'binary'
-                ])
-            else:
-                run('calculate-element-wise', args=[
-                    wm_mask, '-mask', mask, '-pad', 1, '-reset-mask',
-                    '-add', gm_mask, '-clamp', 0, 1, '-out', pial_mask, 'binary'
-                ])
-            pial_dmap = push_output(stack, calculate_distance_map(pial_mask, temp=temp))
+            model_opts['implicit-surface'] = os.path.join(temp, 'pial_force.nii.gz')
             if debug == 0:
                 try_remove(pial_mask)
-            model_opts['implicit-surface'] = pial_dmap
+            #model_opts['implicit-surface'] = pial_dmap
         else:
             remove_keys(model_opts, [
                 'implicit-surface',
@@ -1864,7 +2030,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'min-edge-length',
                 'max-edge-length'
             ])
-        mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts))
+        mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug = False))
         extract_surface(mesh, name, array=region_id_array, labels=[-1, -2, -3, 3, 4, 5, 6])
 
     return name

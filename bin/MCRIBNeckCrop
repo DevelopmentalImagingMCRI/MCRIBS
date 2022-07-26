@@ -1,0 +1,49 @@
+#!/bin/bash
+
+T2NECKCROPPED=T2NeckCropped
+T2NECKCROPPEDISO=T2NeckCroppedIsotropic
+
+if [ -z "$1" ]
+then
+        echo "Usage: $0 <subject id> [voxelsize]"
+	echo
+	echo "Performs neckcropping and conforming to isotropic"
+else
+	SUBJID=$1
+        if [ "x`imglob RawT2/${SUBJID}.nii*`" = "x" ]
+        then
+                echo "The Raw T2 file RawT2/$1 does not exist"
+                exit 1;
+        fi
+
+        mkdir -p $T2NECKCROPPED
+	
+	MCRIBNeckCropInitialCrop $SUBJID -no-initial-crop
+	export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=`nproc`
+	antsRegistrationSyNQuick.sh -m $T2NECKCROPPED/${SUBJID}_maxlabel_cropped.nii.gz -t a -d 3 -f $TEMPLATEDIR/Finaltemplate0.nii.gz -o $T2NECKCROPPED/${1}_to_std_affine
+	#fslmaths $T2NECKCROPPED/${1}_to_std_affineInverseWarped.nii.gz -thr 5 -bin $T2NECKCROPPED/${1}_brainmask.nii.gz -odt char
+	#echo `nproc`
+	fslmaths $T2NECKCROPPED/${1}_to_std_affineInverseWarped.nii.gz $T2NECKCROPPED/${1}_to_std_affineInverseWarped.nii.gz -odt float
+	mri_binarize --i $T2NECKCROPPED/${1}_to_std_affineInverseWarped.nii.gz --o $T2NECKCROPPED/${1}_brainmask.nii.gz --min 5 --dilate 1 --noverbose
+	ZBRAIN=`fslstats $T2NECKCROPPED/${1}_brainmask -w`
+	fslroi $T2NECKCROPPED/${1}_maxlabel_cropped $T2NECKCROPPED/${1} $ZBRAIN
+	imrm $T2NECKCROPPED/${1}_brainmask
+	imrm $T2NECKCROPPED/${1}_maxlabel_cropped
+	rm -f $T2NECKCROPPED/${1}_to_std*
+        
+	mkdir -p $T2NECKCROPPEDISO
+	
+	XSIZE=`fslsize $T2NECKCROPPED/${1} | grep -e "^pixdim1" | awk '{ print $2; }'`
+	YSIZE=`fslsize $T2NECKCROPPED/${1} | grep -e "^pixdim2" | awk '{ print $2; }'`
+	ZSIZE=`fslsize $T2NECKCROPPED/${1} | grep -e "^pixdim3" | awk '{ print $2; }'`
+	
+	if [ -z "$2" -o "$2" == "volumepreserve" ]
+	then
+		# voxel volume preserving size
+		# cube root of voxel volume
+		SZ=`echo $XSIZE $YSIZE $ZSIZE | awk '{ print ($1 * $2 * $3)^(1/3) }'`
+	else
+		SZ=$2
+	fi
+	ResampleImageBySpacing 3 $T2NECKCROPPED/${1}.nii.gz $T2NECKCROPPEDISO/${1}.nii.gz $SZ $SZ $SZ
+fi

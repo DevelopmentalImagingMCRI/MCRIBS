@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+
+import vtk
+import numpy
+import sys
+import os
+import getopt
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
+
+if len(args) != 1:
+    print("The number of arguments must be 1")
+    print(sys.argv[0] + " <vtp file>")
+    exit()
+
+numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
+
+inFileName = args[0]
+
+path, ext = os.path.splitext(inFileName)
+
+if ext == ".vtp":
+    Reader = vtk.vtkXMLPolyDataReader()
+elif ext == ".vtk":
+    Reader = vtk.vtkPolyDataReader()
+
+Reader.SetFileName(inFileName)
+Reader.Update()
+
+inFilePrefix = os.path.splitext(inFileName)[0]
+
+geometryNIIFile = None
+
+verbose = False
+for o, a in opts:
+    if o == '--surf-volgeom':
+        geometryNIIFile = a
+    if o == '-v':
+        verbose = True
+
+if verbose == True:
+    print(inFilePrefix)
+
+Data = Reader.GetOutput()
+Vrts = Data.GetVerts()
+indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
+
+S = dict()
+S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
+#print(S)
+S['vertices'] = numpy.stack(S['vertices']).T
+
+if Data.GetNumberOfPolys() > 0:
+    S['faces'] = [[int(Data.GetPolys().GetData().GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
+    S['faces'] = numpy.stack(S['faces']).T
+   
+print("Surface: " + inFileName)
+print("Vertices: " + str(S['vertices'].shape[1]))
+try:
+    print("Faces: " + str(S['faces'].shape[1]))
+    print("Highest face index: " + str(numpy.max(S['faces'])))
+    print("Lowest face index: " + str(numpy.min(S['faces'])))
+except KeyError:
+    print("No faces")
+
+# now do the point data arrays
+pointData = Data.GetPointData()
+print("Point data arrays")
+
+for arrayIDX in range(pointData.GetNumberOfArrays()):
+    curArrayName = pointData.GetArrayName(arrayIDX)
+    curArray = pointData.GetArray(arrayIDX)
+    curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
+    curArray = numpy.array(curArray)
+    print("\t" + curArrayName + " = shape: " + str(curArray.shape) + ", min: " + str(numpy.min(curArray)) + ", max: " + str(numpy.max(curArray)))
+
+
+cellData = Data.GetCellData()
+print("Cell data arrays")
+for arrayIDX in range(cellData.GetNumberOfArrays()):
+    curArrayName = cellData.GetArrayName(arrayIDX)
+    curArray = cellData.GetArray(arrayIDX)
+    curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
+    curArray = numpy.array(curArray)
+    print("\t" + curArrayName + " = shape: " + str(curArray.shape) + ", min: " + str(numpy.min(curArray)) + ", max: " + str(numpy.max(curArray)))

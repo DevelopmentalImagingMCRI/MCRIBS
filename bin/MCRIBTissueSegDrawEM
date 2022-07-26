@@ -26,14 +26,14 @@ then
 	echo "Input file not found"
 else
 	mkdir -p $DRAWEMOUTDIR
-	if [ ! -f "$DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz" ]
-	then
+	#if [ ! -f "$DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz" ]
+	#then
 		`dirname $0`/.././MIRTK/MIRTK/Packages/DrawEM/pipelines/neonatal-pipeline-v1.1.sh $INDIR/${SUBJID}.nii.gz $SUBJAGE -d $DRAWEMOUTDIR -t $OMP_NUM_THREADS -c 0 -p 1 -v 1
-	fi
+	#fi
 
 	# copy the brain mask and label files to the global tissue seg directory
-	cp $DRAWEMOUTDIR/segmentations/${SUBJID}_brain_mask.nii.gz $OUTDIR
-	cp $DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz $OUTDIR
+	#cp $DRAWEMOUTDIR/segmentations/${SUBJID}_brain_mask.nii.gz $OUTDIR
+	#cp $DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz $OUTDIR
 
 	# we need to make the freesurfer directories
 	mkdir -p freesurfer/$SUBJID
@@ -43,11 +43,20 @@ else
 	cd $P
 	mri_convert $INDIR/${SUBJID}.nii.gz freesurfer/$SUBJID/mri/T2.mgz
 
-	ln -sf T2.mgz freesurfer/$SUBJID/mri/orig.mgz
-	ln -sf T2.mgz freesurfer/$SUBJID/mri/brain.mgz
-	mri_convert TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz freesurfer/$SUBJID/mri/norm.mgz
-	ln -sf ../TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_t2w_restore.nii.gz
-	
+	#ln -sf T2.mgz freesurfer/$SUBJID/mri/orig.mgz
+	#ln -sf T2.mgz freesurfer/$SUBJID/mri/brain.mgz
+	rm -f freesurfer/$SUBJID/mri/orig.mgz freesurfer/$SUBJID/mri/brain.mgz
+
+	#mri_convert TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz freesurfer/$SUBJID/mri/norm.mgz
+	#m -f TissueSeg/${SUBJID}_t2w_restore.nii.gz
+	if [ -f "TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz" ]
+	then
+		rm -f TissueSeg/${SUBJID}_t2w_restore.nii.gz
+		cp TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_t2w_restore.nii.gz
+	fi
+	mri_convert TissueSeg/${SUBJID}_t2w_restore.nii.gz freesurfer/$SUBJID/mri/norm.mgz
+	#cp TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_t2w_restore.nii.gz
+
 	mri_mask freesurfer/$SUBJID/mri/T2.mgz TissueSeg/${SUBJID}_brain_mask.nii.gz freesurfer/$SUBJID/mri/brainmask.mgz
 
 	#DRAWEMIMAGE=$DRAWEMOUTDIR/segmentations/${SUBJID}_all_labels.nii.gz
@@ -55,7 +64,8 @@ else
 	# initially it is a link, if it is overwritten with a file then the manedit is used
 	if [ ! -f "$OUTDIR/${SUBJID}_all_labels_manedit.nii.gz" ]
 	then
-		ln -sf ${SUBJID}_all_labels.nii.gz $OUTDIR/${SUBJID}_all_labels_manedit.nii.gz
+		#ln -sf ${SUBJID}_all_labels.nii.gz $OUTDIR/${SUBJID}_all_labels_manedit.nii.gz
+		cp $OUTDIR/${SUBJID}_all_labels.nii.gz $OUTDIR/${SUBJID}_all_labels_manedit.nii.gz
 	fi
 	DRAWEMIMAGE=$OUTDIR/${SUBJID}_all_labels_manedit.nii.gz
 	ASEGIMAGE=freesurfer/$SUBJID/mri/aseg.presurf.preunwmfix.mgz

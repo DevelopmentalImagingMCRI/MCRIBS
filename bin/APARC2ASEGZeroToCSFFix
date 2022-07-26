@@ -30,8 +30,8 @@ if not os.path.isfile(ASEGPresurfFileName):
 ASEGNII = nibabel.load(ASEGFileName)
 ASEGPresurfNII = nibabel.load(ASEGPresurfFileName)
 
-ASEGIMG = ASEGNII.get_data()
-ASEGPresurfIMG = ASEGPresurfNII.get_data()
+ASEGIMG = numpy.int32(ASEGNII.get_fdata())
+ASEGPresurfIMG = numpy.int32(ASEGPresurfNII.get_fdata())
 
 NewASEGIMG = numpy.array(ASEGIMG)
 
@@ -40,5 +40,4 @@ FSCSFLabel = 24
 NewASEGIMG[numpy.logical_and(ASEGIMG == 0, ASEGPresurfIMG > 0)] = FSCSFLabel
 
 NewASEGNII = nibabel.MGHImage(NewASEGIMG, ASEGNII.affine, ASEGNII.header)
-
 nibabel.save(NewASEGNII, OutFileName)

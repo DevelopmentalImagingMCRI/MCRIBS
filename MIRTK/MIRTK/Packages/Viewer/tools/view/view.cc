@@ -1,14 +1,20 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Image.h>
 #include <mirtk/Transformation.h>
@@ -17,13 +23,16 @@
 
 #include "Fl_RViewUI.h"
 
-Fl_RViewUI  *rviewUI;
-Fl_RView    *viewer;
-RView    *rview;
+// The following global pointers are initialize by constructor Fl_RViewUI
+// by calling Fl_RViewUI::InitializeMainWindow() (cf. Fl_RViewUI.cc).
+Fl_RViewUI *rviewUI;
+Fl_RView *viewer;
+RView *rview;
+
 
 void usage()
 {
-  cerr << "Usage: rview [target] <source <dofin>> <options>\n";
+  cerr << "Usage: view [target] <source <dofin>> <options>\n";
   cerr << "Where <options> can be one or more of the following:\n";
   cerr << "\t<-config           file.cnf>     Rview configuration file\n";
   cerr << "\t<-target_landmarks file.vtk>     Target landmarks (vtkPolyData)\n";
@@ -64,6 +73,7 @@ void usage()
   cerr << "\t<-tcolor color>                  Target image color\n";
   cerr << "\t<-scolor color>                  Source image color\n";
   cerr << "\t   where color is  <red | blue | green | rainbow>\n";
+  cerr << "\t<-line value>                    Line thickness\n";
   cerr << "\t<-diff>                          Subtraction view\n";
   cerr << "\t<-tcontour>                      Switch on target contours (see -tmin)\n";
   cerr << "\t<-scontour>                      Switch on source contours (see -smin)\n";
@@ -78,7 +88,7 @@ void usage()
 
 int main(int argc, char **argv)
 {
-  int ok;
+  bool ok;
   int filename_argc;
   char **filename_argv;
 
@@ -109,7 +119,7 @@ int main(int argc, char **argv)
   }
   while (argc > 1) {
     ok = false;
-    if ((ok == false) && (strcmp(argv[1], "-target") == 0)) {
+    if (!ok && (strcmp(argv[1], "-target") == 0)) {
       argc--;
       argv++;
 
@@ -127,7 +137,7 @@ int main(int argc, char **argv)
       rview->ReadTarget(filename_argc, filename_argv);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-source") == 0)) {
+    if (!ok && (strcmp(argv[1], "-source") == 0)) {
       argc--;
       argv++;
 
@@ -145,7 +155,7 @@ int main(int argc, char **argv)
       rview->ReadSource(filename_argc, filename_argv);
       ok = true;
     }
-    if ( (ok == false) && (strcmp(argv[1], "-dofin") == 0)) {
+    if ( !ok && (strcmp(argv[1], "-dofin") == 0)) {
       argc--;
       argv++;
       //rview->ReadTransformation(argv[1]);
@@ -159,7 +169,7 @@ int main(int argc, char **argv)
       }
       ok = true;
     }
-    if ( (ok == false) && (strcmp(argv[1], "-config") == 0)) {
+    if ( !ok && (strcmp(argv[1], "-config") == 0)) {
       argc--;
       argv++;
       rview->Read(argv[1]);
@@ -167,7 +177,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ( (ok == false) && (strcmp(argv[1], "-target_landmarks") == 0)) {
+    if ( !ok && (strcmp(argv[1], "-target_landmarks") == 0)) {
       argc--;
       argv++;
       rview->ReadTargetLandmarks(argv[1]);
@@ -176,7 +186,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ( (ok == false) && (strcmp(argv[1], "-source_landmarks") == 0)) {
+    if ( !ok && (strcmp(argv[1], "-source_landmarks") == 0)) {
       argc--;
       argv++;
       rview->ReadSourceLandmarks(argv[1]);
@@ -186,7 +196,7 @@ int main(int argc, char **argv)
       ok = true;
     }
 #ifdef HAVE_VTK
-    if ( (ok == false) && (strcmp(argv[1], "-object") == 0)) {
+    if ( !ok && (strcmp(argv[1], "-object") == 0)) {
       argc--;
       argv++;
       do {
@@ -197,147 +207,147 @@ int main(int argc, char **argv)
       rview->DisplayObjectOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-object_warp") == 0)) {
+    if (!ok && (strcmp(argv[1], "-object_warp") == 0)) {
       argc--;
       argv++;
       rview->DisplayObjectWarpOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-object_grid") == 0)) {
+    if (!ok && (strcmp(argv[1], "-object_grid") == 0)) {
       argc--;
       argv++;
       rview->DisplayObjectGridOn();
       ok = true;
     }
 #endif
-    if ((ok == false) && (strcmp(argv[1], "-xy") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xz") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xz") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XZ);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-yz") == 0)) {
+    if (!ok && (strcmp(argv[1], "-yz") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_YZ);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xy_xz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy_xz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY_XZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xy_yz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy_yz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY_YZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xz_yz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xz_yz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XZ_YZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xy_xz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy_xz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY_XZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xy_yz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy_yz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY_YZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xz_yz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xz_yz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XZ_YZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xy_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xy_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XY_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_yz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_yz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_YZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xy_xz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xy_xz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XY_XZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xy_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xy_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XY_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_yz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_yz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_YZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xy_xz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xy_xz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XY_XZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-cursor") == 0)) {
+    if (!ok && (strcmp(argv[1], "-cursor") == 0)) {
       argc--;
       argv++;
       rview->DisplayCursorOff();
       rview->DisplayAxisLabelsOff();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-grid") == 0)) {
+    if (!ok && (strcmp(argv[1], "-grid") == 0)) {
       argc--;
       argv++;
       rview->DisplayDeformationGridOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-points") == 0)) {
+    if (!ok && (strcmp(argv[1], "-points") == 0)) {
       argc--;
       argv++;
       rview->DisplayDeformationPointsOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-arrow") == 0)) {
+    if (!ok && (strcmp(argv[1], "-arrow") == 0)) {
       argc--;
       argv++;
       rview->DisplayDeformationArrowsOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-tmax") == 0)) {
+    if (!ok && (strcmp(argv[1], "-tmax") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMaxTarget(atof(argv[1]));
@@ -345,7 +355,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-tmin") == 0)) {
+    if (!ok && (strcmp(argv[1], "-tmin") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMinTarget(atof(argv[1]));
@@ -353,7 +363,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-smax") == 0)) {
+    if (!ok && (strcmp(argv[1], "-smax") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMaxSource(atof(argv[1]));
@@ -361,7 +371,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-smin") == 0)) {
+    if (!ok && (strcmp(argv[1], "-smin") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMinSource(atof(argv[1]));
@@ -369,7 +379,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-sub_max") == 0)) {
+    if (!ok && (strcmp(argv[1], "-sub_max") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMaxSubtraction(atof(argv[1]));
@@ -377,7 +387,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-sub_min") == 0)) {
+    if (!ok && (strcmp(argv[1], "-sub_min") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMinSubtraction(atof(argv[1]));
@@ -385,7 +395,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-res") == 0)) {
+    if (!ok && (strcmp(argv[1], "-res") == 0)) {
       argc--;
       argv++;
       rview->SetResolution(atof(argv[1]));
@@ -393,7 +403,7 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-origin") == 0)) {
+    if (!ok && (strcmp(argv[1], "-origin") == 0)) {
       argc--;
       argv++;
       rview->SetOrigin(atof(argv[1]), atof(argv[2]), atof(argv[3]));
@@ -405,80 +415,80 @@ int main(int argc, char **argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-nn") == 0)) {
+    if (!ok && (strcmp(argv[1], "-nn") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_NN);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_NN);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-linear") == 0)) {
+    if (!ok && (strcmp(argv[1], "-linear") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_Linear);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_Linear);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-cspline") == 0)) {
+    if (!ok && (strcmp(argv[1], "-cspline") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_CSpline);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_CSpline);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-bspline") == 0)) {
+    if (!ok && (strcmp(argv[1], "-bspline") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_BSpline);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_BSpline);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-sinc") == 0)) {
+    if (!ok && (strcmp(argv[1], "-sinc") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_Sinc);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_Sinc);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-view_target") == 0)) {
+    if (!ok && (strcmp(argv[1], "-view_target") == 0)) {
       rview->SetViewMode(View_A);
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-view_source") == 0)) {
+    if (!ok && (strcmp(argv[1], "-view_source") == 0)) {
       rview->SetViewMode(View_B);
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-mix") == 0)) {
+    if (!ok && (strcmp(argv[1], "-mix") == 0)) {
       rview->SetViewMode(View_Checkerboard);
       argv++;
       argc--;
       ok = true;
     }
 
-    if ((ok == false) && (strcmp(argv[1], "-diff") == 0)){
+    if (!ok && (strcmp(argv[1], "-diff") == 0)){
       rview->SetViewMode(View_Subtraction);
       argv++;
       argc--;
       ok = true;
     }
 
-    if ((ok == false) && (strcmp(argv[1], "-tcontour") == 0)){
+    if (!ok && (strcmp(argv[1], "-tcontour") == 0)){
       rview->DisplayTargetContoursOn();
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-scontour") == 0)){
+    if (!ok && (strcmp(argv[1], "-scontour") == 0)){
       rview->DisplaySourceContoursOn();
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-seg") == 0)){
+    if (!ok && (strcmp(argv[1], "-seg") == 0)){
       argv++;
       argc--;
       rview->ReadSegmentation(argv[1]);
@@ -488,7 +498,7 @@ int main(int argc, char **argv)
       ok = true;
     }
 
-    if ((ok == false) && (strcmp(argv[1], "-lut") == 0)){
+    if (!ok && (strcmp(argv[1], "-lut") == 0)){
       argv++;
       argc--;
       rview->GetSegmentTable()->Read(argv[1]);
@@ -499,7 +509,9 @@ int main(int argc, char **argv)
       ok = true;
     }
 
-    if ((ok == false) && (strcmp(argv[1], "-line_thickness") == 0)){
+    if (!ok && (strcmp(argv[1], "-line") == 0 ||
+                          strcmp(argv[1], "-line-thickness") == 0 ||
+                          strcmp(argv[1], "-line_thickness") == 0)){
       argv++;
       argc--;
       double val = atof(argv[1]);
@@ -511,7 +523,7 @@ int main(int argc, char **argv)
       ok = true;
     }
 
-    if ((ok == false) && (strcmp(argv[1], "-tcolor") == 0)) {
+    if (!ok && (strcmp(argv[1], "-tcolor") == 0)) {
       argc--;
       argv++;
       if (strcmp(argv[1], "red") == 0) {
@@ -542,7 +554,7 @@ int main(int argc, char **argv)
         }
       }
     }
-    if ((ok == false) && (strcmp(argv[1], "-scolor") == 0)) {
+    if (!ok && (strcmp(argv[1], "-scolor") == 0)) {
       argc--;
       argv++;
       if (strcmp(argv[1], "red") == 0) {
@@ -573,35 +585,37 @@ int main(int argc, char **argv)
         }
       }
     }
-    if ((ok == false) && (strcmp(argv[1], "-labels") == 0)){
+    if (!ok && (strcmp(argv[1], "-labels") == 0)){
       argv++;
       argc--;
       rview->SegmentationContoursOff();
       rview->SegmentationLabelsOn();
       rview->SegmentationUpdateOn();
       ok = true;
-    }    
+    }
     // Ignore the following display specific options
-    if ((ok == false) && (strcmp(argv[1], "-x") == 0)) {
+    if (!ok && (strcmp(argv[1], "-x") == 0)) {
       argc--;
       argv++;
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-y") == 0)) {
+    if (!ok && (strcmp(argv[1], "-y") == 0)) {
       argc--;
       argv++;
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-offscreen") == 0)) {
+    if (!ok && (strcmp(argv[1], "-offscreen") == 0)) {
+      argv++;
+      argc--;
       argv++;
       argc--;
       ok = true;
     }
-    if (ok == false) {
+    if (!ok) {
       cerr << "Unknown argument: " << argv[1] << endl;
       exit(1);
     }

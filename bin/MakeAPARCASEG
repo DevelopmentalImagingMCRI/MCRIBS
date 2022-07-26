@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import getopt
+import scipy.ndimage
+import freesurfer
+import scipy.ndimage.morphology
+
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+#@profile
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['lh-offset', 'rh-offset'])
+
+if len(args) != 2:
+    print(sys.argv[0] + " <subject id> <parc scheme>")
+    exit()
+
+LHOffset = 1000
+RHOffset = 2000
+
+verbose = False
+for o, a in opts:
+    if o == '-v':
+        verbose = True
+
+SubjId = args[0]
+ParcScheme = args[1]
+
+ASEGMGZ = nibabel.load(os.path.join('freesurfer', SubjId, 'mri', 'aseg.mgz'))
+ASEGIMG = numpy.int16(ASEGMGZ.get_fdata())
+
+ASEGVox2RASTKR = numpy.matrix(ASEGMGZ.header.get_vox2ras_tkr())
+ASEGRASTKR2Vox = numpy.linalg.inv(ASEGVox2RASTKR)
+
+LHWhiteSurf = freesurfer.readSurf(os.path.join('freesurfer', SubjId, 'surf', 'lh.white'))
+RHWhiteSurf = freesurfer.readSurf(os.path.join('freesurfer', SubjId, 'surf', 'rh.white'))
+LHPialSurf = freesurfer.readSurf(os.path.join('freesurfer', SubjId, 'surf', 'lh.pial'))
+RHPialSurf = freesurfer.readSurf(os.path.join('freesurfer', SubjId, 'surf', 'rh.pial'))
+
+LHCortexLabel = freesurfer.readLabel(os.path.join('freesurfer', SubjId, 'label', 'lh.cortex.label'))
+RHCortexLabel = freesurfer.readLabel(os.path.join('freesurfer', SubjId, 'label', 'rh.cortex.label'))
+
+LHParc = freesurfer.readAnnot(os.path.join('freesurfer', SubjId, 'label', 'lh.' + ParcScheme + '.annot'))
+RHParc = freesurfer.readAnnot(os.path.join('freesurfer', SubjId, 'label', 'rh.' + ParcScheme + '.annot'))
+
+# make a mid surface in TKR space
+LHMidTKR = (LHWhiteSurf['vertices'] + LHPialSurf['vertices']) / 2
+RHMidTKR = (RHWhiteSurf['vertices'] + RHPialSurf['vertices']) / 2
+
+# transfer surfaces to Vox space
+LHMidVox = numpy.array(numpy.matrix(ASEGRASTKR2Vox[0:3, 0:3]) * numpy.matrix(LHMidTKR) + numpy.atleast_2d(ASEGRASTKR2Vox[0:3, 3].ravel()).T)
+RHMidVox = numpy.array(numpy.matrix(ASEGRASTKR2Vox[0:3, 0:3]) * numpy.matrix(RHMidTKR) + numpy.atleast_2d(ASEGRASTKR2Vox[0:3, 3].ravel()).T)
+
+# extract the cortical vertices
+LHMidVox = numpy.take(LHMidVox, LHCortexLabel['index'], axis = 1)
+RHMidVox = numpy.take(RHMidVox, RHCortexLabel['index'], axis = 1)
+
+NewIMG = numpy.zeros_like(ASEGIMG)
+NewIMG[(numpy.int16(numpy.floor(LHMidVox[0])), numpy.int16(numpy.floor(LHMidVox[1])), numpy.int16(numpy.floor(LHMidVox[2])))] = LHParc['seg'][LHCortexLabel['index']] + LHOffset
+NewIMG[(numpy.int16(numpy.floor(LHMidVox[0])), numpy.int16(numpy.floor(LHMidVox[1])), numpy.int16( numpy.ceil(LHMidVox[2])))] = LHParc['seg'][LHCortexLabel['index']] + LHOffset
+NewIMG[(numpy.int16(numpy.floor(LHMidVox[0])), numpy.int16( numpy.ceil(LHMidVox[1])), numpy.int16(numpy.floor(LHMidVox[2])))] = LHParc['seg'][LHCortexLabel['index']] + LHOffset
+NewIMG[(numpy.int16(numpy.floor(LHMidVox[0])), numpy.int16( numpy.ceil(LHMidVox[1])), numpy.int16( numpy.ceil(LHMidVox[2])))] = LHParc['seg'][LHCortexLabel['index']] + LHOffset
+NewIMG[(numpy.int16( numpy.ceil(LHMidVox[0])), numpy.int16(numpy.floor(LHMidVox[1])), numpy.int16(numpy.floor(LHMidVox[2])))] = LHParc['seg'][LHCortexLabel['index']] + LHOffset
+NewIMG[(numpy.int16( numpy.ceil(LHMidVox[0])), numpy.int16(numpy.floor(LHMidVox[1])), numpy.int16( numpy.ceil(LHMidVox[2])))] = LHParc['seg'][LHCortexLabel['index']] + LHOffset
+NewIMG[(numpy.int16( numpy.ceil(LHMidVox[0])), numpy.int16( numpy.ceil(LHMidVox[1])), numpy.int16(numpy.floor(LHMidVox[2])))] = LHParc['seg'][LHCortexLabel['index']] + LHOffset
+NewIMG[(numpy.int16( numpy.ceil(LHMidVox[0])), numpy.int16( numpy.ceil(LHMidVox[1])), numpy.int16( numpy.ceil(LHMidVox[2])))] = LHParc['seg'][LHCortexLabel['index']] + LHOffset
+NewIMG[(numpy.int16(numpy.floor(RHMidVox[0])), numpy.int16(numpy.floor(RHMidVox[1])), numpy.int16(numpy.floor(RHMidVox[2])))] = RHParc['seg'][RHCortexLabel['index']] + RHOffset
+NewIMG[(numpy.int16(numpy.floor(RHMidVox[0])), numpy.int16(numpy.floor(RHMidVox[1])), numpy.int16( numpy.ceil(RHMidVox[2])))] = RHParc['seg'][RHCortexLabel['index']] + RHOffset
+NewIMG[(numpy.int16(numpy.floor(RHMidVox[0])), numpy.int16( numpy.ceil(RHMidVox[1])), numpy.int16(numpy.floor(RHMidVox[2])))] = RHParc['seg'][RHCortexLabel['index']] + RHOffset
+NewIMG[(numpy.int16(numpy.floor(RHMidVox[0])), numpy.int16( numpy.ceil(RHMidVox[1])), numpy.int16( numpy.ceil(RHMidVox[2])))] = RHParc['seg'][RHCortexLabel['index']] + RHOffset
+NewIMG[(numpy.int16( numpy.ceil(RHMidVox[0])), numpy.int16(numpy.floor(RHMidVox[1])), numpy.int16(numpy.floor(RHMidVox[2])))] = RHParc['seg'][RHCortexLabel['index']] + RHOffset
+NewIMG[(numpy.int16( numpy.ceil(RHMidVox[0])), numpy.int16(numpy.floor(RHMidVox[1])), numpy.int16( numpy.ceil(RHMidVox[2])))] = RHParc['seg'][RHCortexLabel['index']] + RHOffset
+NewIMG[(numpy.int16( numpy.ceil(RHMidVox[0])), numpy.int16( numpy.ceil(RHMidVox[1])), numpy.int16(numpy.floor(RHMidVox[2])))] = RHParc['seg'][RHCortexLabel['index']] + RHOffset
+NewIMG[(numpy.int16( numpy.ceil(RHMidVox[0])), numpy.int16( numpy.ceil(RHMidVox[1])), numpy.int16( numpy.ceil(RHMidVox[2])))] = RHParc['seg'][RHCortexLabel['index']] + RHOffset
+NotGM = numpy.logical_not(numpy.logical_or(ASEGIMG == 3, ASEGIMG == 42))
+NewIMG[NotGM] = 0
+
+DIndices = scipy.ndimage.morphology.distance_transform_edt(NewIMG == 0, sampling=ASEGMGZ.header.get_zooms(), return_distances=False, return_indices=True)
+
+NewIMG = NewIMG[(DIndices[0], DIndices[1], DIndices[2])]
+del DIndices
+NewIMG[NotGM] = ASEGIMG[NotGM]
+
+NewMGZ = nibabel.MGHImage(NewIMG, ASEGMGZ.affine, ASEGMGZ.header)
+nibabel.save(NewMGZ, os.path.join('freesurfer', SubjId, 'mri', ParcScheme + '+aseg.mgz'))

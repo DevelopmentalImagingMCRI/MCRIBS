@@ -22,20 +22,29 @@
 # @brief Build configuration of MIRTK Viewer tools.
 ##############################################################################
 
-mirtk_add_executable(
-  display
-  DEPENDS
-    LibCommon
-    LibNumerics
-    LibImage
-    LibIO
-    LibPointSet
-    LibTransformation
-    LibViewer
-    ${VTK_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-    ${GLUT_LIBRARIES}
-)
+if(GLUT_FOUND OR FreeGLUT_FOUND)
+
+  if(TARGET FreeGLUT::freeglut_static)
+    set(GLUT_LIBRARIES FreeGLUT::freeglut_static)
+  elseif(TARGET FreeGLUT::freeglut)
+    set(GLUT_LIBRARIES FreeGLUT::freeglut)
+  endif()
+
+  mirtk_add_executable(
+    display
+    DEPENDS
+      LibCommon
+      LibNumerics
+      LibImage
+      LibIO
+      LibPointSet
+      LibTransformation
+      LibViewer
+      ${VTK_LIBRARIES}
+      ${GLUT_LIBRARIES}
+      ${OPENGL_LIBRARIES}
+  )
+endif()
 
 if(FLTK_FOUND)
   add_subdirectory(view)

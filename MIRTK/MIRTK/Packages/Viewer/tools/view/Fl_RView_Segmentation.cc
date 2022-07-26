@@ -1,14 +1,20 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Image.h>
 #include <mirtk/Transformation.h>
@@ -192,7 +198,7 @@ void Fl_RViewUI::AddSegment(int label)
   rviewUI->_vis   = true;
 
   rviewUI->editSegmentLabel->value(rviewUI->_label);
-  rviewUI->editSegmentTransperancy->value(rviewUI->_trans);
+  rviewUI->editSegmentTransparency->value(rviewUI->_trans);
   rviewUI->editSegmentVisibility->value(rviewUI->_vis);
   rviewUI->editSegmentColor->color(fl_rgb_color(rviewUI->_red, rviewUI->_green, rviewUI->_blue));
   rview->GetSegmentTable()->Set(rviewUI->_id, rviewUI->_label, rviewUI->_red, rviewUI->_green, rviewUI->_blue, rviewUI->_trans, rviewUI->_vis);
@@ -255,7 +261,7 @@ void Fl_RViewUI::cb_displaySegmentContours(Fl_Check_Button *o, void *)
 void Fl_RViewUI::cb_selectAll(Fl_Check_Button *, void *)
 {
   //if (o->value() == 1){
-  for (int j=0; j<100; j++)
+  for (int j=0; j < rview->GetSegmentTable()->Size(); j++)
     if ( rview->GetSegmentTable()->IsValid(j) == true) {
       rview->GetSegmentTable()->SetVisibility(j,1);
     }
@@ -269,7 +275,7 @@ void Fl_RViewUI::cb_selectAll(Fl_Check_Button *, void *)
 
 void Fl_RViewUI::cb_deselectAll(Fl_Check_Button *, void *)
 {
-  for (int j=0; j<100; j++) {
+  for (int j=0; j < rview->GetSegmentTable()->Size(); j++) {
     if (rview->GetSegmentTable()->IsValid(j) == true) {
       rview->GetSegmentTable()->SetVisibility(j, 0);
     }
@@ -327,7 +333,7 @@ void Fl_RViewUI::cb_editSegmentPickColor(Fl_Button *, void *)
   viewer->redraw();
 }
 
-void Fl_RViewUI::cb_editSegmentTransperancy(Fl_Slider* o, void *)
+void Fl_RViewUI::cb_editSegmentTransparency(Fl_Slider* o, void *)
 {
   rviewUI->_trans = o->value();
 
@@ -450,8 +456,8 @@ void Fl_RViewUI::UpdateSegmentationControlWindow()
   if (rviewUI->_id == -1) {
     rviewUI->editSegmentColor->color(fl_rgb_color(255, 255, 255));
     rviewUI->editSegmentColor->deactivate();
-    rviewUI->editSegmentTransperancy->value(1);
-    rviewUI->editSegmentTransperancy->deactivate();
+    rviewUI->editSegmentTransparency->value(1);
+    rviewUI->editSegmentTransparency->deactivate();
     rviewUI->editSegmentVisibility->value(1);
     rviewUI->editSegmentVisibility->deactivate();
     rviewUI->editSegmentLabel->value("");
@@ -459,8 +465,8 @@ void Fl_RViewUI::UpdateSegmentationControlWindow()
   } else {
     rviewUI->editSegmentColor->color(fl_rgb_color(rviewUI->_red, rviewUI->_green, rviewUI->_blue));
     rviewUI->editSegmentColor->activate();
-    rviewUI->editSegmentTransperancy->value(rviewUI->_trans);
-    rviewUI->editSegmentTransperancy->activate();
+    rviewUI->editSegmentTransparency->value(rviewUI->_trans);
+    rviewUI->editSegmentTransparency->activate();
     rviewUI->editSegmentVisibility->value(rviewUI->_vis);
     rviewUI->editSegmentVisibility->activate();
     rviewUI->editSegmentLabel->value(rviewUI->_label);
@@ -566,12 +572,12 @@ void Fl_RViewUI::InitializeSegmentationControlWindow()
         o->callback((Fl_Callback*)cb_editSegmentLabel);
       }
       {
-        Fl_Slider *o = editSegmentTransperancy = new Fl_Value_Slider(10, 345, 370, 20, "Transperancy");
+        Fl_Slider *o = editSegmentTransparency = new Fl_Value_Slider(10, 345, 370, 20, "Transparency");
         o->minimum(0);
         o->maximum(1);
         o->box(FL_EMBOSSED_BOX);
         o->type(5);
-        o->callback((Fl_Callback*)cb_editSegmentTransperancy);
+        o->callback((Fl_Callback*)cb_editSegmentTransparency);
         o->align(FL_ALIGN_TOP_LEFT);
       }
       {

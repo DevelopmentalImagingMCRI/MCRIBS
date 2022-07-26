@@ -47,7 +47,7 @@ RHPialSurfFileName = os.path.join(SubjectsDir, SubjectID, 'surf', 'rh.pial')
 T2IMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'T1.mgz')
 
 if not os.path.isfile(T2IMGFileName):
-    T2IMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'T2.mgz')
+    T2IMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'norm.mgz')
 
 RibbonIMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'ribbon.mgz')
 BrainmaskIMGFileName = os.path.join(SubjectsDir, SubjectID, 'mri', 'brainmask.mgz')
@@ -67,18 +67,18 @@ CTABTable.index.name = 'SegId'
 CTABTable = CTABTable.loc[CTABTable.index > 0]
 
 ASEGNII = nibabel.load(ASEGFileName)
-ASEGIMG = ASEGNII.get_data()
+ASEGIMG = numpy.asanyarray(ASEGNII.dataobj)
 
 voxelSize = numpy.prod(ASEGNII.header.get_zooms())
 
 T2NII = nibabel.load(T2IMGFileName)
-T2IMG = T2NII.get_data()
+T2IMG = numpy.asanyarray(T2NII.dataobj)
 
 RibbonNII = nibabel.load(RibbonIMGFileName)
-RibbonIMG = RibbonNII.get_data()
+RibbonIMG = numpy.int8(RibbonNII.get_fdata())
 
 BrainmaskNII = nibabel.load(BrainmaskIMGFileName)
-BrainmaskIMG = BrainmaskNII.get_data()
+BrainmaskIMG = numpy.asanyarray(BrainmaskNII.dataobj)
 
 doingLabelTable = False
 
@@ -106,6 +106,9 @@ if doingLabelTable == True:
     outDF.Volume_mm3 = outDF.NVoxels * voxelSize
     outDF.normRange = outDF.normMax - outDF.normMin
 else:
+    if not os.path.isfile(SegStatsFileName):
+        print("Cant find segstats stats for " + SubjectID)
+        quit()
     outDF = pandas.read_table(SegStatsFileName, comment = '#', header = None, delim_whitespace = True)
     outDF.columns = ['Index', 'SegId', 'NVoxels', 'Volume_mm3', 'StructName', 'normMean', 'normStdDev', 'normMin', 'normMax', 'normRange']
 
@@ -172,7 +175,7 @@ FID.write("# Title Segmentation Statistics\n")
 FID.write("#\n")
 FID.write("# SUBJECTS_DIR " + SubjectsDir + "\n")
 FID.write("# subjectname " + SubjectID + "\n")
- 
+
 # if ribbon == GM and aseg is not WM or GM then erase from GM volume
 
 #        if (ribbonid == 3 && asegid != 3 && asegid != 2 && asegid != 0) lhCtxGMCor += VoxelVol;

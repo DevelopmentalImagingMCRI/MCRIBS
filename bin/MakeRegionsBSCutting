@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage
+import numpy.linalg
+import scipy.linalg
+
+def largestComponent(BW):
+    if not numpy.any(BW):
+        return BW
+    else:
+        L, numLabels = scipy.ndimage.label(BW)
+        H = numpy.bincount(L[L > 0])
+        return (L == numpy.argmax(H))
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+def dilateWithMaskBarrier(BW, M, nDilate = 20):
+    """
+    Dilates BW nDilate iterations but makes sure to not go through the mask M.
+    """
+    
+    BWDilated = numpy.logical_and(scipy.ndimage.binary_dilation(BW, iterations = nDilate), M)
+    L, numLabels = scipy.ndimage.label(BWDilated)
+    labelsInOriginal = numpy.unique(L[BW])
+    return ismember(L, labelsInOriginal)
+
+if len(sys.argv) < 2:
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+# fills midline WM labels for regions filling
+# replaces small WM components with GM
+#@profile
+def main():
+    subjID = sys.argv[1]
+    try:
+        TissueSegDir = os.environ['TISSUESEGDIR']
+    except Exception:
+        TissueSegDir = 'TissueSegMCRIBS'
+    
+    if not os.path.isdir(os.path.join(TissueSegDir, subjID)):
+        print("Tissue segmentation directory not found")
+        quit()
+    T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore.nii.gz"))
+    T2IMG = numpy.single(T2NII.get_fdata())
+
+    #RibbonMidlineFillNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_compositereg_ribbon_midlinefill.nii.gz"))
+    #RibbonMidlineFillIMG = RibbonMidlineFillNII.get_fdata() > 0
+
+    RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions.nii.gz"))
+    RegionsIMG = numpy.uint16(RegionsNII.get_fdata())
+
+    #BrightMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_dark_wm_bright_gm_to_remove.nii.gz"))
+    #BrightMaskIMG = BrightMaskNII.get_fdata() > 0
+
+    #Atropos3NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_majority_gm_segmentation.nii.gz"))
+    #Atropos3IMG = numpy.uint8(Atropos3NII.get_fdata())
+    RegionsWMLHDilated = scipy.ndimage.binary_dilation(RegionsIMG == 2)
+    RegionsWMRHDilated = scipy.ndimage.binary_dilation(RegionsIMG == 41)
+
+    RegionsWMBorderIMG = largestComponent(numpy.logical_and(RegionsWMLHDilated, RegionsWMRHDilated))
+
+    # find LH and RH WM border voxels that arent next to GM voxels or the other hemisphere WM
+    LHWMBorderVoxels = numpy.logical_and(numpy.logical_not(scipy.ndimage.binary_erosion(RegionsIMG == 2)), RegionsIMG == 2)
+    RHWMBorderVoxels = numpy.logical_and(numpy.logical_not(scipy.ndimage.binary_erosion(RegionsIMG == 41)), RegionsIMG == 41)
+
+    GMMask = numpy.logical_or(numpy.logical_and(RegionsIMG >= 1000, RegionsIMG <= 1035), numpy.logical_and(RegionsIMG >= 1000, RegionsIMG <= 1035))
+    GMMaskDilated = scipy.ndimage.binary_dilation(GMMask)
+    
+    LHWMBorderVoxels = numpy.logical_and(LHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
+    LHWMBorderVoxels = numpy.logical_and(LHWMBorderVoxels, numpy.logical_not(RegionsWMRHDilated))
+    RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
+    RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(RegionsWMLHDilated))
+    
+
+
+    RegionsWMBorderIDX = numpy.where(RegionsWMBorderIMG)
+    RegionsWMBorderCoordsVox = numpy.vstack(RegionsWMBorderIDX)
+    del RegionsWMBorderIDX
+
+    VoxToWorld = T2NII.affine
+    WorldToVox = scipy.linalg.inv(VoxToWorld)
+
+    RegionsWMBorderCoordsWorld = VoxToWorld[0:3, 0:3] * numpy.matrix(RegionsWMBorderCoordsVox) + numpy.atleast_2d(VoxToWorld[0:3, 3]).T
+    del RegionsWMBorderCoordsVox
+    C = numpy.cov(RegionsWMBorderCoordsWorld)
+    
+    EigenValues, EigenVectors = numpy.linalg.eig(C)
+    
+    EigenValuesSortI = numpy.argsort(EigenValues)
+    EigenValues = EigenValues[EigenValuesSortI]
+    EigenVectors = numpy.take(EigenVectors, EigenValuesSortI, axis = 1)
+
+    I, J, K = numpy.meshgrid(numpy.arange(T2IMG.shape[0]), numpy.arange(T2IMG.shape[1]), numpy.arange(T2IMG.shape[2]), indexing = 'ij')
+
+    IJK = numpy.vstack((I.ravel(), J.ravel(), K.ravel()))
+    del I
+    del J
+    del K
+    XYZ = VoxToWorld[0:3, 0:3] * numpy.matrix(IJK) + numpy.atleast_2d(VoxToWorld[0:3, 3]).T
+    
+    X = numpy.reshape(numpy.array(XYZ[0]), T2IMG.shape)
+    Y = numpy.reshape(numpy.array(XYZ[1]), T2IMG.shape)
+    Z = numpy.reshape(numpy.array(XYZ[2]), T2IMG.shape)
+    del XYZ
+
+    # MidlinePlaneEqn is the normal pointing perpendicular to the midline A * X + B * Y + C * Y + D
+    # A, B, C is the eigenvector, the offset D is
+    D = -numpy.mean(numpy.sum(EigenVectors[:, 0] * RegionsWMBorderCoordsWorld, axis = 0))
+
+    MidlinePlaneEqn = numpy.concatenate((EigenVectors[:, 0].ravel(), numpy.array([D])))
+    
+    MPlane = MidlinePlaneEqn[0] * X + MidlinePlaneEqn[1] * Y + MidlinePlaneEqn[2] * Z + MidlinePlaneEqn[3]
+    MPlaneSign = numpy.int8(numpy.sign(MPlane))
+    
+    # make the left hemisphere positive
+    NegMask = numpy.logical_and(MPlaneSign < 0, RegionsIMG == 2)
+    PosMask = numpy.logical_and(MPlaneSign >= 0, RegionsIMG == 2)
+    NumNeg = numpy.count_nonzero(NegMask)
+    NumPos = numpy.count_nonzero(PosMask)
+    
+    if NumNeg > NumPos:
+        MPlaneSign = -MPlaneSign
+        MPlane = -MPlane
+
+    #NewNII = nibabel.Nifti1Image(numpy.int16(numpy.sign(MPlane)), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_mplane.nii.gz"))
+    
+    # get principal direction of brainstem
+    BrainstemIDX = numpy.where(RegionsIMG == 170)
+    BrainstemCoordsVox = numpy.vstack(BrainstemIDX)
+    del BrainstemIDX
+    BrainstemCoordsWorld = VoxToWorld[0:3, 0:3] * numpy.matrix(BrainstemCoordsVox) + numpy.atleast_2d(VoxToWorld[0:3, 3]).T
+    
+    C = numpy.cov(BrainstemCoordsWorld)
+    EigenValues, EigenVectors = numpy.linalg.eig(C)
+    BrainstemPrincipalDirection = numpy.take(EigenVectors, numpy.argmax(numpy.abs(EigenValues)), axis = 1)
+
+    #   // Choose plane center point which is closest to the boundary with the cerebrum
+    # plane.Center(BoundaryPoints(regions, set1, set2).Centroid());
+
+    BrainstemDilated = scipy.ndimage.binary_dilation(RegionsIMG == 170)
+    HemisDilated = scipy.ndimage.binary_dilation(ismember(RegionsIMG, [2, 41]))
+    BrainstemHemiBoundaryIMG = numpy.logical_and(BrainstemDilated, HemisDilated)
+    BrainstemHemiBoundaryIDX = numpy.where(BrainstemHemiBoundaryIMG)
+    BrainstemHemiBoundaryCoordsVox = numpy.vstack(BrainstemHemiBoundaryIDX)
+    del BrainstemHemiBoundaryIDX
+    BrainstemHemiBoundaryCoordsWorld = VoxToWorld[0:3, 0:3] * numpy.matrix(BrainstemHemiBoundaryCoordsVox) + numpy.atleast_2d(VoxToWorld[0:3, 3]).T
+    BrainstemHemiBoundaryCentroid = numpy.mean(BrainstemHemiBoundaryCoordsWorld, axis = 1)
+    
+    BrainstemHemiBoundaryPlaneEqnD = -numpy.array(numpy.matrix(BrainstemHemiBoundaryCentroid).T * numpy.matrix(BrainstemPrincipalDirection).T).ravel()
+
+    BrainstemHemiBoundaryPlaneEqn = numpy.concatenate((BrainstemPrincipalDirection, BrainstemHemiBoundaryPlaneEqnD)) 
+    
+    BrainstemHemiBoundaryPlaneM = numpy.int8(numpy.sign(BrainstemHemiBoundaryPlaneEqn[0] * X + BrainstemHemiBoundaryPlaneEqn[1] * Y + BrainstemHemiBoundaryPlaneEqn[2] * Z + BrainstemHemiBoundaryPlaneEqn[3]))
+    
+    # replace voxels in the brainstem on the side of the plane that has fewer brainstem labels
+    NegMask = numpy.logical_and(BrainstemHemiBoundaryPlaneM < 0, RegionsIMG == 170)
+    PosMask = numpy.logical_and(BrainstemHemiBoundaryPlaneM >= 0, RegionsIMG == 170)
+    del BrainstemHemiBoundaryPlaneM
+    NumNeg = numpy.count_nonzero(NegMask)
+    NumPos = numpy.count_nonzero(PosMask)
+    NewRegionsIMG = numpy.array(RegionsIMG)
+
+    if NumPos < NumNeg:
+        NewRegionsIMG[numpy.logical_and(PosMask, MPlaneSign > 0)] = 2
+        NewRegionsIMG[numpy.logical_and(PosMask, MPlaneSign <= 0)] = 41
+    else:
+        NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign > 0)] = 2
+        NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign <= 0)] = 41
+    
+    # replace CC with WM labels
+    NewRegionsIMG[numpy.logical_and(MPlaneSign > 0, NewRegionsIMG == 192)] = 2
+    NewRegionsIMG[numpy.logical_and(MPlaneSign <= 0, NewRegionsIMG == 192)] = 41
+
+    #NewNII = nibabel.Nifti1Image(numpy.int16(NewRegionsIMG), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_beforechange.nii.gz"))
+    
+
+    # change from freesurfer labels regions values
+    T = numpy.array(NewRegionsIMG)
+
+    # all GM become 1
+    T[numpy.logical_and(NewRegionsIMG >= 1000, NewRegionsIMG <= 1035)] = 1
+    T[numpy.logical_and(NewRegionsIMG >= 2000, NewRegionsIMG <= 2035)] = 1
+    T[NewRegionsIMG == 3] = 1
+    T[NewRegionsIMG == 42] = 1
+    
+    T[NewRegionsIMG == 2] = 3
+    T[NewRegionsIMG == 41] = 2
+    
+    T[NewRegionsIMG == 4] = 3
+    T[NewRegionsIMG == 43] = 2
+    T[NewRegionsIMG == 31] = 2
+
+    T[ismember(NewRegionsIMG, [90, 91, 93, 70, 71, 72, 73, 74, 75, 76, 170])] = 4
+    T[ismember(NewRegionsIMG, [24, 258, 14, 15, 165])] = 0
+    
+    T[NewRegionsIMG == 999] = 1 
+
+    NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_brainstem_cut.nii.gz"))
+    
+    # make the file cortical-hull-dmap.nii.gz
+    #line 1835 in subdivide_brain_image.cc
+
+    InteriorMask = scipy.ndimage.binary_closing(ismember(T, [1, 2, 3]), iterations = 5)
+    
+    # make a cut through the middle
+    LeftMPlaneDilated = scipy.ndimage.binary_dilation(MPlaneSign < 0, iterations = 2)
+    RightMPlaneDilated = scipy.ndimage.binary_dilation(MPlaneSign > 0, iterations = 2)
+    
+    InteriorMask[numpy.logical_and(T == 1, numpy.logical_and(LeftMPlaneDilated, RightMPlaneDilated))] = False
+    NewNII = nibabel.Nifti1Image(numpy.uint8(InteriorMask), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_interiormask.nii.gz"))
+    
+    CorticalHullDMAP = scipy.ndimage.distance_transform_edt(InteriorMask)
+    
+    NewNII = nibabel.Nifti1Image(numpy.single(CorticalHullDMAP), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_corticalhulldmap.nii.gz"))
+
+    #NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3)), LabelFusionNII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_lh_pericalcarine.nii.gz"))
+
+    #NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 2021), axis = 3)), LabelFusionNII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_rh_pericalcarine.nii.gz"))
+
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(VoxelsToReplace), LabelFusionNII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_voxelstoreplace.nii.gz")    )
+
+if __name__ == "__main__":
+    main()

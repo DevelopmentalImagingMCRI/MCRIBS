@@ -1,39 +1,39 @@
-/*=========================================================================
-
-  Library   : Image Registration Toolkit (IRTK)
-  Module    : $Id$
-  Copyright : Imperial College, Department of Computing
-              Visual Information Processing (VIP), 2008 onwards
-  Date      : $Date$
-  Version   : $Revision$
-  Changes   : $Author$
-
-=========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <mirtk/Transformation.h>
 #include <mirtk/Registration.h>
 
-#ifdef __APPLE__
-#include <OpenGl/gl.h>
-#include <OpenGl/glu.h>
-#include <glut.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#ifdef WIN32
-#include <glut.h>
-#else
-#include <GL/glut.h>
-#endif
-#endif
-
+#include <mirtk/OpenGl.h>
 #include <mirtk/RView.h>
+
+#ifdef __APPLE__
+  #include <glut.h>
+#else
+  #include <GL/glut.h>
+#endif
 
 RView *rview;
 
 char *offscreen_file;
 int target_min, target_max, target_delta;
 int source_min, source_max, source_delta;
+
 
 void usage ()
 {
@@ -188,7 +188,7 @@ int main(int argc, char** argv)
 
   while (argc > 1) {
     ok = false;
-    if ((ok == false) && (strcmp(argv[1], "-target") == 0)) {
+    if (!ok && strcmp(argv[1], "-target") == 0) {
       argc--;
       argv++;
 
@@ -206,7 +206,7 @@ int main(int argc, char** argv)
       rview->ReadTarget(filename_argc, filename_argv);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-source") == 0)) {
+    if (!ok && strcmp(argv[1], "-source") == 0) {
       argc--;
       argv++;
 
@@ -224,7 +224,7 @@ int main(int argc, char** argv)
       rview->ReadSource(filename_argc, filename_argv);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-dofin") == 0)) {
+    if (!ok && strcmp(argv[1], "-dofin") == 0) {
       argc--;
       argv++;
       rview->ReadTransformation(argv[1]);
@@ -232,7 +232,7 @@ int main(int argc, char** argv)
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-config") == 0)) {
+    if (!ok && strcmp(argv[1], "-config") == 0) {
       argc--;
       argv++;
       rview->Read(argv[1]);
@@ -240,7 +240,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-target_landmarks") == 0)) {
+    if (!ok && strcmp(argv[1], "-target_landmarks") == 0) {
       argc--;
       argv++;
       rview->ReadTargetLandmarks(argv[1]);
@@ -249,7 +249,7 @@ int main(int argc, char** argv)
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-source_landmarks") == 0)) {
+    if (!ok && strcmp(argv[1], "-source_landmarks") == 0) {
       argc--;
       argv++;
       rview->ReadSourceLandmarks(argv[1]);
@@ -258,20 +258,20 @@ int main(int argc, char** argv)
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-target_isolines") == 0)) {
+    if (!ok && strcmp(argv[1], "-target_isolines") == 0) {
       argc--;
       argv++;
       rview->DisplayTargetContoursOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-source_isolines") == 0)) {
+    if (!ok && strcmp(argv[1], "-source_isolines") == 0) {
       argc--;
       argv++;
       rview->DisplaySourceContoursOn();
       ok = true;
     }
 #ifdef HAVE_VTK
-    if ((ok == false) && (strcmp(argv[1], "-object") == 0)) {
+    if (!ok && (strcmp(argv[1], "-object") == 0)) {
       argc--;
       argv++;
       do {
@@ -282,128 +282,128 @@ int main(int argc, char** argv)
       rview->DisplayObjectOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-object_warp") == 0)) {
+    if (!ok && (strcmp(argv[1], "-object_warp") == 0)) {
       argc--;
       argv++;
       rview->DisplayObjectWarpOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-object_grid") == 0)) {
+    if (!ok && (strcmp(argv[1], "-object_grid") == 0)) {
       argc--;
       argv++;
       rview->DisplayObjectGridOn();
       ok = true;
     }
 #endif
-    if ((ok == false) && (strcmp(argv[1], "-xy") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xz") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xz") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XZ);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-yz") == 0)) {
+    if (!ok && (strcmp(argv[1], "-yz") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_YZ);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xy_xz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy_xz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY_XZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xy_yz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy_yz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY_YZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xz_yz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xz_yz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XZ_YZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xy_xz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy_xz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY_XZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xy_yz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xy_yz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XY_YZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-xz_yz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-xz_yz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_XZ_YZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xy_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xy_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XY_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_yz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_yz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_YZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xy_xz_v") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xy_xz_v") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XY_XZ_v);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xy_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xy_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XY_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_yz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_yz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_YZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-ab_xy_xz_h") == 0)) {
+    if (!ok && (strcmp(argv[1], "-ab_xy_xz_h") == 0)) {
       argc--;
       argv++;
       rview->Configure(View_AB_XY_XZ_h);
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-labels") == 0)) {
+    if (!ok && (strcmp(argv[1], "-labels") == 0)) {
       argc--;
       argv++;
       rview->DisplayAxisLabelsOff();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-cursor") == 0)) {
+    if (!ok && (strcmp(argv[1], "-cursor") == 0)) {
       argc--;
       argv++;
       rview->DisplayAxisLabelsOff();
@@ -411,25 +411,25 @@ int main(int argc, char** argv)
       rview->DisplayAxisLabelsOff();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-grid") == 0)) {
+    if (!ok && (strcmp(argv[1], "-grid") == 0)) {
       argc--;
       argv++;
       rview->DisplayDeformationGridOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-points") == 0)) {
+    if (!ok && (strcmp(argv[1], "-points") == 0)) {
       argc--;
       argv++;
       rview->DisplayDeformationPointsOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-arrow") == 0)) {
+    if (!ok && (strcmp(argv[1], "-arrow") == 0)) {
       argc--;
       argv++;
       rview->DisplayDeformationArrowsOn();
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-tmax") == 0)) {
+    if (!ok && (strcmp(argv[1], "-tmax") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMaxTarget(atof(argv[1]));
@@ -437,7 +437,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-tmin") == 0)) {
+    if (!ok && (strcmp(argv[1], "-tmin") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMinTarget(atof(argv[1]));
@@ -445,7 +445,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-smax") == 0)) {
+    if (!ok && (strcmp(argv[1], "-smax") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMaxSource(atof(argv[1]));
@@ -453,7 +453,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-smin") == 0)) {
+    if (!ok && (strcmp(argv[1], "-smin") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMinSource(atof(argv[1]));
@@ -461,7 +461,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-sub_max") == 0)) {
+    if (!ok && (strcmp(argv[1], "-sub_max") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMaxSubtraction(atof(argv[1]));
@@ -469,7 +469,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-sub_min") == 0)) {
+    if (!ok && (strcmp(argv[1], "-sub_min") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayMinSubtraction(atof(argv[1]));
@@ -477,7 +477,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-res") == 0)) {
+    if (!ok && (strcmp(argv[1], "-res") == 0)) {
       argc--;
       argv++;
       rview->SetResolution(atof(argv[1]));
@@ -485,7 +485,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-grid_res") == 0)) {
+    if (!ok && (strcmp(argv[1], "-grid_res") == 0)) {
       argc--;
       argv++;
       rview->SetDisplayDeformationGridResolution(atoi(argv[1]));
@@ -493,7 +493,7 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-origin") == 0)) {
+    if (!ok && (strcmp(argv[1], "-origin") == 0)) {
       argc--;
       argv++;
       rview->SetOrigin(atof(argv[1]), atof(argv[2]), atof(argv[3]));
@@ -505,79 +505,79 @@ int main(int argc, char** argv)
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-nn") == 0)) {
+    if (!ok && (strcmp(argv[1], "-nn") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_NN);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_NN);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-linear") == 0)) {
+    if (!ok && (strcmp(argv[1], "-linear") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_Linear);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_Linear);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-c1spline") == 0)) {
+    if (!ok && (strcmp(argv[1], "-c1spline") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_CSpline);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_CSpline);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-bspline") == 0)) {
+    if (!ok && (strcmp(argv[1], "-bspline") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_BSpline);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_BSpline);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-sinc") == 0)) {
+    if (!ok && (strcmp(argv[1], "-sinc") == 0)) {
       rview->SetTargetInterpolationMode(mirtk::Interpolation_Sinc);
       rview->SetSourceInterpolationMode(mirtk::Interpolation_Sinc);
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-view_target") == 0)) {
+    if (!ok && (strcmp(argv[1], "-view_target") == 0)) {
       rview->SetViewMode(View_A);
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-view_source") == 0)) {
+    if (!ok && (strcmp(argv[1], "-view_source") == 0)) {
       rview->SetViewMode(View_B);
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-mix") == 0)) {
+    if (!ok && (strcmp(argv[1], "-mix") == 0)) {
       rview->SetViewMode(View_Checkerboard);
       argv++;
       argc--;
       ok = true;
     }
 
-    if ((ok == false) && (strcmp(argv[1], "-diff") == 0)){
+    if (!ok && (strcmp(argv[1], "-diff") == 0)){
       rview->SetViewMode(View_Subtraction);
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-tcontour") == 0)){
+    if (!ok && (strcmp(argv[1], "-tcontour") == 0)){
       rview->DisplayTargetContoursOn();
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-scontour") == 0)){
+    if (!ok && (strcmp(argv[1], "-scontour") == 0)){
       rview->DisplaySourceContoursOn();
       argv++;
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-seg") == 0)){
+    if (!ok && (strcmp(argv[1], "-seg") == 0)){
       argv++;
       argc--;
       rview->ReadSegmentation(argv[1]);
@@ -585,7 +585,7 @@ int main(int argc, char** argv)
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-lut") == 0)){
+    if (!ok && (strcmp(argv[1], "-lut") == 0)){
       argv++;
       argc--;
       rview->GetSegmentTable()->Read(argv[1]);
@@ -594,7 +594,7 @@ int main(int argc, char** argv)
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-line_thickness") == 0)){
+    if (!ok && (strcmp(argv[1], "-line_thickness") == 0)){
       argv++;
       argc--;
       double val = atof(argv[1]);
@@ -605,7 +605,7 @@ int main(int argc, char** argv)
       argc--;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-labels") == 0)){
+    if (!ok && (strcmp(argv[1], "-labels") == 0)){
       argv++;
       argc--;
       rview->SegmentationContoursOff();
@@ -613,14 +613,14 @@ int main(int argc, char** argv)
       rview->SegmentationUpdateOn();
       ok = true;
     }
-	if ((ok == false) && (strcmp(argv[1], "-line") == 0)) {
+	if (!ok && (strcmp(argv[1], "-line") == 0)) {
       argc--;
       argv++;
 	  rview->SetLineThickness(atoi(argv[1]));
 	  argc--;
 	  argv++;
 	}
-	if ((ok == false) && (strcmp(argv[1], "-tcolor") == 0)) {
+	if (!ok && (strcmp(argv[1], "-tcolor") == 0)) {
       argc--;
       argv++;
       if (strcmp(argv[1], "red") == 0) {
@@ -651,7 +651,7 @@ int main(int argc, char** argv)
         }
       }
     }
-    if ((ok == false) && (strcmp(argv[1], "-scolor") == 0)) {
+    if (!ok && (strcmp(argv[1], "-scolor") == 0)) {
       argc--;
       argv++;
       if (strcmp(argv[1], "red") == 0) {
@@ -683,21 +683,21 @@ int main(int argc, char** argv)
       }
     }
     // Display specific options
-    if ((ok == false) && (strcmp(argv[1], "-x") == 0)) {
+    if (!ok && (strcmp(argv[1], "-x") == 0)) {
       argc--;
       argv++;
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-y") == 0)) {
+    if (!ok && (strcmp(argv[1], "-y") == 0)) {
       argc--;
       argv++;
       argc--;
       argv++;
       ok = true;
     }
-    if ((ok == false) && (strcmp(argv[1], "-offscreen") == 0)) {
+    if (!ok && (strcmp(argv[1], "-offscreen") == 0)) {
       offscreen = true;
       argv++;
       argc--;
@@ -706,7 +706,7 @@ int main(int argc, char** argv)
       argc--;
       ok = true;
     }
-    if (ok == false) {
+    if (!ok) {
       cerr << "Unknown argument: " << argv[1] << endl;
       exit(1);
     }
@@ -725,9 +725,9 @@ int main(int argc, char** argv)
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
   glutInitWindowSize(rview->GetWidth(), rview->GetHeight());
   glutInitWindowPosition(0, 0);
-  glutCreateWindow("RView");
+  glutCreateWindow("MIRTK Viewer");
 
-  if (offscreen == true) {
+  if (offscreen) {
 
     // Start rendering to file
     rview->DrawOffscreen(offscreen_file);

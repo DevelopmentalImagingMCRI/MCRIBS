@@ -26,7 +26,7 @@ FirstAxis = nibabel.cifti2.cifti2_axes.ScalarAxis(numpy.array(['first']))
 #FirstAxis.size = 1
 head, tail = os.path.split('FSCurvFileName')
 
-SecondAxis = nibabel.cifti2.cifti2_axes.BrainModelAxis.from_mask(numpy.ones(FSCurvData['values'].shape, dtype = numpy.bool), name = numpy.array([StructureName]))
+SecondAxis = nibabel.cifti2.cifti2_axes.BrainModelAxis.from_mask(numpy.ones(FSCurvData['values'].shape, dtype = numpy.bool_), name = numpy.array([StructureName]))
 
 CIFTIImage = nibabel.cifti2.cifti2.Cifti2Image(dataobj = numpy.atleast_2d(FSCurvData['values']), header = (FirstAxis, SecondAxis))
 nibabel.save(CIFTIImage, outFileName)

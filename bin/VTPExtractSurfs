@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+import vtk
+import numpy
+import sys
+import os
+import freesurfer
+import nibabel
+import getopt
+import vtk.util.numpy_support
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom=', 'tkr-only'])
+
+if len(args) != 1:
+    print("The number of arguments must be 1")
+    print(sys.argv[0] + " <vtp file>")
+    exit()
+
+numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
+
+inFileName = args[0]
+
+Reader = vtk.vtkXMLPolyDataReader()
+Reader.SetFileName(inFileName)
+Reader.Update()
+
+inFilePrefix = os.path.splitext(inFileName)[0]
+
+geometryNIIFile = None
+
+verbose = False
+TKROnly = False
+for o, a in opts:
+    if o == '--surf-volgeom':
+        geometryNIIFile = a
+    if o == '--tkr-only':
+        TKROnly = True
+    if o == '-v':
+        verbose = True
+
+if verbose == True:
+    print(inFilePrefix)
+#SurfReader = vtk.vtkXMLPolyDataReader()
+#SurfReader.SetFileName(surfFileName)
+#SurfReader.Update()
+
+# the curvature files have scalar arrays in the point data
+#A = surfData.GetPointData()
+#B = A.GetArray(0)
+#C = numpy.array([B.GetValue(i) for i in range(B.GetNumberOfTuples())])
+
+#surfData = SurfReader.GetOutput()
+
+Data = Reader.GetOutput()
+#Vrts = Data.GetVerts()
+#indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
+S = dict()
+#S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
+#S['vertices'] = numpy.stack(S['vertices']).T
+S['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
+
+if Data.GetNumberOfPolys() > 0:
+    D = Data.GetPolys().GetData()
+    #S['faces'] = [[int(D.GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
+    #S['faces'] = numpy.stack(S['faces']).T
+    S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(D))
+    S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
+    S['faces'] = S['faces'][1:]
+    freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+    if TKROnly == False:
+       freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
+    

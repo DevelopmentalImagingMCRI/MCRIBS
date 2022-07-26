@@ -512,105 +512,6 @@ void GenericImage<VoxelType>
   }
 }
 
-
-// -----------------------------------------------------------------------------
-// template <class VoxelType>
-// GenericImage<VoxelType> GenericImage<VoxelType>
-// ::PadImage(int m) const
-// {
-//   GenericImage<VoxelType> image;
-//   this->PadImage(image, m);
-//   return image;
-// }
-
-
-
-
-// -----------------------------------------------------------
-template <class VoxelType>
-GenericImage<VoxelType> GenericImage<VoxelType>
-::PadImage(int padSize) const
-{
-  GenericImage<VoxelType> image;
-  this->PadImage(image, padSize);
-  return image;
-}
-
-// -----------------------------------------------------------------------------
-template <class VoxelType>
-void GenericImage<VoxelType>
-::PadImage(GenericImage<VoxelType> &image, int padSize) const
-{
-  int i, j, k, l;
-  double x1, y1, z1, x2, y2, z2;
-
-  int i1, i2, j1, j2, k1, k2;
-
-  if (padSize <= 0) {
-    cerr << "GenericImage<VoxelType>::PadImage: Parameter out of range\n";
-    exit(1);
-  }
-
-  i1 = 0;
-  j1 = 0;
-  k1 = 0;
-
-  // Initialize
-  ImageAttributes attr = this->Attributes();
-  i2 = attr._x;
-  j2 = attr._y;
-  k2 = attr._z;
-
-  attr._x = attr._x + 2*padSize;
-  attr._y = attr._y + 2*padSize;
-  attr._z = attr._z + 2*padSize;
-
-  attr._xorigin = 0;
-  attr._yorigin = 0;
-  attr._zorigin = 0;
-  image.Initialize(attr);
-
-  // Calculate position of first voxel in roi in original image
-  x1 = 0;
-  y1 = 0;
-  z1 = 0;
-  this->ImageToWorld(x1, y1, z1);
-
-  // Calculate position of first voxel in roi in new image
-  x2 = padSize;
-  y2 = padSize;
-  z2 = padSize;
-  image.ImageToWorld(x2, y2, z2);
-
-  // Shift origin of new image accordingly
-  image.PutOrigin(x1 - x2, y1 - y2, z1 - z2);
-
-  // Copy region
-  for (l = 0; l < _attr._t; l++) {
-    for (k = k1; k < k2; k++) {
-      for (j = j1; j < j2; j++) {
-        for (i = i1; i < i2; i++) {
-          image._matrix[l][k + padSize][j + padSize][i + padSize] = _matrix[l][k][j][i];
-        }
-      }
-    }
-  }
-}
-
-// -----------------------------------------------------------------------------
-template <class VoxelType>
-void GenericImage<VoxelType>
-::PadImage(BaseImage *&base, int padSize) const
-{
-  GenericImage<VoxelType> *image = dynamic_cast<GenericImage<VoxelType> *>(base);
-  if (image == NULL) {
-    delete base;
-    image = new GenericImage<VoxelType>();
-    base  = image;
-  }
-  this->PadImage(*image, padSize);
-}
-
 // -----------------------------------------------------------------------------
 template <class VoxelType>
 GenericImage<VoxelType> GenericImage<VoxelType>
@@ -2216,12 +2117,7 @@ void GenericImage<VoxelType>::ImageToVTK(vtkStructuredPoints *vtk) const
   vtk->SetOrigin    (x, y, z);
   vtk->SetDimensions(_attr._x,  _attr._y,  _attr._z);
   vtk->SetSpacing   (_attr._dx, _attr._dy, _attr._dz);
-#if VTK_MAJOR_VERSION >= 6
   vtk->AllocateScalars(this->ImageToVTKScalarType(), 1);
-#else
-  vtk->SetScalarType(this->ImageToVTKScalarType());
-  vtk->AllocateScalars();
-#endif
   const int        nvox = _attr._x * _attr._y * _attr._z;
   const VoxelType *ptr1 = this->Data();
   VoxelType       *ptr2 = reinterpret_cast<VoxelType *>(vtk->GetScalarPointer());

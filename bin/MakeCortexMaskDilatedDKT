@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage
+#import matplotlib.pyplot as plt
+#import pylab
+import Otsu
+
+import scipy.linalg
+import vtk
+import vtk.util.numpy_support
+import skimage.morphology
+import subprocess
+
+import GraphUtils
+import freesurfer
+import VTPUtils
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+if len(sys.argv) < 2:
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+# fills midline WM labels for regions filling
+# replaces small WM components with GM
+
+subjID = sys.argv[1]
+
+try:
+    TissueSegDir = os.environ['TISSUESEGDIR']
+except:
+    TissueSegDir = 'TissueSegMCRIBS'
+
+T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
+T2IMG = T2NII.get_fdata()
+
+LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_dkt_antsinit_orig.nii.gz"))
+LabelFusionIMG = numpy.int16(LabelFusionNII.get_fdata())
+
+#InternalVTP = VTPUtils.readVTPSurf(os.path.join('SurfReconDeformable', subjID, 'temp',
+
+#if not os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'):
+#    quit()
+#subprocess.call(['project-onto-surface', os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'), os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3-labelfusionimage_dkt.vtp'), '-labels', os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_dkt_antsinit_edited.nii.gz"), '-dilation-radius', str(1), '-fill', 'False', '-name', 'DKTLabels'])
+
+VTPFileName = os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-2.vtp')
+
+path, ext = os.path.splitext(VTPFileName)
+
+if ext == ".vtp":
+    Reader = vtk.vtkXMLPolyDataReader()
+elif ext == ".vtk":
+    Reader = vtk.vtkPolyDataReader()
+
+Reader.SetFileName(VTPFileName)
+Reader.Update()
+
+Data = Reader.GetOutput()
+
+VTPSurface = dict()
+VTPSurface['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
+
+if Data.GetNumberOfPolys() > 0:
+    VTPSurface['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPolys().GetData()))
+    VTPSurface['faces'] = numpy.reshape(VTPSurface['faces'], (int(VTPSurface['faces'].size / 4), 4)).T
+    VTPSurface['faces'] = VTPSurface['faces'][1:]
+
+cellData = Data.GetCellData()
+#cortexMaskFaces = None
+#cortexMaskVertices = None
+regionID = None
+for arrayIDX in range(cellData.GetNumberOfArrays()):
+    curArrayName = cellData.GetArrayName(arrayIDX)
+    #if curArrayName == 'CortexMask':
+    #    cortexMaskFaces = numpy.array(vtk.util.numpy_support.vtk_to_numpy(cellData.GetArray(arrayIDX))) > 0
+    if curArrayName == 'RegionId':
+        regionID = numpy.array(vtk.util.numpy_support.vtk_to_numpy(cellData.GetArray(arrayIDX)))
+
+VA = numpy.take(VTPSurface['vertices'], VTPSurface['faces'][0], axis = 1)
+VB = numpy.take(VTPSurface['vertices'], VTPSurface['faces'][1], axis = 1)
+VC = numpy.take(VTPSurface['vertices'], VTPSurface['faces'][2], axis = 1)
+
+faceCentroids = (VA + VB + VC) / 3.0
+del VA
+del VB
+del VC
+
+VoxToWorld = T2NII.affine
+WorldToVox = scipy.linalg.inv(VoxToWorld)
+
+separatorIMG = numpy.zeros_like(T2IMG, dtype = numpy.bool_)
+separatorVox = numpy.matrix(WorldToVox[0:3, 0:3]) * numpy.matrix(faceCentroids[:, regionID == -1]) + numpy.atleast_2d(WorldToVox[0:3, 3]).T
+separatorIMG[(numpy.int32(numpy.floor(separatorVox[0])), numpy.int32(numpy.floor(separatorVox[1])), numpy.int32(numpy.floor(separatorVox[2])))] = True
+separatorIMG[( numpy.int32(numpy.ceil(separatorVox[0])), numpy.int32(numpy.floor(separatorVox[1])), numpy.int32(numpy.floor(separatorVox[2])))] = True
+separatorIMG[(numpy.int32(numpy.floor(separatorVox[0])),  numpy.int32(numpy.ceil(separatorVox[1])), numpy.int32(numpy.floor(separatorVox[2])))] = True
+separatorIMG[( numpy.int32(numpy.ceil(separatorVox[0])),  numpy.int32(numpy.ceil(separatorVox[1])), numpy.int32(numpy.floor(separatorVox[2])))] = True
+separatorIMG[(numpy.int32(numpy.floor(separatorVox[0])), numpy.int32(numpy.floor(separatorVox[1])),  numpy.int32(numpy.ceil(separatorVox[2])))] = True
+separatorIMG[( numpy.int32(numpy.ceil(separatorVox[0])), numpy.int32(numpy.floor(separatorVox[1])),  numpy.int32(numpy.ceil(separatorVox[2])))] = True
+separatorIMG[(numpy.int32(numpy.floor(separatorVox[0])),  numpy.int32(numpy.ceil(separatorVox[1])),  numpy.int32(numpy.ceil(separatorVox[2])))] = True
+separatorIMG[( numpy.int32(numpy.ceil(separatorVox[0])),  numpy.int32(numpy.ceil(separatorVox[1])),  numpy.int32(numpy.ceil(separatorVox[2])))] = True
+
+separatorIMG = scipy.ndimage.binary_dilation(separatorIMG)
+# make a mask that fills in the CSF near the hippocampus, amygdala, brainstem, ventralDC
+fillMaskOrig = ismember(LabelFusionIMG, [17, 53, 170, 28, 60, 18, 54])
+
+GMWMMask = numpy.logical_or(numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035), numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035))
+GMWMMask = numpy.logical_or(GMWMMask, numpy.logical_or(LabelFusionIMG == 2, LabelFusionIMG == 41))
+GMWMMask = numpy.logical_or(GMWMMask, numpy.logical_or(LabelFusionIMG == 4, LabelFusionIMG == 43))
+NotGMWMMask = numpy.logical_not(GMWMMask)
+
+fillMask = numpy.array(fillMaskOrig)
+
+for z in range(5):
+    fillMask = numpy.logical_and(scipy.ndimage.binary_dilation(fillMask), NotGMWMMask)
+
+fillMask = numpy.logical_or(fillMask, separatorIMG)
+notFillMask = numpy.logical_not(fillMask)
+
+GMMask = numpy.logical_or(numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035), numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035))
+
+cortexMask = numpy.array(GMMask)
+
+for z in range(10):
+    cortexMask = numpy.logical_and(scipy.ndimage.binary_dilation(cortexMask), notFillMask)
+
+NewNII = nibabel.Nifti1Image(numpy.uint8(separatorIMG), T2NII.affine)
+nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'separator_mask.nii.gz'))
+
+NewNII = nibabel.Nifti1Image(numpy.uint8(fillMask), T2NII.affine)
+nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'fill_mask.nii.gz'))
+
+NewNII = nibabel.Nifti1Image(numpy.uint8(cortexMask), T2NII.affine)
+nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'cortex-mask.nii.gz'))
+
+#pericalcarineVWorld = numpy.take(VTPSurface['vertices'], pericalcarineIDX, axis = 1)
+#invAffine = scipy.linalg.inv(T2NII.affine)
+#pericalcarineVVox = numpy.matrix(invAffine[0:3, 0:3]) * numpy.matrix(pericalcarineVWorld) + numpy.atleast_2d(invAffine[0:3, 3]).T
+#
+#pericalcarineVVoxRound = numpy.int32(numpy.round(pericalcarineVVox))
+#pericalcarineSeedIMG = numpy.zeros(pericalcarineMaskIMG.shape, dtype = numpy.bool_)
+#pericalcarineSeedIMG[(pericalcarineVVoxRound[0], pericalcarineVVoxRound[1], pericalcarineVVoxRound[2])] = True
+#
+## select components from pericalcarineMaskIMG from outMaskIMG
+##outMaskIMG = skimage.morphology.reconstruction(numpy.logical_and(pericalcarineSeedIMG, pericalcarineMaskIMG), pericalcarineMaskIMG)
+#
+#LHCortexMask = numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG < 1036)
+#RHCortexMask = numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG < 2036)
+#
+#outMaskIMG = numpy.logical_and(scipy.ndimage.binary_dilation(numpy.logical_and(pericalcarineSeedIMG, pericalcarineMaskIMG), iterations = 4), pericalcarineMaskIMG)
+#
+#midLineMask = scipy.ndimage.binary_dilation(numpy.logical_and(scipy.ndimage.binary_dilation(LHCortexMask, iterations = 2), scipy.ndimage.binary_dilation(RHCortexMask, iterations = 2)), iterations = 4)
+#
+#outMaskIMG = numpy.logical_and(outMaskIMG, numpy.logical_not(midLineMask))
+#
+##NewNII = nibabel.Nifti1Image(numpy.uint8(outMaskIMG), T2NII.affine)
+##nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_pericalcarine_white_mask.nii.gz"))
+##NewNII = nibabel.Nifti1Image(numpy.uint8(outMaskIMG), T2NII.affine)
+##nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + " .nii.gz"))
+#
+#WMForceNII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'))
+#WMForceIMG = WMForceNII.get_fdata()
+#
+#outWMForceIMG = WMForceIMG - numpy.double(outMaskIMG) * 1
+#
+#NewNII = nibabel.Nifti1Image(numpy.single(outWMForceIMG), T2NII.affine)
+#nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force_second.nii.gz'))
+#
+##print(invAffine)
+##print(pericalcarineIDX)
+##print(VTPSurface)
+##print(pericalcarineVVox)
+##
+##ROtsu = Otsu.robustOtsu(T2IMG[GMSegIMG], None, NumberClasses = 3)
+##
+##GMOtsuIMG = numpy.zeros(T2IMG.shape, dtype = numpy.uint8)
+##GMOtsuIMG[GMSegIMG] = ROtsu + 1
+##
+##GMOtsuIMGDilateMask = numpy.logical_and(numpy.logical_or(GMOtsuIMG == 3, GMOtsuIMG == 0), numpy.logical_not(ismember(LabelFusionIMG, [1035, 2035])))
+##
+##outMask = DarkWMIMG > 0.3
+##
+##for z in range(7):
+##    outMask = numpy.logical_and(scipy.ndimage.binary_dilation(outMask), GMOtsuIMGDilateMask)
+##
+##outIMG = numpy.logical_and(GMSegIMG, numpy.logical_not(outMask))
+##
+##NewNII = nibabel.Nifti1Image(numpy.uint8(outMask), LabelFusionNII.affine)
+##nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_dark_wm_bright_gm_to_remove.nii.gz"))
+##NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), LabelFusionNII.affine)
+##nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
+##
+##H, BINS = numpy.histogram(T2IMG[GMOtsuIMG > 0], bins=200, range=None, normed=None, weights=None, density=True)
+#
+##plt.hist(T2IMG[GMOtsuIMG > 0], bins=200)
+##plt.xticks([numpy.min(T2IMG[GMOtsuIMG == 2]), numpy.min(T2IMG[GMOtsuIMG == 3])])
+##F = pylab.gcf()
+##F.set_size_inches((20, 10), forward = True)
+##os.makedirs('GMOtsuHist', exist_ok = True)
+##plt.savefig(os.path.join('GMOtsuHist', subjID + "_gm_hist.png"))
+##NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3)), LabelFusionNII.affine)
+##nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_lh_pericalcarine.nii.gz"))
+#
+##NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 2021), axis = 3)), LabelFusionNII.affine)
+##nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_rh_pericalcarine.nii.gz"))
+#
+##NewNII = nibabel.Nifti1Image(numpy.uint8(VoxelsToReplace), LabelFusionNII.affine)
+##nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_voxelstoreplace.nii.gz"))

@@ -571,7 +571,9 @@ def writeCurv(values, fileName):
         return
 
     FID.write(curvMagicNumber)
-
+    
+    #print("numVertices: " + str(values['numVertices']))
+    #print("numFaces: " + str(values['numFaces']))
     FID.write(struct.pack('>II', int(values['numVertices']), int(values['numFaces'])))
     numValuesPerVertex = int(numpy.size(values['values']) / values['numVertices'])
 
@@ -705,9 +707,13 @@ def readAnnot(fileName):
                     #print(annotOut['colortable']['labels'])
                     #print(annotOut['label'])
                     #annotOut['seg'] = ismember(annotOut['label'], annotOut['colortable']['labels'])
+                    M = numpy.in1d(annotOut['label'], annotOut['colortable']['labels'])
+                    annotOut['seg'] = numpy.zeros_like(annotOut['label'])
+
                     IDX = numpy.argsort(annotOut['colortable']['labels'])
-                    T = numpy.searchsorted(annotOut['colortable']['labels'][IDX], annotOut['label'])
-                    annotOut['seg'] = IDX[T]
+                    T = numpy.searchsorted(annotOut['colortable']['labels'][IDX], annotOut['label'][M])
+                    annotOut['seg'][M] = IDX[T]
+                    #print(annotOut['label'][numpy.logical_not(M)])
                     #rint(annotOut['seg'][:30])
                     pass
             #if isThereAColorTable == 0:

@@ -22,6 +22,7 @@ def runCommand(CMD, isPython = False, log_file_name = None):
         scriptPath = getScriptPath()
         T = [os.path.join(scriptPath, '..', 'VTK', 'VTK-install', 'bin', "vtkpython"), os.path.join(scriptPath, CMD[0])]
         #T = [os.path.join(scriptPath, "vtkpython"), os.path.join(scriptPath, CMD[0])]
+        #print(T)
         T.extend(CMD[1:])
         CMD = T[:]
         del T
@@ -42,31 +43,38 @@ def structN4DefaultOptions():
     return ['-v', '-c', '[100x100x100x100,0]', '-b', '[200]', '-s', '3']
 
 def main():
-    doProcessingSteps = dict.fromkeys(['conform', 'tissueseg', 'surfrecon', 'inflatesphere', 'cortparc', 'cortthickness', 'surfreg', 'segstats', 'aparc2aseg', 'apas2aseg', 'parcstats'])
+    doProcessingSteps = dict.fromkeys(['neckcrop', 'tissueseg', 'surfrecon', 'inflatesphere', 'cortparc', 'cortthickness', 'surfreg', 'segstats', 'aparc2aseg', 'apas2aseg', 'parcstats'])
 
-    atlases = ['aparc', 'aparc+DKTatlas']
+    atlases = ['aparc', 'aparc+DKTatlas', 'aparc+DKTatlas.manual']
     defaultAtlas = atlases
+    defaultAtlas = ['aparc+DKTatlas']
 
     argParser = argparse.ArgumentParser(description = "Performs MCRIB preprocessing and parcellation\n\nFor each <subject id>, input data are to be placed as follows:\n\tRawT2/<subject id>.nii.gz: Whole-brain T2-weighted image", usage = sys.argv[0] + " <processing directives> [processing options] <subject id>", formatter_class = argparse.RawTextHelpFormatter)
 
-    conformArgGroup = argParser.add_argument_group('conform', "PROCESSING DIRECTIVE. Reorients to radiological, axial slice orientation. Resamples to isotropic voxels")
-    conformArgGroup.add_argument('--conform', help = "PROCESSING DIRECTIVE", action = 'store_true')
-    conformArgGroup.add_argument('--noconform', help = "DISABLE conform", action = 'store_true')
-    conformArgGroup.add_argument('--voxelsize', help = "Voxel size to use for isotropic resampling. Use \"volumepreserve\" to preserve original voxel volume", required = False, type = str, action = 'store', default = 'volumepreserve')
+    neckCropArgGroup = argParser.add_argument_group('neckcrop', "PROCESSING DIRECTIVE. Performs neck cropping")
+    neckCropArgGroup.add_argument('--neckcrop', help = "PROCESSING DIRECTIVE", action = 'store_true')
+    neckCropArgGroup.add_argument('--noneckcrop', help = "PROCESSING DIRECTIVE", action = 'store_true')
+    neckCropArgGroup.add_argument('--voxelsize', help = "Voxel size to use for isotropic resampling. Use \"volumepreserve\" to preserve original voxel volume", required = False, type = str, action = 'store', default = 'volumepreserve')
 
     tissueSegArgGroup = argParser.add_argument_group('tissueseg', "Perform tissue type segmentation, depends --conform")
     tissueSegArgGroup.add_argument('--tissueseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--notissueseg', help = "DISABLE tissueseg", required = False, action = 'store_true')
-    tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM'], default = 'DrawEM')
+    tissueSegArgGroup.add_argument('--largeventricles', help = "Large ventricle options", required = False, action = 'store_true')
+    tissueSegArgGroup.add_argument('--betmask', help = "Use BET for brain mask", required = False, action = 'store_true')
+    tissueSegArgGroup.add_argument('--nobspline', help = "Do not use B-Spline in registration step", required = False, action = 'store_true')
+    tissueSegArgGroup.add_argument('--nowmlaplacianexpand', help = "Do not expand WM segmentation using bright regions", required = False, action = 'store_true')
+    tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM', 'MCRIBS'], default = 'MCRIBS')
     tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 
     surfReconArgGroup = argParser.add_argument_group('surfrecon', 'Perform cortical surface extraction, depends --tissueseg')
     surfReconArgGroup.add_argument('--surfrecon', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--nosurfrecon', help = "DISABLE surfrecon", required = False, action = 'store_true')
-    surfReconArgGroup.add_argument('--surfreconmethod', help = "Specify cortical surface extraction method", required = False, choices = ['Deformable'], default = 'Deformable')
+    #surfReconArgGroup.add_argument('--surfreconmethod', help = "Specify cortical surface extraction method", required = False, choices = ['Deformable'], default = 'Deformable')
     surfReconArgGroup.add_argument('--deformablejointhresh', help = "Join threshold parameter for Deformable", required = False, type = float, default = 1)
     surfReconArgGroup.add_argument('--deformablefastcollision', help = "Use Deformable fast collision test", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--deformablenoensurepialoutside', help = "Dont ensure pial is outside white", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--deformablelargeclose', help = "Large close", required = False, action = 'store_true')
+    #surfReconArgGroup.add_argument('--deformablet1only', help = "Use T1 only", required = False, action = 'store_true')
 
     inflateSphereArgGroup = argParser.add_argument_group('inflatesphere', 'Perform inflation, spherical mapping, curv, area, depends --surfrecon')
     inflateSphereArgGroup.add_argument('--inflatesphere', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -87,12 +95,11 @@ def main():
     surfParcArgGroup = argParser.add_argument_group('cortparc', 'Perform cortical parcellation, depends on --surfreg')
     surfParcArgGroup.add_argument('--cortparc', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     surfParcArgGroup.add_argument('--nocortparc', help = "DISABLE cortparc", required = False, action = 'store_true')
-    surfParcArgGroup.add_argument('--cortparcatlases', help = "Parcellation scheme to use", required = False, choices = atlases, default = defaultAtlas, nargs = "+")
 
     aparc2asegArgGroup = argParser.add_argument_group('aparc2aseg', 'Perform cortical parcellation, depends on --surfreg')
     aparc2asegArgGroup.add_argument('--aparc2aseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     aparc2asegArgGroup.add_argument('--noaparc2aseg', help = "DISABLE aparc2aseg", required = False, action = 'store_true')
-    aparc2asegArgGroup.add_argument('--aparc2asegatlases', help = "Parcellation scheme to use", required = False, choices = atlases, nargs = '+', default = defaultAtlas)
+    aparc2asegArgGroup.add_argument('--aparc2asegatlases', help = "Parcellation scheme to use for aparc2aseg, DEPRECATED use cortparcatlases", required = False, choices = atlases, nargs = '+', default = [])
 
     cortThicknessArgGroup = argParser.add_argument_group('cortthickness', 'Compute cortical thickness')
     cortThicknessArgGroup.add_argument('--cortthickness', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -123,6 +130,8 @@ def main():
 
     argParser.add_argument('-usegpu', help = "Use the GPU for inflation and spherical projection, affects --inflatesphere", required = False, action = 'store_true')
     argParser.add_argument('-steplist', '--steplist', help = "Prints out the processing step options in order", required = False, action = 'store_true')
+
+    argParser.add_argument('--cortparcatlases', help = "Parcellation(s) scheme to use for cortical parcellation steps", required = False, choices = atlases, default = defaultAtlas, nargs = "+")
 
     argParser.add_argument('-openmp', '--openmp', '-nthreads', '--nthreads', help = "Number of threads for multithreading applications", required = False, type = int, default = 1)
     argParser.add_argument('-hemi', '--hemi', help = "Only process a single hemisphere", choices = ['lh', 'rh'], required = False)
@@ -178,6 +187,9 @@ def main():
     os.environ['PYTHONPATH'] = os.path.join(scriptPath, '..', 'MIRTK', 'MIRTK-install', 'lib', 'python') + os.pathsep + os.environ['PYTHONPATH']
     os.environ['PYTHONPATH'] = os.path.join(scriptPath, '..', 'lib', 'python') + os.pathsep + os.environ['PYTHONPATH']
 
+    # set the template path
+    os.environ['TEMPLATEDIR'] = os.path.join(os.environ['MCRIBS_HOME'], 'lib', 'MCRIBSTemplates')
+
     if not options.hemi is None:
         Hemis = options.hemi
     else:
@@ -196,6 +208,7 @@ def main():
 
     logFileFID.write('--------------------------------------------\n')
     logFileFID.write('MCRIBReconAll invocation\n')
+    logFileFID.write(" ".join(sys.argv[1:]) + '\n')
     logFileFID.write(str(datetime.datetime.now()) + "\n")
 
     # option 2, run git rev-parse HEAD to get the commit hash
@@ -310,38 +323,66 @@ def main():
 
         FID.close()
 
-    if not (VTKMajorVersion is None or VTKMinorVersion is None or VTKPatchVersion is None):
-        logFileFID.write('VTK version: ' + VTKMajorVersion + "." + VTKMinorVersion + "." + VTKPatchVersion + "\n\n")
-    else:
-        logFileFID.write("\n")
-    del VTKMajorVersion
-    del VTKMinorVersion
-    del VTKPatchVersion
+        if not (VTKMajorVersion is None or VTKMinorVersion is None or VTKPatchVersion is None):
+            logFileFID.write('VTK version: ' + VTKMajorVersion + "." + VTKMinorVersion + "." + VTKPatchVersion + "\n\n")
+        else:
+            logFileFID.write("\n")
+        del VTKMajorVersion
+        del VTKMinorVersion
+        del VTKPatchVersion
 
     # change back to directory
     os.chdir(CWD)
     del CWD
 
     logFileFID.write('--------------------------------------------\n\n')
-
-    #quit()
     isFromDHCP = os.path.isfile(os.path.join('freesurfer', options.subjectid, '.isFromDHCP'))
     #print("isFromDHCP: " + str(isFromDHCP))
-    if (options.conform == True or options.all == True) and not isFromDHCP and options.noconform == False:
-        cmd = ["MCRIBConform", os.path.join('RawT2', options.subjectid + ".nii.gz"), options.voxelsize, os.path.join('RawT2RadiologicalIsotropic', options.subjectid + ".nii.gz")]
+
+    if (options.neckcrop == True or options.all == True) and not isFromDHCP and options.noneckcrop == False:
+        cmd = ["MCRIBNeckCrop", options.subjectid, options.voxelsize]
         runCommand(cmd, log_file_name = logFileName)
-        #rint("--struct-reorient no longer needed, ignoring")
+        #print("--struct-reorient no longer needed, ignoring")
         pass
+
 
     if (options.tissueseg == True or options.all == True) and not isFromDHCP and options.notissueseg == False:
         if options.tissuesegmethod == 'DrawEM':
             cmd = ["MCRIBTissueSegDrawEM", options.subjectid, str(options.subjectage)]
             print(" ".join(cmd))
             runCommand(cmd, log_file_name = logFileName)
+        elif options.tissuesegmethod == 'MCRIBS':
+            cmd = ["MCRIBTissueSegMCRIBS", options.subjectid]
+            if options.largeventricles:
+                cmd.append('-largeventricles')
+            if options.betmask:
+                cmd.append('-betmask')
+            if options.nobspline:
+                cmd.append('-nobspline')
+            if options.nowmlaplacianexpand:
+                cmd.append('-nowmlaplacianexpand')
+            print(" ".join(cmd))
+            runCommand(cmd, log_file_name = logFileName)
         pass
 
     if (options.surfrecon == True or options.all == True) and not isFromDHCP and options.nosurfrecon == False:
-        cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision), str(options.useT1), str(options.deformablenoensurepialoutside)]
+        # old DrawEM version
+        #cmd = ["MCRIBSurfReconDeformable", options.subjectid, str(options.deformablejointhresh), str(options.deformablefastcollision), str(options.useT1), str(options.deformablenoensurepialoutside), str(options.bonnie), str(options.deformablelargeclose), str(options.deformablet1only)]
+
+
+        cmd = ["MCRIBSurfReconDeformableMCRIBS", options.subjectid]
+        if options.deformablefastcollision == True:
+            cmd.append('--fastcollision')
+        if options.deformablenoensurepialoutside == True:
+            cmd.append('--noensureoutsidepial')
+        if options.deformablelargeclose == True:
+            cmd.append('--largeclose')
+        if options.largeventricles:
+            cmd.append('--largeventricles')
+        if options.nowmlaplacianexpand:
+            cmd.append('--nowmlaplacianexpand')
+
+        cmd.extend(['--jointhreshold', str(options.deformablejointhresh)])
         runCommand(cmd, log_file_name = logFileName)
         pass
 
@@ -357,15 +398,16 @@ def main():
         cmd = ["MCRIBSurfReg", options.subjectid, Hemis]
         runCommand(cmd, log_file_name = logFileName)
         pass
-    
-    if (options.cortribbon == True or options.all == True or options.autoreconaftersurf == True) and options.nocortribbon == False:
-        cmd = ["MCRIBVolMask", options.subjectid]
-        runCommand(cmd, log_file_name = logFileName)
-        pass
 
     if (options.cortparc == True or options.all == True or options.autoreconaftersurf == True) and options.nocortparc == False:
         cmd = ["MCRIBCortParc", options.subjectid, Hemis]
         cmd.extend(options.cortparcatlases)
+        runCommand(cmd, log_file_name = logFileName)
+        pass
+
+
+    if (options.cortribbon == True or options.all == True or options.autoreconaftersurf == True) and options.nocortribbon == False:
+        cmd = ["MCRIBVolMaskPython", options.subjectid]
         runCommand(cmd, log_file_name = logFileName)
         pass
 
@@ -376,7 +418,7 @@ def main():
 
     if (options.aparc2aseg == True or options.all == True or options.autoreconaftersurf == True) and options.noaparc2aseg == False:
         cmd = ["MCRIBAPARC2ASEG", options.subjectid]
-        cmd.extend(options.aparc2asegatlases)
+        cmd.extend(options.cortparcatlases)
         runCommand(cmd, log_file_name = logFileName)
         pass
     # deprecated, done in aparc2aseg
@@ -397,7 +439,7 @@ def main():
 
     if (options.parcstats == True or options.all == True or options.autoreconaftersurf == True) and options.noparcstats == False:
         cmd = ["MCRIBParcStatsPython", options.subjectid, Hemis]
-        for curAtlas in options.aparc2asegatlases:
+        for curAtlas in options.cortparcatlases:
             curCmd = cmd[:]
             curCmd.extend([curAtlas])
             runCommand(curCmd, isPython = True, log_file_name = logFileName)

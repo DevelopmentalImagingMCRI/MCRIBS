@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import vtk
 import numpy
@@ -7,12 +7,13 @@ import os
 import freesurfer
 import nibabel
 import getopt
+import vtk.util.numpy_support
 
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 1:
-	print "The number of arguments must be 1"
-	print sys.argv[0] + " <vtp file>"
+	print("The number of arguments must be 1")
+	print(sys.argv[0] + " <vtp file>")
 	exit()
 
 numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
@@ -43,8 +44,10 @@ S = dict()
 #S['vertices'] = numpy.stack(S['vertices']).T
 
 if Data.GetNumberOfPolys() > 0:
-	S['faces'] = [[int(Data.GetPolys().GetData().GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
-	S['faces'] = numpy.stack(S['faces']).T
+    S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPolys().GetData()))
+    S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
+    S['faces'] = S['faces'][1:]
+
 	
 # now do the point data arrays
 cellData = Data.GetCellData()
@@ -56,7 +59,7 @@ for arrayIDX in range(cellData.GetNumberOfArrays()):
 		curArray = [curArray.GetTuple(arrayIDX) for arrayIDX in range(curArray.GetNumberOfTuples())]
 		curArray = numpy.array(curArray)
 		FaceIDX = numpy.where(curArray > 0)[0]
-		print S['faces'][0, FaceIDX[0]]
+		print(S['faces'][0, FaceIDX[0]])
 	#S['faces'] = numpy.take(S['faces'], numpy.array([0, 2, 1]), axis = 0)
 
 #if checkForNegativeArea == True:

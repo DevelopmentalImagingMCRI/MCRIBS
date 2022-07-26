@@ -24,8 +24,10 @@
 #include "mirtk/Matrix3x3.h"
 #include "mirtk/Parallel.h"
 #include "mirtk/HarmonicTetrahedralMeshMapper.h" // used to obtain initial map
+#include "mirtk/Vtk.h"
 #include "mirtk/VtkMath.h"
 
+#include "vtkNew.h"
 #include "vtkSmartPointer.h"
 #include "vtkTetra.h"
 #include "vtkIdList.h"
@@ -95,11 +97,11 @@ public:
     inv.setIdentity();
     inv(2, 2) = -1.0;
 
-    vtkSmartPointer<vtkIdList> ptIds = vtkSmartPointer<vtkIdList>::New();
+    vtkNew<vtkIdList> ptIds;
     for (vtkIdType cellId = re.begin(); cellId != re.end(); ++cellId) {
 
       // Get indices of cell points
-      _PointSet->GetCellPoints(cellId, ptIds);
+      GetCellPoints(_PointSet, cellId, ptIds.GetPointer());
       i0 = ptIds->GetId(0);
       i1 = ptIds->GetId(1);
       i2 = ptIds->GetId(2);

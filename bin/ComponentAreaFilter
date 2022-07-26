@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+import nibabel
+import numpy
+import os
+import sys
+import getopt
+import scipy.ndimage
+
+opts, args = getopt.getopt(sys.argv[1:], 'a:')
+
+maskFileName = None
+areaThresh = 20
+outType = 'single'
+
+for o, a in opts:
+    if o == '-a':
+        areaThresh = int(a)
+
+if len(args) < 2:
+    print("Usage " + sys.argv[0] + " [-a areaThresh] <input image> <output image>")
+    quit()
+
+inFileName = args[0]
+
+if not os.path.isfile(inFileName):
+    print("Component Area Filter Init File not found")
+    quit()
+
+inNII = nibabel.load(inFileName)
+inIMG = (inNII.get_fdata() > 0)
+
+L, numLabels = scipy.ndimage.label(inIMG)
+
+N = numpy.bincount(L[L > 0])
+
+T = numpy.in1d(L[L > 0], numpy.where(N > areaThresh)[0])
+
+outIMG = numpy.zeros_like(inIMG)
+outIMG[L > 0] = T
+
+outNII = nibabel.Nifti1Image(numpy.uint8(outIMG), inNII.affine)
+nibabel.save(outNII, args[1])

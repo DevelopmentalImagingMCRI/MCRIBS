@@ -15,32 +15,33 @@
 
 #include <iostream>
 
+#include <mirtk/ViewerExport.h>
 #include <mirtk/IOConfig.h>
 
-typedef enum { View_A,
-               View_B,
-               View_Checkerboard,
-               View_Subtraction,
-               View_HShutter,
-               View_VShutter,
-               View_AoverB,
-               View_BoverA
-             } RViewMode;
 
-typedef enum { NoneDef,
-               Displacement,
-               Jacobian,
-               Jacobian_Expansion,
-               Jacobian_Contraction
-             } DeformationProperty;
+enum RViewMode {
+  View_A,
+  View_B,
+  View_Checkerboard,
+  View_Subtraction,
+  View_HShutter,
+  View_VShutter,
+  View_AoverB,
+  View_BoverA
+};
 
-typedef enum { Viewer_XY, Viewer_XZ, Viewer_YZ, Viewer_None } ViewerMode;
+enum DeformationProperty {
+  NoneDef,
+  Displacement,
+  Jacobian,
+  Jacobian_Expansion,
+  Jacobian_Contraction
+};
 
-typedef enum { CrossHair, CursorX, CursorV, CursorBar } CursorMode;
-
-typedef enum { Neurological, Radiological, Native } DisplayMode;
-
-typedef enum { RegionGrowing2D, RegionGrowing3D } RegionGrowingMode;
+enum ViewerMode { Viewer_XY, Viewer_XZ, Viewer_YZ, Viewer_None };
+enum CursorMode { CrossHair, CursorX, CursorV, CursorBar };
+enum DisplayMode { Neurological, Radiological, Native };
+enum RegionGrowingMode { RegionGrowing2D, RegionGrowing3D };
 
 #define DEFORMATION_DISPLACEMENT_MIN 0
 #define DEFORMATION_DISPLACEMENT_MAX 100
@@ -112,9 +113,8 @@ typedef enum { RegionGrowing2D, RegionGrowing3D } RegionGrowingMode;
 #include <mirtk/HistogramWindow.h>
 #include <mirtk/VoxelContour.h>
 
-class VoxelContour;
 
-class RView
+class MIRTK_Viewer_EXPORT RView
 {
 
 protected:
@@ -171,7 +171,7 @@ protected:
   mirtk::ImageTransformationCache _sourceTransformCache;
 
   /// Whether to cache displacements or not
-  int _CacheDisplacements;
+  bool _CacheDisplacements;
 
   /// Transformation filter for reslicing of segmentation image
   mirtk::ImageTransformation **_segmentationTransformFilter;
@@ -214,7 +214,7 @@ protected:
   vtkPointSet *_Object[MAX_NUMBER_OF_OBJECTS];
 
   /// Flag for display object as a movie
-  int _ObjectMovie;
+  bool _ObjectMovie;
 
 #endif
 
@@ -255,16 +255,16 @@ protected:
   int _sourceFrame;
 
   /// Flag to indicate whether target image must be updated
-  int _targetUpdate;
+  bool _targetUpdate;
 
   /// Flag to indicate whether source image must be updated
-  int _sourceUpdate;
+  bool _sourceUpdate;
 
   /// Flag to indicate whether source image must be updated
-  int _segmentationUpdate;
+  bool _segmentationUpdate;
 
   /// Flag to indicate whether selection image must be updated
-  int _selectionUpdate;
+  bool _selectionUpdate;
 
   /// Width of viewer  (in pixels)
   int _screenX;
@@ -319,13 +319,13 @@ protected:
   ConfigViewerMode _configMode;
 
   /// Flag for display labels of segmentation image
-  int _DisplaySegmentationLabels;
+  bool _DisplaySegmentationLabels;
 
   /// Flag for display contours of segmentation image
-  int _DisplaySegmentationContours;
+  bool _DisplaySegmentationContours;
 
   /// Flag for segmentation mode
-  int _SegmentationMode;
+  bool _SegmentationMode;
 
   /// Parameter for paintbrush width
   int _PaintBrushWidth;
@@ -352,40 +352,40 @@ protected:
   double _Speed;
 
   /// Flag for display of isolines from target image
-  int _DisplayTargetContour;
+  bool _DisplayTargetContour;
 
   /// Flag for display of isolines from source image
-  int _DisplaySourceContour;
+  bool _DisplaySourceContour;
 
   /// Flag for snap to grid
-  int _SnapToGrid;
+  bool _SnapToGrid;
 
   /// Flag for display of cross hair
-  int _DisplayCursor;
+  bool _DisplayCursor;
 
   /// Mode for cursor display
   CursorMode _CursorMode;
 
   /// Flag for display of axis labels
-  int _DisplayAxisLabels;
+  bool _DisplayAxisLabels;
 
   /// Resolution for display of deformation grid
   int _DisplayDeformationGridResolution;
 
   /// Flag for display of deformation grid
-  int _DisplayDeformationGrid;
+  bool _DisplayDeformationGrid;
 
   /// Flag for display of deformation points
-  int _DisplayDeformationPoints;
+  bool _DisplayDeformationPoints;
 
   /// Flag for display of deformation arrows
-  int _DisplayDeformationArrows;
+  bool _DisplayDeformationArrows;
 
-  /// 0: local, 1: global+local
-  int _DisplayDeformationTotal;
+  /// false: local, true: global+local
+  bool _DisplayDeformationTotal;
 
   /// Flag for display of landmarks
-  int _DisplayLandmarks;
+  bool _DisplayLandmarks;
 
   /// IDs of target landmarks to display
   std::set<int> _selectedTargetLandmarks;
@@ -394,22 +394,22 @@ protected:
   std::set<int> _selectedSourceLandmarks;
 
   /// Flag for display of ROI
-  int _DisplayROI;
+  bool _DisplayROI;
 
   /// Flag for track of tag using gravity window
-  int _TrackTAG;
+  bool _TrackTAG;
 
   /// Flag for display of tag grid pattern
-  int _ViewTAG;
+  bool _ViewTAG;
 
   /// Flag for flipping X coordinates
-  int _FlipX;
+  bool _FlipX;
 
   /// Flag for flipping Y coordinates
-  int _FlipY;
+  bool _FlipY;
 
   /// Flag for flipping Z coordinates
-  int _FlipZ;
+  bool _FlipZ;
 
   /// Current mouse position
   int _mouseX, _mouseY, _mouseZ;
@@ -425,13 +425,13 @@ protected:
 
 #if MIRTK_IO_WITH_VTK && defined(HAVE_VTK)
   /// Flag for display of object
-  int _DisplayObject;
+  bool _DisplayObject;
 
   /// Flag for warping of object
-  int _DisplayObjectWarp;
+  bool _DisplayObjectWarp;
 
   /// Flag for display of object grid
-  int _DisplayObjectGrid;
+  bool _DisplayObjectGrid;
 #endif
 
 public:
@@ -531,7 +531,7 @@ public:
   void ObjectMovieOff();
 
   /// Return display of object movie
-  int GetObjectMovie();
+  bool GetObjectMovie();
 #endif
 
   /// Get width of registration viewer (in pixels)
@@ -541,7 +541,7 @@ public:
   int GetHeight();
 
   /// Set display resolution (in mm)
-  void   SetResolution(double);
+  void SetResolution(double);
 
   /// Get display resolution (in mm)
   double GetResolution();
@@ -655,7 +655,7 @@ public:
   void DisplayTargetContoursOff();
 
   /// Return display of target iso-contours
-  int GetDisplayTargetContours();
+  bool GetDisplayTargetContours();
 
   /// Turn iso-contours extracted from source image on
   void DisplaySourceContoursOn();
@@ -664,7 +664,7 @@ public:
   void DisplaySourceContoursOff();
 
   /// Return display of source iso-contours
-  int GetDisplaySourceContours();
+  bool GetDisplaySourceContours();
 
   /// Return display mode
   DisplayMode GetDisplayMode();
@@ -679,7 +679,7 @@ public:
   void CacheDisplacementsOff();
 
   /// Return displacements caching mode
-  int GetCacheDisplacements();
+  bool GetCacheDisplacements();
 
   /// Turn snap to grid on
   void SnapToGridOn();
@@ -688,7 +688,7 @@ public:
   void SnapToGridOff();
 
   /// Return snap to grid
-  int GetSnapToGrid();
+  bool GetSnapToGrid();
 
   /// Turn axis labels on
   void DisplayAxisLabelsOn();
@@ -697,7 +697,7 @@ public:
   void DisplayAxisLabelsOff();
 
   /// Return display of cross hair
-  int GetDisplayCursor();
+  bool GetDisplayCursor();
 
   /// Return cursor mode
   CursorMode GetCursorMode();
@@ -772,7 +772,7 @@ public:
   void DisplayDeformationGridOff();
 
   /// Return display of deformation grid
-  int GetDisplayDeformationGrid();
+  bool GetDisplayDeformationGrid();
 
   /// Return display of deformation grid
   int GetDisplayDeformationGridResolution();
@@ -787,7 +787,7 @@ public:
   void DisplayDeformationPointsOff();
 
   /// Return display of deformation points
-  int GetDisplayDeformationPoints();
+  bool GetDisplayDeformationPoints();
 
   /// Turn display of total deformation on
   void DisplayDeformationTotalOn();
@@ -796,7 +796,7 @@ public:
   void DisplayDeformationTotalOff();
 
   /// Return display of total deformation
-  int GetDisplayDeformationTotal();
+  bool GetDisplayDeformationTotal();
 
   /// Turn display of ROI
   void DisplayROIOn();
@@ -805,7 +805,7 @@ public:
   void DisplayROIOff();
 
   /// Return display of ROI
-  int GetDisplayROI();
+  bool GetDisplayROI();
 
   /// Turn display of ROI
   void TrackTAGOn();
@@ -814,7 +814,7 @@ public:
   void TrackTAGOff();
 
   /// Return display of ROI
-  int GetTrackTAG();
+  bool GetTrackTAG();
 
     /// Turn display of ROI
   void ViewTAGOn();
@@ -823,7 +823,7 @@ public:
   void ViewTAGOff();
 
   /// Return display of ROI
-  int GetViewTAG();
+  bool GetViewTAG();
 
   /// Turn display of deformation arrows on
   void DisplayDeformationArrowsOn();
@@ -832,10 +832,10 @@ public:
   void DisplayDeformationArrowsOff();
 
   /// Return display of deformation arrows
-  int GetDisplayDeformationArrows();
+  bool GetDisplayDeformationArrows();
 
   /// Return display of relative deformations
-  int GetDisplayDeformationRelative();
+  bool GetDisplayDeformationRelative();
 
   /// Turn display of landmarks on
   void DisplayLandmarksOn();
@@ -844,7 +844,7 @@ public:
   void DisplayLandmarksOff();
 
   /// Return display of landmarks
-  int GetDisplayLandmarks();
+  bool GetDisplayLandmarks();
 
   /// Turn display of specified target landmark on
   void SelectTargetLandmark(int);
@@ -853,7 +853,7 @@ public:
   void DeselectTargetLandmark(int);
 
   /// Return display of specified target landmark
-  int IsTargetLandmarkSelected(int);
+  bool IsTargetLandmarkSelected(int);
 
   /// Clear selection of target landmarks to display
   void ClearTargetLandmarkSelection();
@@ -865,7 +865,7 @@ public:
   void DeselectSourceLandmark(int);
 
   /// Return display of specified source landmark
-  int IsSourceLandmarkSelected(int);
+  bool IsSourceLandmarkSelected(int);
 
   /// Clear selection of target landmarks to display
   void ClearSourceLandmarkSelection();
@@ -878,7 +878,7 @@ public:
   void DisplayObjectOff();
 
   /// Return display of object
-  int GetDisplayObject();
+  bool GetDisplayObject();
 
   /// Turn warping of object on
   void DisplayObjectWarpOn();
@@ -887,7 +887,7 @@ public:
   void DisplayObjectWarpOff();
 
   /// Return warping of object
-  int GetDisplayObjectWarp();
+  bool GetDisplayObjectWarp();
 
   /// Turn grid display of object on
   void DisplayObjectGridOn();
@@ -896,7 +896,7 @@ public:
   void DisplayObjectGridOff();
 
   /// Return grid display of object
-  int GetDisplayObjectGrid();
+  bool GetDisplayObjectGrid();
 #endif
 
   /// Set region growing mode
@@ -924,7 +924,7 @@ public:
   void FlipZOff();
 
   /// Set the viewing mix for target and source in shutter viewing mode
-  void   SetViewMix(double);
+  void SetViewMix(double);
 
   /// Get the viewing mix for target and source in shutter viewing mode
   double GetViewMix();
@@ -1017,7 +1017,7 @@ public:
   void SegmentationLabelsOff();
 
   /// Gets the current display value
-  int GetDisplaySegmentationLabels();
+  bool GetDisplaySegmentationLabels();
 
   /// Turns on the segmentation drawing
   void SegmentationContoursOn();
@@ -1026,7 +1026,7 @@ public:
   void SegmentationContoursOff();
 
   /// Gets the current display value
-  int GetDisplaySegmentationContours();
+  bool GetDisplaySegmentationContours();
 
   /// Reset the display origin to origin of segmentation image
   void ResetSegmentation();
@@ -1203,7 +1203,7 @@ inline void RView::CacheDisplacementsOff()
   this->Initialize(true);
 }
 
-inline int RView::GetCacheDisplacements()
+inline bool RView::GetCacheDisplacements()
 {
   return _CacheDisplacements;
 }
@@ -1231,7 +1231,7 @@ inline void RView::DisplayTargetContoursOff()
   _DisplayTargetContour = false;
 }
 
-inline int RView::GetDisplayTargetContours()
+inline bool RView::GetDisplayTargetContours()
 {
   return _DisplayTargetContour;
 }
@@ -1246,7 +1246,7 @@ inline void RView::DisplaySourceContoursOff()
   _DisplaySourceContour = false;
 }
 
-inline int RView::GetDisplaySourceContours()
+inline bool RView::GetDisplaySourceContours()
 {
   return _DisplaySourceContour;
 }
@@ -1283,7 +1283,7 @@ inline void RView::SnapToGridOff()
   _SnapToGrid = false;
 }
 
-inline int RView::GetSnapToGrid()
+inline bool RView::GetSnapToGrid()
 {
   return _SnapToGrid;
 }
@@ -1308,7 +1308,7 @@ inline void RView::SetCursorMode(CursorMode mode)
   _CursorMode = mode;
 }
 
-inline int RView::GetDisplayCursor()
+inline bool RView::GetDisplayCursor()
 {
   return _DisplayCursor;
 }
@@ -1343,7 +1343,7 @@ inline void RView::DisplayDeformationGridOff()
   _DisplayDeformationGrid = false;
 }
 
-inline int RView::GetDisplayDeformationGrid()
+inline bool RView::GetDisplayDeformationGrid()
 {
   return _DisplayDeformationGrid;
 }
@@ -1381,7 +1381,7 @@ inline void RView::DisplayDeformationPointsOff()
   _DisplayDeformationPoints = false;
 }
 
-inline int RView::GetDisplayDeformationPoints()
+inline bool RView::GetDisplayDeformationPoints()
 {
   return _DisplayDeformationPoints;
 }
@@ -1396,7 +1396,7 @@ inline void RView::DisplayDeformationArrowsOff()
   _DisplayDeformationArrows = false;
 }
 
-inline int RView::GetDisplayDeformationArrows()
+inline bool RView::GetDisplayDeformationArrows()
 {
   return _DisplayDeformationArrows;
 }
@@ -1411,7 +1411,7 @@ inline void RView::DisplayDeformationTotalOff()
   _DisplayDeformationTotal = false;
 }
 
-inline int RView::GetDisplayDeformationTotal()
+inline bool RView::GetDisplayDeformationTotal()
 {
   return _DisplayDeformationTotal;
 }
@@ -1426,7 +1426,7 @@ inline void RView::DisplayLandmarksOff()
   _DisplayLandmarks = false;
 }
 
-inline int RView::GetDisplayLandmarks()
+inline bool RView::GetDisplayLandmarks()
 {
   return _DisplayLandmarks;
 }
@@ -1443,9 +1443,9 @@ inline void RView::DeselectTargetLandmark(int id)
   _selectedTargetLandmarks.erase(id-1);
 }
 
-inline int RView::IsTargetLandmarkSelected(int id)
+inline bool RView::IsTargetLandmarkSelected(int id)
 {
-  return _selectedTargetLandmarks.find(id-1) != _selectedTargetLandmarks.end();
+  return _selectedTargetLandmarks.find(id - 1) != _selectedTargetLandmarks.end();
 }
 
 inline void RView::ClearTargetLandmarkSelection()
@@ -1456,18 +1456,18 @@ inline void RView::ClearTargetLandmarkSelection()
 inline void RView::SelectSourceLandmark(int id)
 {
   if (0 < id && id <= _targetLandmarks.Size()) {
-    _selectedSourceLandmarks.insert(id-1);
+    _selectedSourceLandmarks.insert(id - 1);
   }
 }
 
 inline void RView::DeselectSourceLandmark(int id)
 {
-  _selectedSourceLandmarks.erase(id-1);
+  _selectedSourceLandmarks.erase(id - 1);
 }
 
-inline int RView::IsSourceLandmarkSelected(int id)
+inline bool RView::IsSourceLandmarkSelected(int id)
 {
-  return _selectedSourceLandmarks.find(id-1) != _selectedSourceLandmarks.end();
+  return _selectedSourceLandmarks.find(id - 1) != _selectedSourceLandmarks.end();
 }
 
 inline void RView::ClearSourceLandmarkSelection()
@@ -1475,12 +1475,12 @@ inline void RView::ClearSourceLandmarkSelection()
   _selectedSourceLandmarks.clear();
 }
 
-inline int RView::GetDisplaySegmentationLabels()
+inline bool RView::GetDisplaySegmentationLabels()
 {
   return _DisplaySegmentationLabels;
 }
 
-inline int RView::GetDisplaySegmentationContours()
+inline bool RView::GetDisplaySegmentationContours()
 {
   return _DisplaySegmentationContours;
 }
@@ -1515,7 +1515,7 @@ inline void RView::DisplayROIOff()
   _DisplayROI = false;
 }
 
-inline int RView::GetDisplayROI()
+inline bool RView::GetDisplayROI()
 {
   return _DisplayROI;
 }
@@ -1530,7 +1530,7 @@ inline void RView::TrackTAGOff()
   _TrackTAG = false;
 }
 
-inline int RView::GetTrackTAG()
+inline bool RView::GetTrackTAG()
 {
   return _TrackTAG;
 }
@@ -1545,7 +1545,7 @@ inline void RView::ViewTAGOff()
   _ViewTAG = false;
 }
 
-inline int RView::GetViewTAG()
+inline bool RView::GetViewTAG()
 {
   return _ViewTAG;
 }
@@ -1571,7 +1571,7 @@ inline void RView::ObjectMovieOff()
     _ObjectMovie = false;
 }
 
-inline int RView::GetObjectMovie()
+inline bool RView::GetObjectMovie()
 {
     return _ObjectMovie;
 }
@@ -1586,7 +1586,7 @@ inline void RView::DisplayObjectOff()
   _DisplayObject = false;
 }
 
-inline int RView::GetDisplayObject()
+inline bool RView::GetDisplayObject()
 {
   return _DisplayObject;
 }
@@ -1601,7 +1601,7 @@ inline void RView::DisplayObjectWarpOff()
   _DisplayObjectWarp = false;
 }
 
-inline int RView::GetDisplayObjectWarp()
+inline bool RView::GetDisplayObjectWarp()
 {
   return _DisplayObjectWarp;
 }
@@ -1616,7 +1616,7 @@ inline void RView::DisplayObjectGridOff()
   _DisplayObjectGrid = false;
 }
 
-inline int RView::GetDisplayObjectGrid()
+inline bool RView::GetDisplayObjectGrid()
 {
   return _DisplayObjectGrid;
 }
@@ -1635,7 +1635,7 @@ inline void RView::SetRegionGrowingMode(RegionGrowingMode mode)
 
 inline void RView::FlipXOff()
 {
-  if (_FlipX == true) {
+  if (_FlipX) {
     _FlipX = false;
     _xaxis[0] *= -1;
     _xaxis[1] *= -1;
@@ -1646,7 +1646,7 @@ inline void RView::FlipXOff()
 
 inline void RView::FlipXOn()
 {
-  if (_FlipX == false) {
+  if (!_FlipX) {
     _FlipX = true;
     _xaxis[0] *= -1;
     _xaxis[1] *= -1;
@@ -1657,7 +1657,7 @@ inline void RView::FlipXOn()
 
 inline void RView::FlipYOff()
 {
-  if (_FlipY == true) {
+  if (_FlipY) {
     _FlipY = false;
     _yaxis[0] *= -1;
     _yaxis[1] *= -1;
@@ -1668,7 +1668,7 @@ inline void RView::FlipYOff()
 
 inline void RView::FlipYOn()
 {
-  if (_FlipY == false) {
+  if (!_FlipY) {
     _FlipY = true;
     _yaxis[0] *= -1;
     _yaxis[1] *= -1;
@@ -1679,7 +1679,7 @@ inline void RView::FlipYOn()
 
 inline void RView::FlipZOff()
 {
-  if (_FlipZ == true) {
+  if (_FlipZ) {
     _FlipZ = false;
     _zaxis[0] *= -1;
     _zaxis[1] *= -1;
@@ -1690,7 +1690,7 @@ inline void RView::FlipZOff()
 
 inline void RView::FlipZOn()
 {
-  if (_FlipZ == false) {
+  if (!_FlipZ) {
     _FlipZ = true;
     _zaxis[0] *= -1;
     _zaxis[1] *= -1;
@@ -1846,13 +1846,13 @@ inline void RView::Clip()
 inline void RView::AddTargetLandmark(mirtk::Point &point, char *)
 {
   // Add landmark as point, ignoring label for now
-      _targetLandmarks.Add(point);
+  _targetLandmarks.Add(point);
 }
 
 inline void RView::AddSourceLandmark(mirtk::Point &point, char *)
 {
   // Add landmark as point, ignoring label for now	
-	  _sourceLandmarks.Add(point);
+	_sourceLandmarks.Add(point);
 }
 
 inline void RView::DeleteTargetLandmark(int id)

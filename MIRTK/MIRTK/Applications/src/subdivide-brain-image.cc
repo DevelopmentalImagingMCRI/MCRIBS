@@ -2,7 +2,7 @@
  * Medical Image Registration ToolKit (MIRTK)
  *
  * Copyright 2016 Imperial College London
- * Copyright 2016 Andreas Schuh
+ * Copyright 2016-2020 Andreas Schuh
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -125,6 +125,8 @@ void PrintHelp(const char *name)
   cout << "      No. of iterations used to close holes in cerebellum segmentation. (default: 0)\n";
   cout << "  -brainstem-and-cerebellum, -cerebellum-and-brainstem, -bscb, -cbbs [on|off]\n";
   cout << "      Whether to merge brainstem and cerebellum. (default: off)\n";
+  cout << "  -fill-wm-holes [on|off]\n";
+  cout << "      Whether to fill interhemisphere holes in WM that are closed in xy plane. (default: off)\n";
   PrintStandardOptions(cout);
   cout << endl;
 }
@@ -677,6 +679,39 @@ Plane MedialCuttingPlane(const ByteImage &regions)
 }
 
 // -----------------------------------------------------------------------------
+bool IsInterhemisphereWhiteMatterHole(const ByteImage &regions, int k, const GreyImage &cc, GreyPixel hid)
+{
+  NeighborhoodOffsets offsets(&cc, CONNECTIVITY_4);
+  bool touches_lh = false;
+  bool touches_rh = false;
+  bool touches_non_wm = false;
+  const int nvox = cc.NumberOfVoxels();
+  const int k_nvox = k * nvox;
+  for (int vox = 0; vox < nvox; ++vox) {
+    if (cc(vox) == hid) {
+      for (int n = 0; n < offsets.Size(); ++n) {
+        const int nbr = vox + offsets(n);
+        if (cc.IsInside(nbr)) {
+          if (cc(nbr) == 0) {
+            const GreyPixel label = regions(k_nvox + nbr);
+            if (label == LH) {
+              touches_lh = true;
+            } else if (label == RH) {
+              touches_rh = true;
+            } else if (label != BG) {
+              touches_non_wm = true;
+            }
+          }
+        } else {
+          return false;
+        }
+      }
+    }
+  }
+  return touches_lh && touches_rh && !touches_non_wm;
+}
+
+// -----------------------------------------------------------------------------
 bool TouchesOtherHemisphere(const GreyImage &cc, const GreyImage &other, int vox)
 {
   const GreyPixel label = cc(vox);
@@ -766,6 +801,9 @@ ByteImage Resample(const ByteImage &regions, const Plane &rl_plane, const Plane 
 
   int bi[2], bj[2], bk[2];
   regions.BoundingBox(bi[0], bj[0], bk[0], bi[1], bj[1], bk[1]);
+
+  //std::cout << "BoundingBox" << std::endl;
+  //std::cout << bi[0] << " " << bi[1] << ", " << bj[0] << " " << bj[1] << ", " << bk[0] << " " << bk[1] << std::endl;
 
   Point  p, q;
   double bounds[6] = {+inf, -inf, +inf, -inf, +inf, -inf};
@@ -965,6 +1003,7 @@ int main(int argc, char *argv[])
   int  ymargin     = 0;     // Margin in y direction after resampling in no. of voxels
   int  zmargin     = 0;     // Margin in z direction after resampling in no. of voxels
   bool merge_bs_cb = false; // Whether to merge brainstem and cerebellum segments
+  bool fill_wm_holes = false; // Whether to fill holes combined LH/RH WM region
 
   if (NUM_POSARGS == 1) {
     output_name = POSARG(1);
@@ -974,7 +1013,7 @@ int main(int argc, char *argv[])
   } else if (NUM_POSARGS > 2) {
     FatalError("Too many positional arguments!");
   }
-
+  debug = 2;
   for (ALL_OPTIONS) {
     if (OPTION("-input-labels") || OPTION("-input")) {
       if (labels_name) {
@@ -1051,6 +1090,7 @@ int main(int argc, char *argv[])
     else if (OPTION("-cerebellum-closing")) {
       PARSE_ARGUMENT(cb_closing);
     }
+    else HANDLE_BOOLEAN_OPTION("fill-wm-holes", fill_wm_holes);
     else HANDLE_COMMON_OR_UNKNOWN_OPTION();
   }
 
@@ -1062,6 +1102,7 @@ int main(int argc, char *argv[])
   // ---------------------------------------------------------------------------
   // Initialize I/O library
   InitializeIOLibrary();
+
 
   // Read input labels image
   GreyImage labels;
@@ -1086,7 +1127,7 @@ int main(int argc, char *argv[])
   int             nvox = attr.NumberOfSpatialPoints();
 
   // Read input segmentation masks
-  ByteImage rhmask, lhmask, sbmask, bsmask, cbmask;
+  ByteImage rhmask, lhmask, sbmask, bsmask, cbmask, bsmaskresampled, cbmaskresampled;
 
   if (rhmask_name) {
     rhmask.Read(rhmask_name);
@@ -1192,6 +1233,13 @@ int main(int argc, char *argv[])
 
   if (debug) {
     regions.Write("debug_regions.nii.gz");
+    if (debug > 1) {
+      rhmask.Write("debug_regions_rhmask.nii.gz");
+      lhmask.Write("debug_regions_lhmask.nii.gz");
+      bsmask.Write("debug_regions_bsmask.nii.gz");
+      cbmask.Write("debug_regions_cbmask.nii.gz");
+      sbmask.Write("debug_regions_sbmask.nii.gz");
+    }
   }
 
   if (sb_closing > 0 || bs_closing > 0 || cb_closing > 0) {
@@ -1394,7 +1442,9 @@ int main(int argc, char *argv[])
   if (debug) {
     regions.Write("debug_output.nii.gz");
   }
-
+  //bsmaskresampled = Resample(bsmask, rl_plane, bs_plane, xmargin, ymargin, zmargin, fgmask_name);
+  //cbmaskresampled = Resample(cbmask, rl_plane, bs_plane, xmargin, ymargin, zmargin, fgmask_name);
+  //std::cout << regions.NumberOfSpatialVoxels() << " " << cbmaskresampled.NumberOfSpatialVoxels() << std::endl;
   // ---------------------------------------------------------------------------
   {
     // Determine bounding box of interhemisphere WM
@@ -1419,6 +1469,50 @@ int main(int argc, char *argv[])
 
     bounds[0] = max(0,               bounds[0] - 20);
     bounds[1] = min(regions.X() - 1, bounds[1] + 20);
+
+    // ---------------------------------------------------------------------------
+    // Fill closed holes in xy slices of union of left and right WM
+    if (fill_wm_holes) {
+      GreyImage holes(attr._x, attr._y);
+      for (int k = bounds[4]; k <= bounds[5]; ++k) {
+        // Create binary BG mask
+        for (int j = 0; j < attr._y; ++j)
+        for (int i = 0; i < attr._x; ++i) {
+          if (regions(i, j, k) == BG) {
+            holes(i, j) = 1;
+          } else {
+            holes(i, j) = 0;
+          }
+        }
+        // Label connected BG components
+        ConnectedComponents<GreyPixel> cc(CC_LargestFirst, CONNECTIVITY_4);
+        cc.Input(&holes);
+        cc.Output(&holes);
+        cc.Run();
+        // Discard BG components which touch non-WM at their boundary
+        for (GreyPixel hid = 1; hid <= cc.NumberOfComponents(); ++hid) {
+          if (!IsInterhemisphereWhiteMatterHole(regions, k, holes, hid)) {
+            cc.DeleteComponent(hid);
+          }
+        }
+        // Fill remaining BG components with RH/LH labels
+        for (int j = 0; j < attr._y; ++j)
+        for (int i = 0; i < attr._x; ++i) {
+          if (holes(i, j)) {
+            p = Point(i, j, k);
+            regions.ImageToWorld(p);
+            if (rl_plane.SignedDistance(p) < 0.) {
+              regions(i, j, k) = LH;
+            } else {
+              regions(i, j, k) = RH;
+            }
+          }
+        }
+      }
+      if (debug) {
+        regions.Write("debug_output+wm_closed.nii.gz");
+      }
+    }
 
     // -------------------------------------------------------------------------
     // 1. Fill small holes in xz slices nearby interhemispheric bounding box
@@ -1721,12 +1815,20 @@ int main(int argc, char *argv[])
     }
   }
 
+  // if (!cbmaskresampled.IsEmpty()) {
+  //     std::cout << "cbmaskresampled doing" << std::endl;
+  //   for (int vox = 0; vox < nvox; ++vox) {
+  //     if (cbmaskresampled(vox)) regions(vox) = min(BS, CB);
+  //   }
+  // }
+  // if (debug) {
+  //   cbmaskresampled.Write("debug_cbmaskresampled.nii.gz");
+  //
+  // }
+
   // ---------------------------------------------------------------------------
   // Write output labels
-  //regions.Write(output_name);
-  GreyImage paddedregions = regions.PadImage(2);
-
-  paddedregions.Write(output_name);
+  regions.Write(output_name);
 
   // ---------------------------------------------------------------------------
   // Create distance map for interior of cortical surface
@@ -1755,7 +1857,9 @@ int main(int argc, char *argv[])
 
     // Close small holes of BG labeled voxels
     Close<BinaryPixel>(&mask, 5, CONNECTIVITY_18);
-
+    if (debug) {
+      mask.Write("debug_interior_mask_before_notch.nii.gz");
+    }
     // Ensure a clear separation of the two hemispheres outside the subcortical
     // structures such as Corpus Callosum even if it cuts through cortex
     for (int k =  0; k <  attr._z; ++k)

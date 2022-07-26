@@ -290,7 +290,6 @@ struct SmoothData
         }
         continue;
       }
-
       // Initialize sums
       if (_InclNodeItself) {
         norm = (w = _WeightFunction(ptId, p0, ptId, p0));

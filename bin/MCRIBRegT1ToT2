@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+if [ -z "`imglob RawT2RadiologicalIsotropic/$SUBJID.nii*`" -o -z "`imglob RawT1/$SUBJID.nii*`" ]
+then
+	echo "T1 or T2 image not found"
+	exit
+fi
+
+mkdir -p RawT1RadiologicalIsotropic RawT1RadiologicalIsotropicN4
+
+D=15
+flirt -in RawT1/$SUBJID -ref RawT2RadiologicalIsotropic/$SUBJID -out RawT1RadiologicalIsotropic/$SUBJID -omat RawT1RadiologicalIsotropic/$SUBJID.mat -dof 6 -searchrx -$D $D -searchry -$D $D -searchrz -$D $D -usesqform -cost mutualinfo
+
+#N4BiasCorrection --input-image RawT1RadiologicalIsotropic/$SUBJID.nii.gz --output RawT1RadiologicalIsotropicN4/$SUBJID.nii.gz -d 3 -v -s 2

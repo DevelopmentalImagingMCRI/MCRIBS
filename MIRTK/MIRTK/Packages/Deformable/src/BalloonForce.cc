@@ -64,12 +64,7 @@ vtkSmartPointer<vtkImageData> ConvertImage(const RegisteredImage *image)
   imagedata->SetOrigin(.0, .0, .0);
   imagedata->SetDimensions(image->X(), image->Y(), image->Z());
   imagedata->SetSpacing(1.0, 1.0, 1.0);
-#if VTK_MAJOR_VERSION >= 6
   imagedata->AllocateScalars(VTK_FLOAT, 1);
-#else
-  imagedata->SetScalarType(VTK_FLOAT);
-  imagedata->AllocateScalars();
-#endif
   const int nvox = image->NumberOfSpatialVoxels();
   const RegisteredImage::VoxelType *ptr1 = image->Data();
   float *ptr2 = reinterpret_cast<float *>(imagedata->GetScalarPointer());

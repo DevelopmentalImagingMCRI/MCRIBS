@@ -20,6 +20,9 @@
 #include "mirtk/SurfaceMapper.h"
 
 #include "mirtk/Assert.h"
+#include "mirtk/Vtk.h"
+
+#include "vtkIdList.h"
 
 
 namespace mirtk {
@@ -126,24 +129,23 @@ void SurfaceMapper::Finalize()
 int SurfaceMapper::GetEdgeNeighborPoints(int i, int j, int &k, int &l) const
 {
   k = l = -1;
-  unsigned short ncells1, ncells2, ncells = 0;
-  vtkIdType      *cells1, *cells2, npts, *pts, ptId;
-  _Surface->GetPointCells(static_cast<vtkIdType>(i), ncells1, cells1);
-  _Surface->GetPointCells(static_cast<vtkIdType>(j), ncells2, cells2);
-  for (unsigned short idx1 = 0; idx1 < ncells1; ++idx1) {
-    for (unsigned short idx2 = 0; idx2 < ncells2; ++idx2) {
-      if (cells1[idx1] == cells2[idx2]) {
-        ++ncells;
-        if (ncells < 3) {
-          _Surface->GetCellPoints(cells1[idx1], npts, pts);
-          if (npts == 3) {
-            if      (pts[0] != i && pts[0] != j) ptId = pts[0];
-            else if (pts[1] != i && pts[1] != j) ptId = pts[1];
-            else if (pts[2] != i && pts[2] != j) ptId = pts[2];
-            switch (ncells) {
-              case 1: k = ptId; break;
-              case 2: l = ptId; break;
-            }
+  vtkIdType ptId, ncells = 0;
+  vtkNew<vtkIdList> cellIds1, cellIds2, ptIds;
+  _Surface->GetPointCells(static_cast<vtkIdType>(i), cellIds1.GetPointer());
+  _Surface->GetPointCells(static_cast<vtkIdType>(j), cellIds2.GetPointer());
+  for (vtkIdType idx1 = 0; idx1 < cellIds1->GetNumberOfIds(); ++idx1)
+  for (vtkIdType idx2 = 0; idx2 < cellIds2->GetNumberOfIds(); ++idx2) {
+    if (cellIds1->GetId(idx1) == cellIds2->GetId(idx2)) {
+      ++ncells;
+      if (ncells < 3) {
+        GetCellPoints(_Surface, cellIds1->GetId(idx1), ptIds.GetPointer());
+        if (ptIds->GetNumberOfIds() == 3) {
+          if      (ptIds->GetId(0) != i && ptIds->GetId(0) != j) ptId = ptIds->GetId(0);
+          else if (ptIds->GetId(1) != i && ptIds->GetId(1) != j) ptId = ptIds->GetId(1);
+          else if (ptIds->GetId(2) != i && ptIds->GetId(2) != j) ptId = ptIds->GetId(2);
+          switch (ncells) {
+            case 1: k = ptId; break;
+            case 2: l = ptId; break;
           }
         }
       }

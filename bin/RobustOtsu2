@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+import numpy
+import nibabel
+
+import Otsu
+
+if len(sys.argv) < 3:
+    print("Usage " + sys.argv[0] + " <inimage> <outimage>")
+    quit()
+
+inImageFileName = sys.argv[1]
+outImageFileName = sys.argv[2]
+
+if not os.path.isfile(inImageFileName):
+    print("Couldnt find input file")
+    quit()
+
+inNII = nibabel.load(inImageFileName)
+inIMG = inNII.get_fdata()
+
+otsuIMG = Otsu.robustOtsu(inIMG, [0.05, 0.95])
+
+NewNII = nibabel.Nifti1Image(numpy.uint8(otsuIMG), inNII.affine)
+nibabel.save(NewNII, outImageFileName)
+#ewNII = nibabel.Nifti1Image(Marker, T1NII.affine)
+#ibabel.save(NewNII, subjID + "_marker.nii.gz")
+
+#ewNII = nibabel.Nifti1Image(W - Marker, T1NII.affine)
+#ibabel.save(NewNII, subjID + "_markerd.nii.gz")
+
+#NewNII = nibabel.Nifti1Image(numpy.uint8(InnerMarker), T1NII.affine)
+#nibabel.save(NewNII, subjID + "_inner_marker.nii.gz")

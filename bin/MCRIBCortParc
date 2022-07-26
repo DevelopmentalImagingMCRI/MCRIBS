@@ -32,10 +32,10 @@ fi
 
 for CURHEMI in $HEMIS
 do
-	if [ ! -f "$FSDIR/.isFromDHCP" ]
-	then
-		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
-	fi
+	#if [ ! -f "$FSDIR/.isFromDHCP" ]
+	#then
+	#	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-$CURHEMI.vtp $FSDIR/surf/$CURHEMI.white $FSDIR/mri/aseg.internal.mgz $FSDIR/label/$CURHEMI.cortex.label
+	#fi
 	#cp ../bonnie_mirtk/freesurfer/$SUBJID/label/$CURHEMI.cortex.label $FSDIR/label
 	if [ ! -f "$FSDIR/.isFromDHCP" ]
 	then

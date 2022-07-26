@@ -4,38 +4,29 @@ import vtk
 import numpy
 import sys
 import os
+import freesurfer
 import nibabel
 import getopt
+
 import scipy.ndimage.morphology
-
-# append python paths
-P = os.path.realpath(__file__)
-head, tail = os.path.split(P)
-sys.path.append(os.path.join(head, '..', 'lib', 'python'))
-
-del P
-del head
-del tail
-
-
 import VTPUtils
-import freesurfer
+
 import GraphUtils
 #import matplotlib.pyplot as plt
 
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
-if len(args) != 4:
-    print("The number of arguments must be 4")
-    print(sys.argv[0] + " <vtp file> <fs surface file> <aseg internal file> <curv file>")
-    exit()
+if len(args) != 3:
+	print("The number of arguments must be 3")
+	print(sys.argv[0] + " <vtp file> <fs surface file> <curv file>")
+	exit()
 
 numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
 
 inVTPFileName = args[0]
 inFSFileName = args[1]
-inASEGFileName = args[2]
-outLabelFileName = args[3]
+#inASEGFileName = args[2]
+outLabelFileName = args[2]
 
 VTPSurf = VTPUtils.readVTPSurf(inVTPFileName)
 FaceCortexMask = VTPUtils.readVTPCellArray(inVTPFileName, 'CortexMask')
@@ -43,60 +34,54 @@ FSSurf = freesurfer.readSurf(inFSFileName)
 
 FaceCortexMask = (FaceCortexMask == 1)
 
-VertexCortexMask = numpy.zeros(VTPSurf['vertices'].shape[1], dtype = numpy.bool)
+VertexCortexMask = numpy.zeros(VTPSurf['vertices'].shape[1], dtype = numpy.bool_)
 
 for z in range(VTPSurf['faces'].shape[1]):
-    if FaceCortexMask[z] == True:
-        VertexCortexMask[VTPSurf['faces'][:, z]] = True
+	if FaceCortexMask[z] == True:
+		VertexCortexMask[VTPSurf['faces'][:, z]] = True
 
 # erase CC and thalamus from the masks
-ASEGMGZ = nibabel.load(inASEGFileName)
-ASEGIMG = ASEGMGZ.get_data()
+#ASEGMGZ = nibabel.load(inASEGFileName)
+#ASEGIMG = ASEGMGZ.get_data()
 
-ASEGVox2RASTKR = numpy.matrix(ASEGMGZ.header.get_vox2ras_tkr())
-ASEGRASTKR2Vox = numpy.linalg.inv(ASEGVox2RASTKR)
-
-TransformedV = ASEGRASTKR2Vox[0:3, 0:3] * numpy.matrix(FSSurf['vertices']) + ASEGRASTKR2Vox[0:3, 3]
-
-TransformedVRound = numpy.int16(numpy.array(numpy.round(TransformedV)))
-TransformedVRound[0] = numpy.maximum(TransformedVRound[0], 0)
-TransformedVRound[0] = numpy.minimum(TransformedVRound[0], ASEGIMG.shape[0] - 1)
-TransformedVRound[1] = numpy.maximum(TransformedVRound[1], 0)
-TransformedVRound[1] = numpy.minimum(TransformedVRound[1], ASEGIMG.shape[1] - 1)
-TransformedVRound[2] = numpy.maximum(TransformedVRound[2], 0)
-TransformedVRound[2] = numpy.minimum(TransformedVRound[2], ASEGIMG.shape[2] - 1)
-#C = 100
-
-#plt.imshow(ASEGIMG[:, :, C])
-
-#I = numpy.where(TransformedVRound[2] == C)[0]
-
-#plt.plot(TransformedVRound[1, I], TransformedVRound[0, I], '*')
-
-#plt.show()
-#CCSEGIMG = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([250, 251, 252, 253, 254, 255, 10])), ASEGIMG.shape)
-
-#CCSEGIMG = scipy.ndimage.morphology.binary_dilation(CCSEGIMG, iterations = 2)
-#ASEGIMG[CCSEGIMG] = 255
-
-ASEGV = ASEGIMG[(TransformedVRound[0], TransformedVRound[1], TransformedVRound[2])]
-
-
-ValidASEGV = numpy.logical_not(numpy.in1d(ASEGV, numpy.array([250, 251, 252, 253, 254, 255, 10, 48])))
-#ValidASEGV = numpy.reshape(ValidASEGV, ASEGV.shape)
-
-T = numpy.array(VertexCortexMask)
-VertexCortexMask = numpy.logical_and(VertexCortexMask, ValidASEGV)
-
-#VertexCortexMask = (numpy.logical_and(T, numpy.logical_not(ValidASEGV)))
-# remove small regions of masked out vertices
-CC = GraphUtils.connectedComponents(FSSurf, numpy.logical_not(VertexCortexMask))
-
-N = numpy.bincount(CC[numpy.logical_not(VertexCortexMask)])
-T = numpy.argmax(N)
-
-VertexCortexMask[numpy.logical_and(CC != T, CC > 0)] = True
-
+#ASEGVox2RASTKR = numpy.matrix(ASEGMGZ.header.get_vox2ras_tkr())
+#ASEGRASTKR2Vox = numpy.linalg.inv(ASEGVox2RASTKR)
+#
+#TransformedV = ASEGRASTKR2Vox[0:3, 0:3] * numpy.matrix(FSSurf['vertices']) + ASEGRASTKR2Vox[0:3, 3]
+#
+#TransformedVRound = numpy.int16(numpy.array(numpy.round(TransformedV)))
+#
+##C = 100
+#
+##plt.imshow(ASEGIMG[:, :, C])
+#
+##I = numpy.where(TransformedVRound[2] == C)[0]
+#
+##plt.plot(TransformedVRound[1, I], TransformedVRound[0, I], '*')
+#
+##plt.show()
+##CCSEGIMG = numpy.reshape(numpy.in1d(ASEGIMG, numpy.array([250, 251, 252, 253, 254, 255, 10])), ASEGIMG.shape)
+#
+##CCSEGIMG = scipy.ndimage.morphology.binary_dilation(CCSEGIMG, iterations = 2)
+##ASEGIMG[CCSEGIMG] = 255
+#
+#ASEGV = ASEGIMG[(TransformedVRound[0], TransformedVRound[1], TransformedVRound[2])]
+#
+#ValidASEGV = numpy.logical_not(numpy.in1d(ASEGV, numpy.array([250, 251, 252, 253, 254, 255, 10, 48])))
+##ValidASEGV = numpy.reshape(ValidASEGV, ASEGV.shape)
+#
+#T = numpy.array(VertexCortexMask)
+#VertexCortexMask = numpy.logical_and(VertexCortexMask, ValidASEGV)
+#
+##VertexCortexMask = (numpy.logical_and(T, numpy.logical_not(ValidASEGV)))
+## remove small regions of masked out vertices
+#CC = GraphUtils.connectedComponents(FSSurf, numpy.logical_not(VertexCortexMask))
+#
+#N = numpy.bincount(CC[numpy.logical_not(VertexCortexMask)])
+#T = numpy.argmax(N)
+#
+#VertexCortexMask[numpy.logical_and(CC != T, CC > 0)] = True
+#
 FID = open(outLabelFileName, 'w')
 
 FID.write("#!ascii label  , from subject  vox2ras=TkReg\n")
@@ -105,7 +90,7 @@ FID.write("%d" % numpy.count_nonzero(VertexCortexMask) + "\n")
 I = numpy.where(VertexCortexMask)[0]
 
 for z in I:
-    FID.write("%d  %f  %f  %f  0.00000\n" % (z, FSSurf['vertices'][0, z], FSSurf['vertices'][1, z],  FSSurf['vertices'][2, z]))
+	FID.write("%d  %f  %f  %f  0.00000\n" % (z, FSSurf['vertices'][0, z], FSSurf['vertices'][1, z],  FSSurf['vertices'][2, z]))
 FID.close()
 #C['values'] = VTPUtils.vertexRegionId(S['faces'], FaceCortexMask)
 

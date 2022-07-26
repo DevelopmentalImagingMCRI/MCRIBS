@@ -85,7 +85,7 @@ CMD="$CMD --replace 44 52 --replace 45 13"
 # remove the CSF label due to aparc2aseg issues later on
 CMD="$CMD --replace 84 0"
 
-# cranial background? this is going to be unmyelinated white matter
+# cranial background? this is going to be myelinated white matter
 #CMD="$CMD --replace 85 0"
 
 # amygdala

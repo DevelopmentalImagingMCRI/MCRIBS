@@ -144,6 +144,9 @@ class DeformableSurfaceModel : public ObjectiveFunction
   /// required for collision to be detected
   mirtkPublicAttributeMacro(double, MaxCollisionAngle);
 
+  /// Whether to check for near-miss collisions of adjacent triangles
+  mirtkPublicAttributeMacro(bool, AdjacentCollisionTest);
+
   /// Use fast approximate surface triangle collision test
   mirtkPublicAttributeMacro(bool, FastCollisionTest);
 

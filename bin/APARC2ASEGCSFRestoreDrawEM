@@ -30,20 +30,22 @@ if not os.path.isfile(DrawEMLabelsFileName):
 ASEGNII = nibabel.load(ASEGFileName)
 DrawEMLabelsNII = nibabel.load(DrawEMLabelsFileName)
 
-ASEGIMG = ASEGNII.get_data()
-DrawEMLabelsIMG = DrawEMLabelsNII.get_data()
+ASEGIMG = numpy.int32(ASEGNII.get_fdata())
+DrawEMLabelsIMG = numpy.int32(numpy.squeeze(DrawEMLabelsNII.get_fdata()))
 
 NewASEGIMG = numpy.array(ASEGIMG)
 
 DrawEMExtraCranialBackgroundLabel = 84
 DrawEMCSFLabel = 83
 
-MaskToFill = numpy.logical_or(DrawEMLabelsIMG == DrawEMExtraCranialBackgroundLabel, DrawEMLabelsIMG == DrawEMCSFLabel)
+#MaskToFill = numpy.logical_or(DrawEMLabelsIMG == DrawEMExtraCranialBackgroundLabel, DrawEMLabelsIMG == DrawEMCSFLabel)
 
-FilledMask = scipy.ndimage.binary_fill_holes(MaskToFill) 
+#FilledMask = scipy.ndimage.binary_fill_holes(MaskToFill)
 FSCSFLabel = 24
 
-NewASEGIMG[numpy.logical_and(ASEGIMG == 0, numpy.logical_and(FilledMask > 0, DrawEMLabelsIMG != DrawEMExtraCranialBackgroundLabel))] = FSCSFLabel
+#NewASEGIMG[numpy.logical_and(ASEGIMG == 0, numpy.logical_and(FilledMask > 0, DrawEMLabelsIMG != DrawEMExtraCranialBackgroundLabel))] = FSCSFLabel
+#print(numpy.sum(M))
+NewASEGIMG[numpy.logical_and(ASEGIMG == 0, numpy.logical_and(DrawEMLabelsIMG > 0, DrawEMLabelsIMG != DrawEMExtraCranialBackgroundLabel))] = FSCSFLabel
 
 # retain largest connected component of NewASEGIMG
 

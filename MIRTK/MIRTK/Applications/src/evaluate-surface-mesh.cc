@@ -159,12 +159,12 @@ int NumberOfRedundantCells(vtkPolyData *dataset, const char *mask_name = nullptr
   vtkNew<vtkIdList> ptIds1, ptIds2, cellIds;
   for (vtkIdType cellId = 0; cellId < surface->GetNumberOfCells(); ++cellId) {
     if (surface->GetCellType(cellId) != VTK_EMPTY_CELL) {
-      surface->GetCellPoints(cellId, ptIds1.GetPointer());
+      GetCellPoints(surface, cellId, ptIds1.GetPointer());
       for (vtkIdType i = 0; i < ptIds1->GetNumberOfIds(); ++i) {
         surface->GetPointCells(ptIds1->GetId(i), cellIds.GetPointer());
         for (vtkIdType j = 0; j < cellIds->GetNumberOfIds(); ++j) {
           if (cellIds->GetId(j) > cellId && surface->GetCellType(cellIds->GetId(j)) != VTK_EMPTY_CELL) {
-            surface->GetCellPoints(cellIds->GetId(j), ptIds2.GetPointer());
+            GetCellPoints(surface, cellIds->GetId(j), ptIds2.GetPointer());
             if (ptIds1->GetNumberOfIds() == ptIds2->GetNumberOfIds()) {
               ptIds2->IntersectWith(ptIds1.GetPointer());
               if (ptIds1->GetNumberOfIds() == ptIds2->GetNumberOfIds()) {
@@ -223,8 +223,11 @@ int main(int argc, char *argv[])
   int         select_comp = 0;
 
   Array<MeshProperty> measures;
-  double              min_frontface_dist = 1e-2;
-  double              min_backface_dist  = 1e-2;
+  double min_frontface_dist  = 1e-2;
+  double min_backface_dist   = 1e-2;
+  double max_collision_angle = 20.0;
+  bool adjacent_collision_test = true;
+  bool fast_collision_test = false;
 
   double value;
   for (ALL_OPTIONS) {
@@ -295,14 +298,21 @@ int main(int argc, char *argv[])
     }
     else if (OPTION("-collisions") || OPTION("-self-intersections") || OPTION("-coll")) {
       measures.push_back(MESH_Collisions);
+      max_collision_angle = 20.0;
       if (HAS_ARGUMENT) {
         PARSE_ARGUMENT(min_frontface_dist);
-        if (HAS_ARGUMENT) PARSE_ARGUMENT(min_backface_dist);
-        else min_backface_dist = min_frontface_dist;
+        if (HAS_ARGUMENT) {
+          PARSE_ARGUMENT(min_backface_dist);
+          if (HAS_ARGUMENT) PARSE_ARGUMENT(max_collision_angle);
+        } else {
+          min_backface_dist = min_frontface_dist;
+        }
       } else {
         min_frontface_dist = min_backface_dist = 1e-2;
       }
     }
+    else HANDLE_BOOLEAN_OPTION("adjacent-collision-test", adjacent_collision_test);
+    else HANDLE_BOOLEAN_OPTION("fast-collision-test", fast_collision_test);
     else HANDLE_COMMON_OR_UNKNOWN_OPTION();
   }
   if (measures.empty()) {
@@ -356,7 +366,8 @@ int main(int argc, char *argv[])
     surface.TakeReference(input->NewInstance());
     surface->SetPoints(input->GetPoints());
     surface->Allocate(input->GetNumberOfCells());
-    vtkIdType cellId, npts, *pts;
+    vtkIdType cellId;
+    vtkNew<vtkIdList> ptIds;
     vtkSmartPointer<vtkIdTypeArray> origCellIds;
     origCellIds = vtkSmartPointer<vtkIdTypeArray>::New();
     origCellIds->SetName("OriginalIds");
@@ -364,8 +375,8 @@ int main(int argc, char *argv[])
     origCellIds->SetNumberOfTuples(selection.size());
     surface->GetCellData()->AddArray(origCellIds);
     for (auto origCellId : selection) {
-      input->GetCellPoints(origCellId, npts, pts);
-      cellId = surface->InsertNextCell(input->GetCellType(origCellId), npts, pts);
+      GetCellPoints(input, origCellId, ptIds.GetPointer());
+      cellId = surface->InsertNextCell(input->GetCellType(origCellId), ptIds.GetPointer());
       origCellIds->SetValue(cellId, origCellId);
     }
     surface->BuildLinks();
@@ -442,14 +453,14 @@ int main(int argc, char *argv[])
             input->GetPointData()->RemoveArray(pointIds->GetName());
             input->GetPointData()->AddArray(pointIds);
             // Add surface component IDs cell data
-            vtkIdType npts, *pts;
+            vtkNew<vtkIdList> ptIds;
             output->BuildLinks();
             cellIds = NewVtkDataArray(ncomp < 256 ? VTK_UNSIGNED_CHAR :
                                         (ncomp < 65535 ? VTK_UNSIGNED_SHORT : VTK_INT),
                                       surface->GetNumberOfCells(), 1, COMPONENT_ID);
             for (vtkIdType cellId = 0; cellId < output->GetNumberOfCells(); ++cellId) {
-              output->GetCellPoints(cellId, npts, pts);
-              cellIds->SetComponent(cellId, 0, (npts == 0 ? 0. : compIds->GetComponent(pts[0], 0)));
+              GetCellPoints(output, cellId, ptIds.GetPointer());
+              cellIds->SetComponent(cellId, 0, (ptIds->GetNumberOfIds() == 0 ? 0. : compIds->GetComponent(ptIds->GetId(0), 0)));
             }
             AddCellData(input, surface, cellIds);
           }
@@ -589,9 +600,11 @@ int main(int argc, char *argv[])
 
         SurfaceCollisions collisions;
         collisions.Input(surface);
+        collisions.AdjacentCollisionTest(adjacent_collision_test);
+        collisions.FastCollisionTest(fast_collision_test);
         collisions.MinFrontfaceDistance(min_frontface_dist);
         collisions.MinBackfaceDistance(min_backface_dist);
-        collisions.MaxAngle(20.0);
+        collisions.MaxAngle(max_collision_angle);
         collisions.AdjacentIntersectionTestOn();
         collisions.NonAdjacentIntersectionTestOn();
         collisions.FrontfaceCollisionTestOn();
@@ -601,15 +614,14 @@ int main(int argc, char *argv[])
         collisions.Run();
 
         if (output_name) {
-          vtkIdType *cells;
-          vtkPolyDataGetPointCellsNumCellsType ncells;
+          vtkNew<vtkIdList> cellIds;
           vtkSmartPointer<vtkDataArray> mask;
           mask = NewVtkDataArray(VTK_UNSIGNED_CHAR, surface->GetNumberOfPoints(), 1, "CollisionMask");
           for (vtkIdType ptId = 0; ptId < surface->GetNumberOfPoints(); ++ptId) {
             mask->SetComponent(ptId, 0, 0.);
-            surface->GetPointCells(ptId, ncells, cells);
-            for (vtkPolyDataGetPointCellsNumCellsType i = 0; i < ncells; ++i) {
-              if (collisions.GetCollisionType(cells[i]) != SurfaceCollisions::NoCollision) {
+            surface->GetPointCells(ptId, cellIds.GetPointer());
+            for (vtkIdType i = 0; i < cellIds->GetNumberOfIds(); ++i) {
+              if (collisions.GetCollisionType(cellIds->GetId(i)) != SurfaceCollisions::NoCollision) {
                 mask->SetComponent(ptId, 0, 1.);
                 break;
               }

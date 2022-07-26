@@ -1,10 +1,10 @@
 # M-CRIB-S
 Surface version of M-CRIB.
 
-This software uses DrawEM and Deformable within MIRTK to perform cortical surface extraction.
+This software uses ANTs/antsJointFusion for voxel labeling and Deformable within MIRTK to perform cortical surface extraction.
 A customised Freesurfer-like pipeline is provided to perform cortical parcellation on the surfaces with M-CRIB compatible labelling schemes.
 
-The current paper is at https://www.biorxiv.org/content/10.1101/544304v1.
+The paper is available at https://www.nature.com/articles/s41598-020-61326-2
 
 MIRTK was downloaded from https://github.com/BioMedIA/MIRTK. A customised version is included in this repo.
 
@@ -17,7 +17,7 @@ The script build.sh will build ITK, VTK and MIRTK. Install the following depende
 - For MIRTK
   - libtbb-dev libflann-dev python-contextlib2
 - For Python
-  - python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr
+  - python3-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr
 
 This will install all of the dependencies for ubuntu:
 
@@ -57,10 +57,10 @@ There is a wrapper script called `MCRIBReconAll` that runs the pipeline of segme
 
 ### Processing directives and options
 
-- --conform: Reorients T2 image to radiological orientation, axial slices. Resamples to isotropic voxels. Input <RawT2/subjid.nii.gz> Output <RawT2RadiologicalIsotropic/subjid.nii.gz>
+- --neckcrop: Reorients T2 image to radiological orientation, axial slices, resamples to isotropic voxels. Input <RawT2/subjid.nii.gz> Output <T2NeckCroppedIsotropic/subjid.nii.gz>
   - Options:
   - --voxelsize VOXELSIZE: Voxel size to use for isotropic resampling. Use "volumepreserve" to preserve original voxel volume
-- --tissueseg: Tissue type segmentation, depends on --conform. Input <RawT2RadiologicalIsotropic/subjid.nii.gz> Outputs <TissueSeg>
+- --tissueseg: Tissue type segmentation, depends on --conform. Input <T2NeckCroppedIsotropic/subjid.nii.gz> Outputs <TissueSeg>
   - Options:
   - --tissuesegmethod {DrawEM}: Specify tissue segmentation method, only DrawEM is supported
   - --subjectage {28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44}: Subject age in weeks
@@ -75,11 +75,10 @@ There is a wrapper script called `MCRIBReconAll` that runs the pipeline of segme
 - --cortribbon: Perform cortical ribbon volume generation, depends --surfrecon
 - --cortparc: Perform cortical parcellation, depends on --surfreg
   - Options:
-  - --cortparcatlases {aparc,aparc+DKTatlas} [{aparc,aparc+DKTatlas} ...]: Parcellation scheme(s) to use
+  - --parcatlases {aparc+DKTatlas} [{aparc+DKTatlas} ...]: Parcellation scheme(s) to use
 - --aparc2aseg: Transfer cortical parcellations to volume, depends on --surfreg
   - Options:
-  - --aparc2asegatlases {aparc,aparc+DKTatlas} [{aparc,aparc+DKTatlas} ...] Parcellation scheme(s) to use
-- --apas2aseg: Refine aseg.presurf using cortical parcellations, depends on --aparc2aseg with aparc
+  - --parcatlases {aparc+DKTatlas} [{aparc+DKTatlas} ...] Parcellation scheme(s) to use
 - --cortthickness: Compute cortical thickness
 - --segstats: Perform segstats on the aseg image, depends on --apas2aseg
 - --parcstats: Perform stats on the cortical surfaces, depends on --apas2aseg
@@ -90,7 +89,6 @@ The following shorthand options may be used:
 - -autoreconaftersurf: executes all steps post surface extraction, i.e. --inflatesphere, --surfreg, --surfvol, --cortribbon, --cortparc, --aparc2aseg, --apas2aseg, --cortthickness, --segstats, --parcstats
 
 Other options:
-- --use-gpu, -use-gpu: Use GPU for --inflatesphere steps
 - -openmp, --openmp nthreads. Use nthreads for multithreading where possible.
 
 ## dHCP interoperability
@@ -114,6 +112,4 @@ The parameter `<subj id>` is the subject id of a subject that has been processed
  - ?h.thickness
  - ?h.sulc
  - ?h.curv
- - ?h.aparc.annot (DK parcellation)
- - ?h.aparc+DKTatlas.annot (DKT parcellation)
-
+  - ?h.aparc+DKTatlas.annot (DKT parcellation)

@@ -1,0 +1,168 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+if [ -z "$2" ]
+then
+	J=1
+else
+	J=$2
+fi
+
+echo $@
+
+if [ "$3" == "True" ]
+then
+	USEFASTCOLLISION=-use-fast-collision
+else
+	USEFASTCOLLISION=
+fi
+
+
+if [ "$4" == "True" ]
+then
+	echo "Using T1"
+	if [ ! -e "RawT1RadiologicalIsotropicN4/$SUBJID.nii.gz" -a ! -e "RawT1RadiologicalIsotropic/$SUBJID.nii.gz" ]
+	then
+		echo "Use T1 was selected but RawT1RadiologicalIsotropicN4/$SUBJID.nii.gz was not found"
+		exit 1
+	fi
+
+	if [ -e "RawT1RadiologicalIsotropic/$SUBJID.nii.gz" -a ! -e "RawT1RadiologicalIsotropicN4/$SUBJID.nii.gz" ]
+	then
+		# Run N4
+		echo "Running N4"
+		mkdir -p RawT1RadiologicalIsotropicN4
+		$MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -x TissueSeg/${SUBJID}_brain_mask.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
+		#$MCRIBS_HOME/MIRTK/MIRTK-build/lib/tools/N4 3 -v -i RawT1RadiologicalIsotropic/$SUBJID.nii.gz -o "RawT1RadiologicalIsotropicN4/${SUBJID}.nii.gz" -c "[50x50x50,0.001]" -s 2 -b "[100,3]" -t "[0.15,0.01,200]"
+	fi
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1.cfg
+else
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg
+fi
+
+if [ "$5" == "True" ]
+then
+	ENSUREPIAL=
+else
+	ENSUREPIAL=-ensure-pial-is-outside-white-surface
+fi
+
+if [ "$6" == "True" ]
+then
+	USEBONNIE=YES
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1.cfg
+	T=`mktemp`
+	cat $CONFIGFILE | sed 's/manedit/manedit_bonnie/' > $T
+	sed -i -e 's/brain_mask.nii.gz/brain_mask_bonnie.nii.gz/' $T
+	echo $T
+	if [ "$7" == "True" ]
+	then
+		sed -i -e 's/= 10$/= 15/' $T
+	fi
+	CONFIGFILE=$T
+else
+	USEBONNIE=NO
+fi
+
+if [ "$8" == "True" ]
+then
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-t1-only.cfg
+fi
+
+if [ "$7" == "True" ]
+then
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-large.cfg
+fi
+
+
+OUTDIR=SurfReconDeformable
+
+mkdir -p $OUTDIR/$SUBJID/{temp,meshes,recon}
+
+#export LD_LIBRARY_PATH=`dirname $0`/../MIRTK/MIRTK-install/lib:$LD_LIBRARY_PATH
+#export PATH=`dirname $0`/../MIRTK/MIRTK-install/bin:$PATH
+
+if [ ! -e "TissueSeg/${SUBJID}_t2w_restore.nii.gz" -a "$8" != "True" ]
+then
+	if [ ! -e "TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz" ]
+	then
+		echo "Couldnt find the bias corrected T2 in DrawEM output"
+		exit
+	fi
+
+	#ln -sf ../TissueSegDrawEM/$SUBJID/N4/${SUBJID}.nii.gz TissueSeg/${SUBJID}_T2w_restore.nii.gz
+fi
+
+#echo recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
+
+recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
+#econ-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
+RECONRETURNCODE=${PIPESTATUS[0]}
+
+if [ "$RECONRETURNCODE" != "0" ]
+then
+	exit
+	CEREBRUMERROR1=`tac logs/$SUBJID.log | sed '/[^[:blank:]]/q;d' | grep -Po -e "\s*Exception: Failed to resolve self-intersections of .+/cerebrum-1.vtp\s*$"`
+	CEREBRUMERROR2=`tac logs/$SUBJID.log | sed '/[^[:blank:]]/q;d' | grep -Po -e "^Exception: Merged surface is non-closed, no. of boundaries"`
+
+	if [ ! -z "$CEREBRUMERROR1" -o ! -z "$CEREBRUMERROR2" ]
+	then
+		echo "Initial cerebrum closing failed, restarting with larger structuring elements for subdivide-brain-image"
+
+		T=`mktemp`
+		cp $CONFIGFILE $T
+		sed -i -e 's/subcortex_closing  = 5/subcortex_closing  = 15/' $T
+		sed -i -e 's/brainstem_closing  = 5/brainstem_closing  = 15/' $T
+		sed -i -e 's/cerebellum_closing = 5/cerebellum_closing = 15/' $T
+
+		find SurfReconDeformable/$SUBJID -type f -delete
+		recon-neonatal-cortex -r `pwd` -c $T -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f -ensure-pial-is-outside-white-surface -j $J $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
+		SECONDRECONRETURNCODE=${PIPESTATUS[0]}
+		rm -f $T
+	fi
+fi
+
+if [ "$RECONRETURNCODE" == "0" -o "$SECONDRECONRETURNCODE" == "0" ]
+then
+	HEMIS="lh
+	rh"
+
+	SURFS="white
+	pial"
+
+	mkdir -p freesurfer/$SUBJID/surf
+	mkdir -p freesurfer/$SUBJID/label
+	
+	if [ "$USEBONNIE" == "YES" ]
+	then
+		VOLGEOM=TissueSeg/${SUBJID}_t2w_restore.nii.gz
+	else
+		#VOLGEOM=/$SUBJID.nii.gz
+		VOLGEOM=TissueSeg/${SUBJID}_t2w_restore.nii.gz
+	fi
+	#echo $VOLGEOM
+	for HEMI in $HEMIS
+	do
+		for SURF in $SURFS
+		do
+			`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+			#rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
+			mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
+
+		done
+		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-${HEMI}.vtp freesurfer/$SUBJID/surf/$HEMI.white freesurfer/$SUBJID/label/$HEMI.cortex.label
+	done
+
+	# make the pial surfaces by reordering the pial vertices in the VTP files
+	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
+
+	# cleanup
+	rm -f $OUTDIR/$SUBJID/temp/*hull* $OUTDIR/$SUBJID/temp/wm.nii.gz $OUTDIR/$SUBJID/temp/*iso*.vtp $OUTDIR/$SUBJID/temp/*mask*.nii.gz $OUTDIR/$SUBJID/temp/*dmap*.nii.gz $OUTDIR/$SUBJID/temp/*mask*.nii.gz
+fi

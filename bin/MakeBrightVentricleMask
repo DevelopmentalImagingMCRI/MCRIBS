@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import getopt
+
+import scipy.ndimage
+import scipy.cluster.vq
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['largeventricles'])
+
+if len(args) != 1:
+        print("The number of arguments must be 1")
+        print(sys.argv[0] + " <subjid>")
+        exit()
+
+largeVentricles = False
+verbose = False
+for o, a in opts:
+        if o == '--largeventricles':
+                largeVentricles = True
+        if o == '-v':
+                verbose = True
+
+
+# makes a CSF mask around the subcortical grey and ventricles
+
+subjID = args[0]
+TissueSegDir = os.environ['TISSUESEGDIR']
+
+T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore.nii.gz"))
+T2IMG = T2NII.get_fdata()
+
+DKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_skullstrip_reg.nii.gz"))
+DKTIMG = numpy.int16(DKTNII.get_fdata())
+
+GMMaskIMG = ismember(DKTIMG, [3, 42])
+GMMaskIMG = numpy.logical_or(GMMaskIMG, numpy.logical_and(DKTIMG >= 1000, DKTIMG <= 1035))
+GMMaskIMG = numpy.logical_or(GMMaskIMG, numpy.logical_and(DKTIMG >= 2000, DKTIMG <= 2035))
+
+GMMaskIMG = numpy.logical_and(GMMaskIMG, numpy.logical_not(ismember(DKTIMG, [1023, 2023])))
+
+WMMaskIMG = ismember(DKTIMG, [2, 41])
+#CSFMaskIMG = (DKTIMG == 24)
+#
+GMMaskIMGClosed = scipy.ndimage.binary_closing(GMMaskIMG, iterations = 1)
+
+#outMask = ismember(DKTIMG, [4, 9, 28, 11, 12, 13, 31, 18, 51, 52, 43, 50, 60, 48, 54, 63, 14, 192])
+outMask = ismember(DKTIMG, [4, 9, 11, 12, 13, 31, 18, 51, 52, 43, 50, 48, 54, 63, 14, 192])
+
+HippoDilated = scipy.ndimage.binary_dilation(ismember(DKTIMG, [17, 53]), iterations = 10)
+BrainstemDilated = scipy.ndimage.binary_dilation(DKTIMG == 170, iterations = 10)
+HippoBrainstemMask = numpy.logical_and(numpy.logical_and(HippoDilated, BrainstemDilated), DKTIMG == 24)
+ThalamusDilated = scipy.ndimage.binary_dilation(ismember(DKTIMG, [9, 48]), iterations = 5)
+HippoDilated = scipy.ndimage.binary_dilation(ismember(DKTIMG, [17, 53]), iterations = 5)
+HippoThalamusMask = numpy.logical_and(numpy.logical_and(HippoDilated, ThalamusDilated), DKTIMG == 24)
+
+VentralDCDilated = scipy.ndimage.binary_dilation(ismember(DKTIMG, [28, 60]), iterations = 5)
+GMMaskIMGDilated = scipy.ndimage.binary_dilation(GMMaskIMGClosed, iterations = 5)
+
+VentralDCMask = numpy.logical_and(numpy.logical_and(VentralDCDilated, GMMaskIMGDilated), DKTIMG == 24)
+GMMaskIMGClosed = numpy.logical_or(GMMaskIMGClosed, VentralDCMask)
+GMMaskIMGClosed = numpy.logical_or(GMMaskIMGClosed, HippoBrainstemMask)
+GMMaskIMGClosed = numpy.logical_or(GMMaskIMGClosed, HippoThalamusMask)
+
+VentralDCClosed = scipy.ndimage.binary_closing(ismember(DKTIMG, [28, 60]), iterations = 5)
+AmygDilatedMask = numpy.logical_and(scipy.ndimage.binary_dilation(ismember(DKTIMG, [18, 54]), iterations = 3), DKTIMG == 24)
+
+for z in range(20):
+    AmygDilatedMask = numpy.logical_and(DKTIMG == 24, scipy.ndimage.binary_dilation(AmygDilatedMask, iterations = 2))
+
+#outMask = numpy.logical_or(LHVoxelsToAdd, RHVoxelsToAdd)
+#outMask = numpy.logical_or(outMask, ismember(DKTIMG, [14, 192]))
+
+for z in range(5):
+    outMask = numpy.logical_and(scipy.ndimage.binary_dilation(outMask, iterations = 1), numpy.logical_not(GMMaskIMGClosed))
+
+WMToAdd = numpy.logical_and(outMask, WMMaskIMG)
+
+if largeVentricles == True:
+    R = range(50)
+else:
+    R = range(20)
+
+for z in R:
+    WMToAdd = numpy.logical_and(scipy.ndimage.binary_dilation(WMToAdd, iterations = 1), WMMaskIMG)
+
+outMask = numpy.logical_or(outMask, WMToAdd)
+
+centroids, K = scipy.cluster.vq.kmeans(T2IMG[outMask], 3)
+
+#I = numpy.argsort(centroids)
+
+centroids = numpy.sort(centroids)
+#print(centroids)
+XC = numpy.abs(numpy.atleast_2d(centroids) - numpy.atleast_2d(T2IMG[outMask]).T)
+
+K = numpy.argmin(XC, axis = 1)
+#print(I)
+#NewNII = nibabel.Nifti1Image(numpy.uint8(outMask), DKTNII.affine)
+#nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask.nii.gz"))
+outIMG = numpy.zeros_like(DKTIMG)
+outIMG[outMask] = K + 1
+#NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), DKTNII.affine)
+#nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans.nii.gz"))
+outIMG = (outIMG == 3)
+HippoClosed = scipy.ndimage.binary_closing(ismember(DKTIMG, [17, 53]), iterations = 3)
+outIMG = numpy.logical_and(outIMG, numpy.logical_not(HippoClosed))
+outIMG = numpy.logical_and(outIMG, numpy.logical_not(AmygDilatedMask))
+
+outIMG = scipy.ndimage.binary_dilation(outIMG, iterations = 1)
+if largeVentricles == True:
+    L, numLabels = scipy.ndimage.label(outIMG)
+    H = numpy.bincount(L[L > 0])
+    outIMG = (L == numpy.argmax(H))
+else:
+    outIMG = scipy.ndimage.binary_opening(outIMG, iterations = 2)
+    L, numLabels = scipy.ndimage.label(outIMG)
+    H = numpy.bincount(L[L > 0])
+    outIMG = (L == numpy.argmax(H))
+
+NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), DKTNII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans_class3.nii.gz"))
+

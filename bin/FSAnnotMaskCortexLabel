@@ -23,7 +23,7 @@ outAnnotFileName = args[2]
 inAnnot = freesurfer.readAnnot(inAnnotFileName)
 CortexLabel = freesurfer.readLabel(cortexLabelFileName)
 
-inCortexLabel = numpy.zeros(inAnnot['vertices'].size, dtype = numpy.bool)
+inCortexLabel = numpy.zeros(inAnnot['vertices'].size, dtype = numpy.bool_)
 inCortexLabel[CortexLabel['index']] = True
 
 outAnnot = copy.deepcopy(inAnnot)

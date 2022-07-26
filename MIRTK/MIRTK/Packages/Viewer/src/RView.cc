@@ -1,30 +1,35 @@
-/*=========================================================================
- 
- Library   : Image Registration Toolkit (IRTK)
- Module    : $Id$
- Copyright : Imperial College, Department of Computing
- Date      : $Date$
- Version   : $Revision$
- Changes   : $Author$
- 
- =========================================================================*/
+/*
+ * Medical Image Registration ToolKit (MIRTK)
+ *
+ * Copyright (c) Imperial College London
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+#include <fstream>
+
+#include <mirtk/OpenGl.h>
 #include <mirtk/RView.h>
-
-#ifdef __APPLE__
-#include <OpenGl/gl.h>
-#include <OpenGl/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
+#include <mirtk/IOConfig.h>
 
 #include <mirtk/Image.h>
 #include <mirtk/Transformations.h>
-#include <mirtk/IOConfig.h>
+
 #if MIRTK_IO_WITH_VTK && defined(HAVE_VTK)
-#include <mirtk/PointSetIO.h>
+  #include <mirtk/PointSetIO.h>
 #endif
+
+#include <mirtk/OpenGl.h>
 
 
 RView::RView(int x, int y)
@@ -153,7 +158,7 @@ RView::RView(int x, int y)
   // Initialize object and display
   _NoOfObjects = 0;
   for (int i = 0; i < MAX_NUMBER_OF_OBJECTS; i++) {
-    _Object[i] = NULL;
+    _Object[i] = nullptr;
   }
   _DisplayObject = false;
   _DisplayObjectWarp = false;
@@ -220,7 +225,7 @@ RView::~RView()
 {
 #if MIRTK_IO_WITH_VTK && defined(HAVE_VTK)
   for (int i = 0; i < MAX_NUMBER_OF_OBJECTS; i++) {
-    if (_Object[i] != NULL) _Object[i]->Delete();
+    if (_Object[i] != nullptr) _Object[i]->Delete();
   }
 #endif
 }
@@ -235,18 +240,18 @@ void RView::Update()
 
   // Check whether target and/or source and/or segmentation need updating
   for (l = 0; l < _NoOfViewers; l++) {
-    if ((_targetUpdate == true) && (_targetImage->IsEmpty() != true)) {
+    if (_targetUpdate && !_targetImage->IsEmpty()) {
       _targetTransformFilter[l]->SourcePaddingValue(-1);
       _targetTransformFilter[l]->Run();
     }
-    if ((_sourceUpdate == true) && (_sourceImage->IsEmpty() != true)) {
+    if (_sourceUpdate && !_sourceImage->IsEmpty()) {
       _sourceTransformFilter[l]->SourcePaddingValue(-1);
       _sourceTransformFilter[l]->Run();
     }
-    if ((_segmentationUpdate == true) && (_segmentationImage->IsEmpty() != true)) {
+    if (_segmentationUpdate && !_segmentationImage->IsEmpty()) {
       _segmentationTransformFilter[l]->Run();
     }
-    if ((_selectionUpdate == true) && (_voxelContour._raster->IsEmpty() != true)) {
+    if (_selectionUpdate && !_voxelContour._raster->IsEmpty()) {
       _selectionTransformFilter[l]->Run();
     }
   }
@@ -406,21 +411,18 @@ void RView::Update()
         break;
     }
 
-    if (_DisplaySegmentationLabels == true) {
+    if (_DisplaySegmentationLabels) {
       ptr3 = _drawable[k];
       // Display segmentation on top of all view modes
       for (j = 0; j < _viewer[k]->GetHeight(); j++) {
         for (i = 0; i < _viewer[k]->GetWidth(); i++) {
           if (*ptr4 >= 0) {
-            if (_segmentTable->_entry[*ptr4]._visible == true) {
+            if (_segmentTable->_entry[*ptr4]._visible) {
               blendA = _segmentTable->_entry[*ptr4]._trans;
               blendB = 1 - blendA;
-              ptr3->r = int((blendB * ptr3->r) + (blendA
-                                                  * _segmentTable->_entry[*ptr4]._color.r));
-              ptr3->g = int((blendB * ptr3->g) + (blendA
-                                                  * _segmentTable->_entry[*ptr4]._color.g));
-              ptr3->b = int((blendB * ptr3->b) + (blendA
-                                                  * _segmentTable->_entry[*ptr4]._color.b));
+              ptr3->r = int((blendB * ptr3->r) + (blendA * _segmentTable->_entry[*ptr4]._color.r));
+              ptr3->g = int((blendB * ptr3->g) + (blendA * _segmentTable->_entry[*ptr4]._color.g));
+              ptr3->b = int((blendB * ptr3->b) + (blendA * _segmentTable->_entry[*ptr4]._color.b));
             }
           }
           ptr3++;
@@ -490,13 +492,11 @@ void RView::Draw()
 
     // Draw iso-contours in target image if needed
     if (display_target_contour) {
-      _viewer[k]->DrawIsolines(_targetImageOutput[k],
-                               _targetLookupTable->GetMinDisplayIntensity());
+      _viewer[k]->DrawIsolines(_targetImageOutput[k], _targetLookupTable->GetMinDisplayIntensity());
     }
     // Draw iso-contours in source image if needed
     if (display_source_contour) {
-      _viewer[k]->DrawIsolines(_sourceImageOutput[k],
-                               _sourceLookupTable->GetMinDisplayIntensity());
+      _viewer[k]->DrawIsolines(_sourceImageOutput[k], _sourceLookupTable->GetMinDisplayIntensity());
     }
     // Draw segmentation if needed
     if (display_segmentation_contours) {
@@ -513,7 +513,6 @@ void RView::Draw()
     // Update image viewer if necessary
     if (_DisplayDeformationGrid || _DisplayDeformationPoints || _DisplayDeformationArrows) {
       if (_viewer[k]->Update(_sourceImageOutput[k], _sourceTransform)) {
-
         // Draw deformation grid if needed
         if (_DisplayDeformationGrid) {
           _viewer[k]->DrawGrid();
@@ -531,14 +530,10 @@ void RView::Draw()
 
     // Draw landmarks if needed (true: red, false: green)
     if (display_target_landmarks) {
-      _viewer[k]->DrawLandmarks(_targetLandmarks, _selectedTargetLandmarks,
-                                _targetImageOutput[k], true,
-                                _DisplayLandmarks);
+      _viewer[k]->DrawLandmarks(_targetLandmarks, _selectedTargetLandmarks, _targetImageOutput[k], true, _DisplayLandmarks);
     }
     if (display_source_landmarks) {
-      _viewer[k]->DrawLandmarks(_sourceLandmarks, _selectedSourceLandmarks,
-                                _targetImageOutput[k], false,
-                                _DisplayLandmarks);
+      _viewer[k]->DrawLandmarks(_sourceLandmarks, _selectedSourceLandmarks, _targetImageOutput[k], false, _DisplayLandmarks);
     }
     if (display_correspondences) {
       _viewer[k]->DrawCorrespondences(_targetLandmarks, _sourceLandmarks,
@@ -563,8 +558,7 @@ void RView::Draw()
             }
             _viewer[k]->DrawObject(_Object[_objectFrame], _targetImageOutput[k]);
         } else{
-          _viewer[k]->DrawObject(_Object, _targetImageOutput[k],
-                             _DisplayObjectWarp, _DisplayObjectGrid, _sourceTransform);
+          _viewer[k]->DrawObject(_Object, _targetImageOutput[k], _DisplayObjectWarp, _DisplayObjectGrid, _sourceTransform);
         }
     }
 #endif
@@ -602,7 +596,7 @@ void RView::SetOrigin(int i, int j)
     }
   }
 
-  if (_SnapToGrid == true) {
+  if (_SnapToGrid) {
     // Round origin to nearest voxel
     _targetImage->WorldToImage(_origin_x, _origin_y, _origin_z);
     _origin_x = round(_origin_x);
@@ -865,8 +859,7 @@ void RView::RegionGrowContour(int i, int j)
   if (_voxelContour.Size() == 0) {
     _voxelContour.Initialise(this, _targetImageOutput[_contourViewer]);
   }
-  _voxelContour.RegionGrowing(mirtk::Point(x, y, z), _RegionGrowingThresholdMin,
-                              _RegionGrowingThresholdMax, _regionGrowingMode);
+  _voxelContour.RegionGrowing(mirtk::Point(x, y, z), _RegionGrowingThresholdMin, _RegionGrowingThresholdMax, _regionGrowingMode);
   _selectionUpdate = true;
 }
 
@@ -887,7 +880,7 @@ void RView::FillContour(int fill, int)
   int i, j, k;
   mirtk::Point p;
 
-  if (_segmentationImage->IsEmpty() == true) {
+  if (_segmentationImage->IsEmpty()) {
     // Create image
     _segmentationImage->Initialize(_targetImage->GetImageAttributes());
 
@@ -921,17 +914,17 @@ void RView::FillContour(int fill, int)
 }
 
 // part of IRTK, but dropped for MIRTK
-static int read_line(istream &in, char *buffer1, char *&buffer2)
+static size_t read_line(istream &in, char *buffer1, char *&buffer2)
 {
     char c;
 
     do {
-        if (in.eof() == true) return 0;
+        if (in.eof()) return 0;
         in.getline(buffer1, 255);
         c = buffer1[0];
     } while ((strlen(buffer1) == 0) || (c == '#') || (c == 13));
 
-    if ((buffer2 = strchr(buffer1, '=')) == NULL) {
+    if ((buffer2 = strchr(buffer1, '=')) == nullptr) {
         cerr << "No valid line format\n";
         exit(1);
     }
@@ -944,12 +937,12 @@ static int read_line(istream &in, char *buffer1, char *&buffer2)
 
 void RView::Read(char *name)
 {
-  int ok;
+  bool ok;
   mirtk::InterpolationMode interpolation;
-  char buffer1[255], *buffer2 = NULL;
+  char buffer1[255], *buffer2 = nullptr;
 
   // Open file
-  ifstream from(name);
+  std::ifstream from(name);
   if (!from) {
     cerr << "RView::Read: Can't open file " << name << "\n";
     exit(1);
@@ -962,7 +955,7 @@ void RView::Read(char *name)
     read_line(from, buffer1, buffer2);
 
     // Config mode (defines NoOfViewers automatically)
-    if (strstr(buffer1, "configMode") != NULL) {
+    if (strstr(buffer1, "configMode") != nullptr) {
       if (strcmp(buffer2, "View_XY") == 0) {
         _configMode = _View_XY;
         ok = true;
@@ -1020,32 +1013,32 @@ void RView::Read(char *name)
       }
     }
     // Width of viewer (in pixels)
-    if (strstr(buffer1, "screenX") != NULL) {
+    if (strstr(buffer1, "screenX") != nullptr) {
       _screenY = atoi(buffer2);
       ok = true;
     }
     // Height of viewer (in pixels)
-    if (strstr(buffer1, "screenY") != NULL) {
+    if (strstr(buffer1, "screenY") != nullptr) {
       _screenY = atoi(buffer2);
       ok = true;
     }
     // Display origin (in mm)
-    if (strstr(buffer1, "origin_x") != NULL) {
+    if (strstr(buffer1, "origin_x") != nullptr) {
       _origin_x = atof(buffer2);
       ok = true;
     }
     // Display origin (in mm)
-    if (strstr(buffer1, "origin_y") != NULL) {
+    if (strstr(buffer1, "origin_y") != nullptr) {
       _origin_y = atof(buffer2);
       ok = true;
     }
     // Display origin (in mm)
-    if (strstr(buffer1, "origin_z") != NULL) {
+    if (strstr(buffer1, "origin_z") != nullptr) {
       _origin_z = atof(buffer2);
       ok = true;
     }
     // Display resolution
-    if (strstr(buffer1, "resolution") != NULL) {
+    if (strstr(buffer1, "resolution") != nullptr) {
       _resolution = atof(buffer2);
       ok = true;
     }
@@ -1055,7 +1048,7 @@ void RView::Read(char *name)
     // Delete old interpolator
     delete _targetInterpolator;
     // Interpolation mode for target image
-    if (strstr(buffer1, "targetInterpolationMode") != NULL) {
+    if (strstr(buffer1, "targetInterpolationMode") != nullptr) {
       if (strcmp(buffer2, "mirtk::Interpolation_NN") == 0) {
         interpolation = mirtk::Interpolation_NN;
         ok = true;
@@ -1082,7 +1075,7 @@ void RView::Read(char *name)
     // Delete old interpolator
     delete _sourceInterpolator;
     // Interpolation mode for source image
-    if (strstr(buffer1, "sourceInterpolationMode") != NULL) {
+    if (strstr(buffer1, "sourceInterpolationMode") != nullptr) {
       if (strcmp(buffer2, "mirtk::Interpolation_NN") == 0) {
         interpolation = mirtk::Interpolation_NN;
         ok = true;
@@ -1107,7 +1100,7 @@ void RView::Read(char *name)
     _sourceInterpolator = mirtk::InterpolateImageFunction::New(interpolation, _sourceImage);
 
     // Flag for rview mode
-    if (strstr(buffer1, "viewMode") != NULL) {
+    if (strstr(buffer1, "viewMode") != nullptr) {
       if (strcmp(buffer2, "View_A") == 0) {
         _viewMode = View_A;
         ok = true;
@@ -1130,27 +1123,27 @@ void RView::Read(char *name)
     }
 
     // Display viewing mix in shutter viewing mode
-    if (strstr(buffer1, "viewMix") != NULL) {
+    if (strstr(buffer1, "viewMix") != nullptr) {
       _viewMix = atof(buffer2);
       ok = true;
     }
     // Flag for display of isolines from target image
-    if (strstr(buffer1, "DisplayTargetContour") != NULL) {
+    if (strstr(buffer1, "DisplayTargetContour") != nullptr) {
       _DisplayTargetContour = atoi(buffer2);
       ok = true;
     }
     // Flag for display of isolines from source image
-    if (strstr(buffer1, "DisplaySourceContour") != NULL) {
+    if (strstr(buffer1, "DisplaySourceContour") != nullptr) {
       _DisplaySourceContour = atoi(buffer2);
       ok = true;
     }
     // Flag for display of cross hair
-    if (strstr(buffer1, "DisplayCursor") != NULL) {
+    if (strstr(buffer1, "DisplayCursor") != nullptr) {
       _DisplayCursor = atoi(buffer2);
       ok = true;
     }
     // Cursor mode
-    if (strstr(buffer1, "CursorMode") != NULL) {
+    if (strstr(buffer1, "CursorMode") != nullptr) {
       if (strcmp(buffer2, "CrossHair") == 0) {
         _CursorMode = CrossHair;
         ok = true;
@@ -1168,38 +1161,38 @@ void RView::Read(char *name)
       }
     }
     // Flag for display of deformation grid
-    if (strstr(buffer1, "DisplayDeformationGrid") != NULL) {
+    if (strstr(buffer1, "DisplayDeformationGrid") != nullptr) {
       _DisplayDeformationGrid = atoi(buffer2);
       ok = true;
     }
     // Flag for display of deformation points
-    if (strstr(buffer1, "DisplayDeformationPoints") != NULL) {
+    if (strstr(buffer1, "DisplayDeformationPoints") != nullptr) {
       _DisplayDeformationPoints = atoi(buffer2);
       ok = true;
     }
     // Flag for display of deformation arrows
-    if (strstr(buffer1, "DisplayDeformationArrows") != NULL) {
+    if (strstr(buffer1, "DisplayDeformationArrows") != nullptr) {
       _DisplayDeformationArrows = atoi(buffer2);
       ok = true;
     }
     // Flag for display of landmarks
-    if (strstr(buffer1, "DisplayLandmarks") != NULL) {
+    if (strstr(buffer1, "DisplayLandmarks") != nullptr) {
       _DisplayLandmarks = atoi(buffer2);
       ok = true;
     }
 #if MIRTK_IO_WITH_VTK && defined(HAVE_VTK)
     // Flag for display of object
-    if (strstr(buffer1, "DisplayObject") != NULL) {
+    if (strstr(buffer1, "DisplayObject") != nullptr) {
       _DisplayObject = atoi(buffer2);
       ok = true;
     }
     // Flag for warping of object
-    if (strstr(buffer1, "DisplayObjectWarp") != NULL) {
+    if (strstr(buffer1, "DisplayObjectWarp") != nullptr) {
       _DisplayObjectWarp = atoi(buffer2);
       ok = true;
     }
     // Flag for display of object grid
-    if (strstr(buffer1, "DisplayObjectGrid") != NULL) {
+    if (strstr(buffer1, "DisplayObjectGrid") != nullptr) {
       _DisplayObjectGrid = atoi(buffer2);
       ok = true;
     }
@@ -1207,15 +1200,15 @@ void RView::Read(char *name)
 
     // LookupTables - could be replaced by LookupTable stream
     // targetLookupTable
-    if (strstr(buffer1, "targetLookupTable_min") != NULL) {
+    if (strstr(buffer1, "targetLookupTable_min") != nullptr) {
       _targetLookupTable->SetMinDisplayIntensity(atoi(buffer2));
       ok = true;
     }
-    if (strstr(buffer1, "targetLookupTable_max") != NULL) {
+    if (strstr(buffer1, "targetLookupTable_max") != nullptr) {
       _targetLookupTable->SetMaxDisplayIntensity(atoi(buffer2));
       ok = true;
     }
-    if (strstr(buffer1, "targetLookupTable_mode") != NULL) {
+    if (strstr(buffer1, "targetLookupTable_mode") != nullptr) {
       if (strcmp(buffer2, "ColorMode_Red") == 0) {
         _targetLookupTable->SetColorModeToRed();
         ok = true;
@@ -1234,15 +1227,15 @@ void RView::Read(char *name)
       }
     }
     // sourceLookupTable
-    if (strstr(buffer1, "sourceLookupTable_min") != NULL) {
+    if (strstr(buffer1, "sourceLookupTable_min") != nullptr) {
       _sourceLookupTable->SetMinDisplayIntensity(atoi(buffer2));
       ok = true;
     }
-    if (strstr(buffer1, "sourceLookupTable_max") != NULL) {
+    if (strstr(buffer1, "sourceLookupTable_max") != nullptr) {
       _sourceLookupTable->SetMaxDisplayIntensity(atoi(buffer2));
       ok = true;
     }
-    if (strstr(buffer1, "sourceLookupTable_mode") != NULL) {
+    if (strstr(buffer1, "sourceLookupTable_mode") != nullptr) {
       if (strcmp(buffer2, "ColorMode_Red") == 0) {
         _sourceLookupTable->SetColorModeToRed();
         ok = true;
@@ -1261,15 +1254,15 @@ void RView::Read(char *name)
       }
     }
     // subtractionLookupTable
-    if (strstr(buffer1, "subtractionLookupTable_min") != NULL) {
+    if (strstr(buffer1, "subtractionLookupTable_min") != nullptr) {
       _subtractionLookupTable->SetMinDisplayIntensity(atoi(buffer2));
       ok = true;
     }
-    if (strstr(buffer1, "subtractionLookupTable_max") != NULL) {
+    if (strstr(buffer1, "subtractionLookupTable_max") != nullptr) {
       _subtractionLookupTable->SetMaxDisplayIntensity(atoi(buffer2));
       ok = true;
     }
-    if (strstr(buffer1, "subtractionLookupTable_mode") != NULL) {
+    if (strstr(buffer1, "subtractionLookupTable_mode") != nullptr) {
       if (strcmp(buffer2, "ColorMode_Red") == 0) {
         _subtractionLookupTable->SetColorModeToRed();
         ok = true;
@@ -1290,7 +1283,7 @@ void RView::Read(char *name)
 
     // Check if we parse every line
 #ifdef DEBUG
-    if (ok != true) {
+    if (!ok) {
       cerr << "RView::Read() : Ignoring line " << buffer1 << endl;
     }
     // Avoid "set but not used" warning
@@ -1365,7 +1358,7 @@ void RView::Read(char *name)
 void RView::Write(char *name)
 {
   // Open file
-  ofstream to(name);
+  std::ofstream to(name);
   if (!to) {
     cerr << "RView::Write: Can't open file " << name << "\n";
     exit(1);
@@ -1634,7 +1627,7 @@ void RView::Write(char *name)
 void RView::ReadTarget(char *name)
 {
   // Read target image
-  if (_targetImage != NULL) delete _targetImage;
+  if (_targetImage != nullptr) delete _targetImage;
   _targetImage = mirtk::Image::New(name);
   if (!_targetImage->GetTSize()) _targetImage->PutTSize(1.0);
 
@@ -1704,7 +1697,7 @@ void RView::ReadTarget(int argc, char **argv)
   }
 
   // Delete old image
-  if (_targetImage != NULL)
+  if (_targetImage != nullptr)
     delete _targetImage;
 
   // Initialize image attributes
@@ -1713,19 +1706,19 @@ void RView::ReadTarget(int argc, char **argv)
   attr._dt = 1;
 
   // Allocate new image
-  if (dynamic_cast<mirtk::GenericImage<char> *> (nimages[0]) != NULL) {
+  if (dynamic_cast<mirtk::GenericImage<char> *> (nimages[0]) != nullptr) {
     _targetImage = new mirtk::GenericImage<char> (attr);
   } else if (dynamic_cast<mirtk::GenericImage<unsigned char> *> (nimages[0])
-             != NULL) {
+             != nullptr) {
     _targetImage = new mirtk::GenericImage<unsigned char> (attr);
-  } else if (dynamic_cast<mirtk::GenericImage<short> *> (nimages[0]) != NULL) {
+  } else if (dynamic_cast<mirtk::GenericImage<short> *> (nimages[0]) != nullptr) {
     _targetImage = new mirtk::GenericImage<short> (attr);
   } else if (dynamic_cast<mirtk::GenericImage<unsigned short> *> (nimages[0])
-             != NULL) {
+             != nullptr) {
     _targetImage = new mirtk::GenericImage<unsigned short> (attr);
-  } else if (dynamic_cast<mirtk::GenericImage<float> *> (nimages[0]) != NULL) {
+  } else if (dynamic_cast<mirtk::GenericImage<float> *> (nimages[0]) != nullptr) {
     _targetImage = new mirtk::GenericImage<float> (attr);
-  } else if (dynamic_cast<mirtk::GenericImage<double> *> (nimages[0]) != NULL) {
+  } else if (dynamic_cast<mirtk::GenericImage<double> *> (nimages[0]) != nullptr) {
     _targetImage = new mirtk::GenericImage<double> (attr);
   } else {
     cerr << "RView::ReadTarget: Cannot convert image to desired type"
@@ -1781,7 +1774,7 @@ void RView::ReadTarget(int argc, char **argv)
 void RView::ReadSource(char *name)
 {
   // Read source image
-  if (_sourceImage != NULL) delete _sourceImage;
+  if (_sourceImage != nullptr) delete _sourceImage;
   _sourceImage = mirtk::Image::New(name);
   if (!_sourceImage->GetTSize()) _sourceImage->PutTSize(1.0);
 
@@ -1836,7 +1829,7 @@ void RView::ReadSource(int argc, char **argv)
   }
 
   // Delete old image
-  if (_sourceImage != NULL)
+  if (_sourceImage != nullptr)
     delete _sourceImage;
 
   // Initialize image attributes
@@ -1845,19 +1838,19 @@ void RView::ReadSource(int argc, char **argv)
   attr._dt = 1;
 
   // Allocate new image
-  if (dynamic_cast<mirtk::GenericImage<char> *> (nimages[0]) != NULL) {
+  if (dynamic_cast<mirtk::GenericImage<char> *> (nimages[0]) != nullptr) {
     _sourceImage = new mirtk::GenericImage<char> (attr);
   } else if (dynamic_cast<mirtk::GenericImage<unsigned char> *> (nimages[0])
-             != NULL) {
+             != nullptr) {
     _sourceImage = new mirtk::GenericImage<unsigned char> (attr);
-  } else if (dynamic_cast<mirtk::GenericImage<short> *> (nimages[0]) != NULL) {
+  } else if (dynamic_cast<mirtk::GenericImage<short> *> (nimages[0]) != nullptr) {
     _sourceImage = new mirtk::GenericImage<short> (attr);
   } else if (dynamic_cast<mirtk::GenericImage<unsigned short> *> (nimages[0])
-             != NULL) {
+             != nullptr) {
     _sourceImage = new mirtk::GenericImage<unsigned short> (attr);
-  } else if (dynamic_cast<mirtk::GenericImage<float> *> (nimages[0]) != NULL) {
+  } else if (dynamic_cast<mirtk::GenericImage<float> *> (nimages[0]) != nullptr) {
     _sourceImage = new mirtk::GenericImage<float> (attr);
-  } else if (dynamic_cast<mirtk::GenericImage<double> *> (nimages[0]) != NULL) {
+  } else if (dynamic_cast<mirtk::GenericImage<double> *> (nimages[0]) != nullptr) {
     _sourceImage = new mirtk::GenericImage<double> (attr);
   } else {
     cerr << "RView::ReadSource: Cannot convert image to desired type"
@@ -1924,8 +1917,8 @@ void RView::WriteTarget(char *name)
 
 void RView::WriteSource(char *name)
 {
-  if (_sourceImage != NULL) {
-    if ((_sourceTransformApply == true) && (_sourceTransform != NULL)) {
+  if (_sourceImage) {
+    if (_sourceTransformApply && _sourceTransform) {
       // Allocate transformed source image
       mirtk::GreyImage transformedSource(_targetImage->GetImageAttributes());
       // Transform source image
@@ -1953,7 +1946,7 @@ void RView::ReadTransformation(char *name)
   int i;
 
   // Delete the old transformation
-  if (_sourceTransform != NULL) delete _sourceTransform;
+  if (_sourceTransform) delete _sourceTransform;
 
   // Allocate and read the new transformation
   _sourceTransform = mirtk::Transformation::New(name);
@@ -1981,7 +1974,7 @@ void RView::ReadTransformation(char *name)
     _sourceTransformFilter[i]->Input (_sourceImage);
     _sourceTransformFilter[i]->Output(_sourceImageOutput[i]);
     _sourceTransformFilter[i]->Cache (&_sourceTransformCache);
-    if (_sourceTransformApply == true) {
+    if (_sourceTransformApply) {
       _sourceTransformFilter[i]->Transformation(_sourceTransform);
     } else {
       _sourceTransformFilter[i]->Transformation(_targetTransform);
@@ -1996,7 +1989,7 @@ void RView::ReadTransformation(char *name)
 void RView::WriteTransformation(char *name)
 {
   // Write transformation
-  if (_sourceTransform != NULL) {
+  if (_sourceTransform) {
     _sourceTransform->Write(name);
   }
 }
@@ -2048,8 +2041,8 @@ void RView::RemoveObject()
     int i;
 
     for (i = 0; i < MAX_NUMBER_OF_OBJECTS; i++) {
-        if (_Object[i] != NULL) _Object[i]->Delete();
-        _Object[i] = NULL;
+        if (_Object[i]) _Object[i]->Delete();
+        _Object[i] = nullptr;
     }
 
     _NoOfObjects = 0;
@@ -2295,21 +2288,21 @@ void RView::Reset()
   }
 
   // Flip X coordinates if desired
-  if (_FlipX == true) {
+  if (_FlipX) {
     _xaxis[0] *= -1;
     _xaxis[1] *= -1;
     _xaxis[2] *= -1;
   }
 
   // Flip Y coordinates if desired
-  if (_FlipY == true) {
+  if (_FlipY) {
     _yaxis[0] *= -1;
     _yaxis[1] *= -1;
     _yaxis[2] *= -1;
   }
 
   // Flip Z coordinates if desired
-  if (_FlipZ == true) {
+  if (_FlipZ) {
     _zaxis[0] *= -1;
     _zaxis[1] *= -1;
     _zaxis[2] *= -1;
@@ -2355,7 +2348,7 @@ void RView::Resize(int w, int h)
 
   // Delete old drawables
   for (i = 0; i < _NoOfViewers; i++) {
-    if (_drawable[i] != NULL)
+    if (_drawable[i])
       delete[] _drawable[i];
   }
 
@@ -2452,7 +2445,7 @@ void RView::Configure(RViewConfig config[])
     _sourceTransformFilter[i]->Input(_sourceImage);
     _sourceTransformFilter[i]->Output(_sourceImageOutput[i]);
     _sourceTransformFilter[i]->Cache(&_sourceTransformCache);
-    if (_sourceTransformApply == true) {
+    if (_sourceTransformApply) {
       _sourceTransformFilter[i]->Transformation(_sourceTransform);
     } else {
       _sourceTransformFilter[i]->Transformation(_targetTransform);
@@ -2498,8 +2491,7 @@ void RView::Configure(RViewConfig config[])
   _selectionUpdate = true;
 }
 
-void RView::GetInfoText(char *buffer1, char *buffer2, char *buffer3,
-                            char *buffer4, char *buffer5)
+void RView::GetInfoText(char *buffer1, char *buffer2, char *buffer3, char *buffer4, char *buffer5)
 {
   int i, j, k;
   double u, v, w;
@@ -2513,7 +2505,7 @@ void RView::GetInfoText(char *buffer1, char *buffer2, char *buffer3,
   mirtk::FreeFormTransformation   *affd = dynamic_cast<mirtk::FreeFormTransformation *>  (_sourceTransform);
 
   // If multi-level FFD, set affd to FFD of final level
-  if (mffd != NULL) affd = mffd->GetLocalTransformation(mffd->NumberOfLevels() - 1);
+  if (mffd) affd = mffd->GetLocalTransformation(mffd->NumberOfLevels() - 1);
 
   // Determine time parameters for transformation
   double tt = .0, ts = .0;
@@ -2612,7 +2604,7 @@ void RView::MouseWheel(int i, int j, int wheel)
   _origin_y = v;
   _origin_z = w;
 
-  if (_SnapToGrid == true) {
+  if (_SnapToGrid) {
     // Round origin to nearest voxel
     _targetImage->WorldToImage(_origin_x, _origin_y, _origin_z);
     _origin_x = round(_origin_x);
@@ -2678,7 +2670,7 @@ void RView::GetTransformationText(std::list<char *> &text)
   const char *name;
   double dx, dy, dz, dt;
 
-  ptr  = NULL;
+  ptr  = nullptr;
   name = _sourceTransform->NameOfClass();
   if (strcmp(name, "mirtk::RigidTransformation") == 0) {
     ptr = strdup("Rigid transformation (6 DOF)");
@@ -2733,7 +2725,7 @@ void RView::GetTransformationText(std::list<char *> &text)
   // Convert transformation
   mirtk::MultiLevelTransformation *mffd = dynamic_cast<mirtk::MultiLevelTransformation *>(_sourceTransform);
 
-  if (mffd != NULL) {
+  if (mffd) {
     for (i = 0; i < mffd->NumberOfLevels(); i++) {
       name = mffd->GetLocalTransformation(i)->NameOfClass();
       if (strcmp(name, "mirtk::BSplineFreeFormTransformation4D") == 0) {
@@ -2983,24 +2975,19 @@ void RView::SetTargetInterpolationMode(mirtk::InterpolationMode value)
 
 mirtk::InterpolationMode RView::GetTargetInterpolationMode()
 {
-  if (strstr(_targetInterpolator->NameOfClass(),
-             "NearestNeighborInterpolateImageFunction") != NULL) {
+  if (strstr(_targetInterpolator->NameOfClass(), "NearestNeighborInterpolateImageFunction")) {
     return mirtk::Interpolation_NN;
   }
-  if (strstr(_targetInterpolator->NameOfClass(),
-             "LinearInterpolateImageFunction") != NULL) {
+  if (strstr(_targetInterpolator->NameOfClass(), "LinearInterpolateImageFunction")) {
     return mirtk::Interpolation_Linear;
   }
-  if (strstr(_targetInterpolator->NameOfClass(),
-             "BSplineInterpolateImageFunction") != NULL) {
+  if (strstr(_targetInterpolator->NameOfClass(), "BSplineInterpolateImageFunction")) {
     return mirtk::Interpolation_BSpline;
   }
-  if (strstr(_targetInterpolator->NameOfClass(),
-             "CSplineInterpolateImageFunction") != NULL) {
+  if (strstr(_targetInterpolator->NameOfClass(), "CSplineInterpolateImageFunction")) {
     return mirtk::Interpolation_CSpline;
   }
-  if (strstr(_targetInterpolator->NameOfClass(),
-             "SincInterpolateImageFunction") != NULL) {
+  if (strstr(_targetInterpolator->NameOfClass(), "SincInterpolateImageFunction")) {
     return mirtk::Interpolation_Sinc;
   }
   return mirtk::Interpolation_NN;
@@ -3020,24 +3007,19 @@ void RView::SetSourceInterpolationMode(mirtk::InterpolationMode value)
 
 mirtk::InterpolationMode RView::GetSourceInterpolationMode()
 {
-  if (strstr(_sourceInterpolator->NameOfClass(),
-             "NearestNeighborInterpolateImageFunction") != NULL) {
+  if (strstr(_sourceInterpolator->NameOfClass(), "NearestNeighborInterpolateImageFunction")) {
     return mirtk::Interpolation_NN;
   }
-  if (strstr(_sourceInterpolator->NameOfClass(),
-             "LinearInterpolateImageFunction") != NULL) {
+  if (strstr(_sourceInterpolator->NameOfClass(), "LinearInterpolateImageFunction")) {
     return mirtk::Interpolation_Linear;
   }
-  if (strstr(_sourceInterpolator->NameOfClass(),
-             "BSplineInterpolateImageFunction") != NULL) {
+  if (strstr(_sourceInterpolator->NameOfClass(), "BSplineInterpolateImageFunction")) {
     return mirtk::Interpolation_BSpline;
   }
-  if (strstr(_sourceInterpolator->NameOfClass(),
-             "CSplineInterpolateImageFunction") != NULL) {
+  if (strstr(_sourceInterpolator->NameOfClass(), "CSplineInterpolateImageFunction")) {
     return mirtk::Interpolation_CSpline;
   }
-  if (strstr(_sourceInterpolator->NameOfClass(),
-             "SincInterpolateImageFunction") != NULL) {
+  if (strstr(_sourceInterpolator->NameOfClass(), "SincInterpolateImageFunction")) {
     return mirtk::Interpolation_Sinc;
   }
   return mirtk::Interpolation_NN;
@@ -3065,11 +3047,11 @@ void RView::SetSourceTransformApply(bool value)
 
   _sourceTransformApply = value;
   for (i = 0; i < _NoOfViewers; i++) {
-    if (_sourceTransformApply == true) {
+    if (_sourceTransformApply) {
       _sourceTransformFilter[i]->Transformation(_sourceTransform);
       _sourceTransformFilter[i]->Cache(&_sourceTransformCache);
     } else {
-      _sourceTransformFilter[i]->Cache(NULL);
+      _sourceTransformFilter[i]->Cache(nullptr);
       _sourceTransformFilter[i]->Transformation(_targetTransform);
     }
   }
@@ -3102,8 +3084,7 @@ void RView::DrawOffscreen(char *filename)
 
   // Read pixels from framebuffer
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
-  glReadPixels(0, 0, this->GetWidth(), this->GetHeight(), GL_RGB,
-               GL_UNSIGNED_BYTE, buffer);
+  glReadPixels(0, 0, this->GetWidth(), this->GetHeight(), GL_RGB, GL_UNSIGNED_BYTE, buffer);
 
   // Convert to RGB image
   n = image.GetX() * image.GetY();
@@ -3114,6 +3095,8 @@ void RView::DrawOffscreen(char *filename)
     ptr[i+n]   = buffer[index++];
     ptr[i+2*n] = buffer[index++];
   }
+
+  image.ReflectY();
 
   // Write file
   image.Write(filename);
@@ -3172,41 +3155,32 @@ double RView::FitLandmarks()
   return error;
 }
 
-void RView::cb_special(int key, int, int, int target_delta,
-                           int source_delta)
+void RView::cb_special(int key, int, int, int target_delta, int source_delta)
 {
   switch (key) {
     case KEY_F1:
-      _targetLookupTable->SetMinDisplayIntensity(
-        _targetLookupTable->GetMinDisplayIntensity() + target_delta);
+      _targetLookupTable->SetMinDisplayIntensity(_targetLookupTable->GetMinDisplayIntensity() + target_delta);
       break;
     case KEY_F2:
-      _targetLookupTable->SetMinDisplayIntensity(
-        _targetLookupTable->GetMinDisplayIntensity() - target_delta);
+      _targetLookupTable->SetMinDisplayIntensity(_targetLookupTable->GetMinDisplayIntensity() - target_delta);
       break;
     case KEY_F3:
-      _targetLookupTable->SetMaxDisplayIntensity(
-        _targetLookupTable->GetMaxDisplayIntensity() + target_delta);
+      _targetLookupTable->SetMaxDisplayIntensity(_targetLookupTable->GetMaxDisplayIntensity() + target_delta);
       break;
     case KEY_F4:
-      _targetLookupTable->SetMaxDisplayIntensity(
-        _targetLookupTable->GetMaxDisplayIntensity() - target_delta);
+      _targetLookupTable->SetMaxDisplayIntensity(_targetLookupTable->GetMaxDisplayIntensity() - target_delta);
       break;
     case KEY_F5:
-      _sourceLookupTable->SetMinDisplayIntensity(
-        _sourceLookupTable->GetMinDisplayIntensity() + source_delta);
+      _sourceLookupTable->SetMinDisplayIntensity(_sourceLookupTable->GetMinDisplayIntensity() + source_delta);
       break;
     case KEY_F6:
-      _sourceLookupTable->SetMinDisplayIntensity(
-        _sourceLookupTable->GetMinDisplayIntensity() - source_delta);
+      _sourceLookupTable->SetMinDisplayIntensity(_sourceLookupTable->GetMinDisplayIntensity() - source_delta);
       break;
     case KEY_F7:
-      _sourceLookupTable->SetMaxDisplayIntensity(
-        _sourceLookupTable->GetMaxDisplayIntensity() + source_delta);
+      _sourceLookupTable->SetMaxDisplayIntensity(_sourceLookupTable->GetMaxDisplayIntensity() + source_delta);
       break;
     case KEY_F8:
-      _sourceLookupTable->SetMaxDisplayIntensity(
-        _sourceLookupTable->GetMaxDisplayIntensity() - source_delta);
+      _sourceLookupTable->SetMaxDisplayIntensity(_sourceLookupTable->GetMaxDisplayIntensity() - source_delta);
       break;
     case KEY_F9:
       if (this->GetDisplayTargetContours()) {

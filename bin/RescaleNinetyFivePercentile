@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+
+import nibabel
+import numpy
+import os
+import sys
+import getopt
+
+opts, args = getopt.getopt(sys.argv[1:], 'm:p:t:')
+
+maskFileName = None
+outPercentile = 1000
+outType = 'single'
+
+for o, a in opts:
+    if o == '-m':
+        maskFileName = a
+    if o == '-p':
+        outPercentile = float(a)
+    if o == '-t':
+        outType = a
+
+if len(args) < 2:
+    print("Usage " + sys.argv[0] + " [-m mask] [-p outpercentile] <input image> <output image>")
+    quit()
+
+initFileName = args[0]
+
+if not os.path.isfile(initFileName):
+    print("Init File not found")
+    quit()
+
+if not maskFileName is None:
+    if not os.path.isfile(maskFileName):
+        print("mask File not found")
+        quit()
+
+initNII = nibabel.load(initFileName)
+initIMG = numpy.single(initNII.get_fdata())
+
+if not maskFileName is None:
+    maskNII = nibabel.load(maskFileName)
+    maskIMG = (maskNII.get_fdata() > 0)
+
+initIMG = initIMG - numpy.min(initIMG)
+
+if not maskFileName is None:
+    NinetyFivePercentile = numpy.percentile(initIMG[maskIMG], 95)
+else:
+    NinetyFivePercentile = numpy.percentile(initIMG, 95)
+
+initIMG = initIMG / NinetyFivePercentile * outPercentile
+
+if outType == 'short':
+    initIMG = numpy.int16(initIMG)
+elif outType == 'char':
+    initIMG = numpy.uint8(initIMG)
+elif outType == 'single':
+    initIMG = numpy.single(initIMG)
+
+outNII = nibabel.Nifti1Image(initIMG, initNII.affine)
+nibabel.save(outNII, args[1])

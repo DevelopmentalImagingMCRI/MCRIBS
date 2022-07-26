@@ -57,13 +57,7 @@ basis_project (
   # dependencies
   DEPENDS
     MIRTK{Common,Numerics,Image,Transformation,PointSet,IO}
-    "VTK-8|7|6{
-      vtkCommonCore,
-      vtkCommonDataModel,
-      vtkFiltersCore,
-      vtkFiltersGeneral,
-      vtkImagingCore
-    }"
+    VTK{vtkCommonCore,vtkCommonDataModel,vtkFiltersCore,vtkFiltersGeneral,vtkImagingCore}
     #<dependency>
   OPTIONAL_DEPENDS
     Python{Interp}

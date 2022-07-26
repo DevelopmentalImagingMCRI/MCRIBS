@@ -25,6 +25,9 @@
 #include "mirtk/PointSetUtils.h"
 #include "mirtk/PolynomialSolvers.h"
 
+#include "vtkNew.h"
+#include "vtkIdList.h"
+
 #include "boost/math/tools/polynomial.hpp"
 using namespace boost::math::tools;
 
@@ -108,7 +111,8 @@ double IntrinsicLeastAreaDistortionSurfaceMapper
   const int    energy_degree         = 8;
   const double zero[energy_degree+1] = {0.};
 
-  vtkIdType          npts, *pts;
+  vtkIdType          ptId;
+  vtkNew<vtkIdList>  ptIds;
   double             a[3], b[3], c[3];
   polynomial<double> u_i(zero, 1), v_i(zero, 1), u_j(zero, 1), v_j(zero, 1);
   polynomial<double> area[3], ratio(zero, 2), distortion(zero, energy_degree);
@@ -118,26 +122,27 @@ double IntrinsicLeastAreaDistortionSurfaceMapper
     area[i] = polynomial<double>(zero, 2);
   }
   for (vtkIdType cellId = 0; cellId < _Surface->GetNumberOfCells(); ++cellId) {
-    _Surface->GetCellPoints(cellId, npts, pts);
-    if (npts != 3) {
+    GetCellPoints(_Surface, cellId, ptIds.GetPointer());
+    if (ptIds->GetNumberOfIds() != 3) {
       cerr << this->NameOfType() << "::ComputeLambda: Surface mesh must be triangulated" << endl;
       exit(1);
     }
 
     // Get surface triangle corner points
-    _Surface->GetPoint(pts[0], a);
-    _Surface->GetPoint(pts[1], b);
-    _Surface->GetPoint(pts[2], c);
+    _Surface->GetPoint(ptIds->GetId(0), a);
+    _Surface->GetPoint(ptIds->GetId(1), b);
+    _Surface->GetPoint(ptIds->GetId(2), c);
 
     // Coefficients of first edge start point polynomial
     // u = (u1 - u0) lambda + u0
-    u_i[0] = u0->GetComponent(pts[0], 0);
-    u_i[1] = u1->GetComponent(pts[0], 0) - u0->GetComponent(pts[0], 0);
-    v_i[0] = u0->GetComponent(pts[0], 1);
-    v_i[1] = u1->GetComponent(pts[0], 1) - u0->GetComponent(pts[0], 1);
+    ptId = ptIds->GetId(0);
+    u_i[0] = u0->GetComponent(ptId, 0);
+    u_i[1] = u1->GetComponent(ptId, 0) - u0->GetComponent(ptId, 0);
+    v_i[0] = u0->GetComponent(ptId, 1);
+    v_i[1] = u1->GetComponent(ptId, 1) - u0->GetComponent(ptId, 1);
     for (int i = 0; i < 3; ++i) {
       // Coefficients of edge end point polynomial
-      auto const&ptId = pts[(i + 1) % 3];
+      ptId = ptIds->GetId((i + 1) % 3);
       u_j[0] = u0->GetComponent(ptId, 0);
       u_j[1] = u1->GetComponent(ptId, 0) - u0->GetComponent(ptId, 0);
       v_j[0] = u0->GetComponent(ptId, 1);
