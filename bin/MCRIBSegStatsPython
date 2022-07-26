@@ -106,6 +106,9 @@ if doingLabelTable == True:
     outDF.Volume_mm3 = outDF.NVoxels * voxelSize
     outDF.normRange = outDF.normMax - outDF.normMin
 else:
+    if not os.path.isfile(SegStatsFileName):
+        print("Cant find segstats stats for " + SubjectID)
+        quit()
     outDF = pandas.read_table(SegStatsFileName, comment = '#', header = None, delim_whitespace = True)
     outDF.columns = ['Index', 'SegId', 'NVoxels', 'Volume_mm3', 'StructName', 'normMean', 'normStdDev', 'normMin', 'normMax', 'normRange']
 

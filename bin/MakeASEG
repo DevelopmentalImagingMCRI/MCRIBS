@@ -34,16 +34,16 @@ ASEGPresurfIMG = numpy.int16(ASEGPresurfNII.get_fdata())
 ASEGIMG = numpy.array(ASEGPresurfIMG)
 
 # replace LH cortex, CSF with ribbon WM
-ASEGIMG[numpy.logical_and(RibbonIMG == 2, ismember(ASEGPresurfIMG, [0, 2, 165, 258, 24]))] = 2
+ASEGIMG[numpy.logical_and(RibbonIMG == 2, ismember(ASEGPresurfIMG, [0, 3, 165, 258, 24]))] = 2
 # replace RH cortex, CSF with ribbon WM
-ASEGIMG[numpy.logical_and(RibbonIMG == 41, ismember(ASEGPresurfIMG, [0, 41, 165, 258, 24]))] = 41
+ASEGIMG[numpy.logical_and(RibbonIMG == 41, ismember(ASEGPresurfIMG, [0, 42, 165, 258, 24]))] = 41
 
 # insert ribbon cortex
 ASEGIMG[RibbonIMG == 3] = 3
 ASEGIMG[RibbonIMG == 42] = 42
 
 # replace cortex outside of ribbon with 0
-ASEGIMG[numpy.logical_and(RibbonIMG == 0, numpy.logical_or(ASEGPresurfIMG == 3, ASEGPresurfIMG == 42))] = 0
+ASEGIMG[numpy.logical_and(RibbonIMG == 0, ismember(ASEGPresurfIMG, [2, 3, 41, 42]))] = 0
 
 # fill holes with CSF
 ASEGIMGMask = (ASEGIMG > 0)
@@ -52,4 +52,4 @@ ASEGIMGMaskFilled = scipy.ndimage.binary_closing(ASEGIMGMask, iterations = 5)
 ASEGIMG[numpy.logical_and(ASEGIMGMaskFilled, numpy.logical_not(ASEGIMGMask))] = 24
 
 NewASEGNII = nibabel.MGHImage(ASEGIMG, ASEGPresurfNII.affine, ASEGPresurfNII.header)
-nibabel.save(NewASEGNII, os.path.join('freesurfer', SubjId, 'mri', 'aseg.new.mgz'))
+nibabel.save(NewASEGNII, os.path.join('freesurfer', SubjId, 'mri', 'aseg.mgz'))

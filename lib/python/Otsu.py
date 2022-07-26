@@ -111,7 +111,7 @@ def otsu2(IMG, returnWorkingValues = False):
 #    
 #    # for the first threshold, the valid values are less than the current threshold
 #    # so we use upper triangular thresholding on colIDX
-#    validColIDX = numpy.triu(numpy.ones(colIDX.shape, dtype = numpy.bool)) > 0
+#    validColIDX = numpy.triu(numpy.ones(colIDX.shape, dtype = numpy.bool_)) > 0
 #    
 #    # each column contains the X index minus MuZero for that threshold
 #    XCZeros = (colIDX - numpy.atleast_2d(MuZeros)) * numpy.double(validColIDX)
@@ -121,7 +121,7 @@ def otsu2(IMG, returnWorkingValues = False):
 #    
 #    # for the second threshold, the valid values are greater than the current threshold
 #    # so we use lower triangular thresholding on colIDX
-#    validColIDX = numpy.tril(numpy.ones(colIDX.shape, dtype = numpy.bool)) > 0
+#    validColIDX = numpy.tril(numpy.ones(colIDX.shape, dtype = numpy.bool_)) > 0
 #    
 #    # each column contains the X index minus MuZero for that threshold
 #    XCZeros = (colIDX - numpy.atleast_2d(MuTwos)) * numpy.double(validColIDX)
@@ -271,7 +271,7 @@ def otsu2Loops(IMG, returnWorkingValues = False):
     MuOneHistArray = numpy.zeros((256, 256))
     SigmaBs = numpy.zeros((256, 256))
     
-    Mask = numpy.zeros((256, 256), dtype = numpy.bool)
+    Mask = numpy.zeros((256, 256), dtype = numpy.bool_)
     MaxSigmaB = 0
     THRESH = None
     for I in range(256):

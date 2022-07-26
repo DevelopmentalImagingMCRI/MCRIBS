@@ -9,7 +9,11 @@ import getopt
 import scipy.ndimage
 
 def DICEOverlap(A, B):
-    return (2 * numpy.count_nonzero(numpy.logical_and(A, B))) / (numpy.count_nonzero(A) + numpy.count_nonzero(B))
+
+    AB = numpy.count_nonzero(A) + numpy.count_nonzero(B)
+    if AB == 0:
+        AB = 1
+    return (2 * numpy.count_nonzero(numpy.logical_and(A, B))) / AB
 
 def KMeansInitCentroids(X, initCentroids, numIter = 100):
 
@@ -26,8 +30,15 @@ def KMeansInitCentroids(X, initCentroids, numIter = 100):
         if z < numIter - 1:
             for k in range(centroids.size):
                 centroids[k] = numpy.mean(X[Classes == k])
+    
     II = numpy.argsort(centroids.ravel())
-    Classes = II[Classes]
+    S = numpy.zeros_like(II)
+    #print(centroids)
+
+    #print(II)
+    S[II] = numpy.arange(II.size)
+    #print(S)
+    Classes = S[Classes]
     return Classes
 
 def ismember(A, B):

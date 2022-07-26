@@ -48,7 +48,7 @@ mirtkAutoRegisterEnergyTermMacro(ImageEdgeDistance);
 // =============================================================================
 // Debugging output for creating figures of intensity profiles
 // =============================================================================
-#define BUILD_WITH_DEBUG_CODE 0
+#define BUILD_WITH_DEBUG_CODE 1
 
 #if BUILD_WITH_DEBUG_CODE
   const double dbg_dist    = 2.;
@@ -1577,7 +1577,7 @@ struct ComputeDistances
       return i0;
     }
     // if(ptId == 57956) {
-    //   cout << "aa: " << std::distance(extrema.begin(), i) << " " << std::distance(extrema.begin(), j) << std::endl;
+    //cout << "aa: " << std::distance(extrema.begin(), i) << " " << std::distance(extrema.begin(), j) << std::endl;
     // }
     // Avoid mistakes when right next to ventricles
     //
@@ -1638,7 +1638,7 @@ struct ComputeDistances
     Extrema::iterator pos1 = extrema.end();
     Extrema::iterator pos2 = extrema.end();
     // if(ptId == 57956) {
-    //   cout << "ab: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << std::endl;
+    //cout << "ab: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << std::endl;
     // }
     double prb1 = 0., prb2 = 0., prb, slope;
     int    nop1 = 0,  nop2 = 0;
@@ -1761,24 +1761,38 @@ struct ComputeDistances
                     mirtkAssert(0 <= ext.idx && ext.idx <= k, "Extremum index within bounds");
 
                     // the extrema.insert sometimes reallocates the vectors and corrupts the iterators pos1 and i
-                    int prevPos1Idx, prevIIdx, addToI;
+                    int prevPos1Idx, prevPos2Idx, prevIIdx, addToI;
 
-                    // if i > j then i will be advanced by 2 spots by the inserts at j
-                    addToI = 0;
-                    if( i > j ) {
-                      addToI = 2;
-                    }
                     EvalExtremum(mid, p, dp, f, k);
                     // cout << "aeeevvvef1: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << std::endl;
                     // cout << "aeeevvvef1: " << std::distance(extrema.begin(), i) << " " << std::distance(extrema.begin(), j) << std::endl;
                     
+                    prevPos1Idx = std::distance(extrema.begin(), pos1);
+                    prevPos2Idx = std::distance(extrema.begin(), pos2);
+                    prevIIdx = std::distance(extrema.begin(), i);
+
+                    if( i > j ) {
+                      addToI = 1;
+                    } else {
+                      addToI = 0;
+                    }
+
                     j = extrema.insert(j, mid); // need alternating sequence of min/max
+                    pos1 = extrema.begin() + prevPos1Idx;
+                    pos2 = extrema.begin() + prevPos2Idx;
+                    i = extrema.begin() + prevIIdx + addToI;
+
                     mid.min = true;
                     // cout << "aeeevvvef2: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << std::endl;
                     // cout << "aeeevvvef2: " << std::distance(extrema.begin(), i) << " " << std::distance(extrema.begin(), j) << std::endl;
                     // get the existing indices of the non j iterators
                     prevPos1Idx = std::distance(extrema.begin(), pos1);
                     prevIIdx = std::distance(extrema.begin(), i);
+                    if( i > j ) {
+                      addToI = 1;
+                    } else {
+                      addToI = 0;
+                    }
                     j = extrema.insert(j, mid);
 
                     // reset the iterators
@@ -1809,7 +1823,7 @@ struct ComputeDistances
                 }
               }
               // if(ptId == 57956) {
-                //cout << "ag: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << std::endl;
+              //cout << "ae: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << " " << std::distance(extrema.begin(), i) << " " << std::distance(extrema.begin(), j) << std::endl;
               // }
             }
             break;
@@ -1824,7 +1838,7 @@ struct ComputeDistances
               prb2 = prb;
             }
             // if(ptId == 57956) {
-            //   cout << "ag: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << std::endl;
+            //cout << "ag: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << " " << std::distance(extrema.begin(), i) << " " << std::distance(extrema.begin(), j) << std::endl;
             // }
           }
         } else {
@@ -1842,7 +1856,7 @@ struct ComputeDistances
       cout << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << std::endl;
       exit(1);
     }
-    //cout << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << std::endl;
+    //cout << "af: " << std::distance(extrema.begin(), pos1) << " " << std::distance(extrema.begin(), pos2) << " " << std::distance(extrema.begin(), i) << " " << std::distance(extrema.begin(), j) << std::endl;
     mirtkAssert(pos2 == extrema.end() || (pos2+1 != extrema.end() && !pos2->min && pos2->idx < (pos2+1)->idx && (pos2+1)->min), "pos2 is a valid edge interval start");
     
     
@@ -2258,10 +2272,10 @@ struct ComputeDistances
       //     plot(x(i+1), f(i+1), 'r*')
       //     plot(x(j+1), f(j+1), 'g+')
       //     yyaxis right, plot(x, g), hold off
-      //cerr << "\nPoint " << ptId << std::endl;
+      //cout << "\nPoint " << ptId << std::endl;
       #if BUILD_WITH_DEBUG_CODE
         //dbg = (p.Distance(dbg_voxel) < dbg_dist);
-        dbg = (ptId == 57956);
+        dbg = 0;// (ptId == 57956);
         
         if (dbg) {
           cout << "\nPoint " << ptId << ":\n\tf=[";

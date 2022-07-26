@@ -60,7 +60,7 @@ TV = numpy.dot(I[:3, :3], S['vertices']) + numpy.atleast_2d(I[:3, 3]).T
 #NewIMG[(numpy.int64( numpy.ceil(TV[0])),  numpy.int64(numpy.ceil(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = ThalamusLabel
 
 NewIMG = numpy.int32(numpy.array(ASEGMGZ.get_fdata()))
-NewMask = numpy.zeros(ASEGMGZ.shape, dtype = numpy.bool)
+NewMask = numpy.zeros(ASEGMGZ.shape, dtype = numpy.bool_)
 
 ThalamusLabel = 10
 

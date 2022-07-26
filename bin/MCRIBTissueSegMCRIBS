@@ -21,6 +21,7 @@ export NOSKULLSTRIP=NO
 export BETMASK=NO
 export LARGEVENTRICLES=NO
 export DOPARALLEL=NO
+export NOBSPLINE=NO
 
 while (( "$#" ))
 do
@@ -40,7 +41,9 @@ do
 		-betmask)
 			export BETMASK=YES
 			;;
-
+		-nobspline)
+			export NOBSPLINE=YES
+			;;
 		-parallel)
 			export DOPARALLEL=YES
 			;;
@@ -119,30 +122,90 @@ export OMP_NUM_THREADS=`nproc`
 #else
 #	echo "$SUBJID not found"
 #fi
-if [ ! -f "${OUTPUTPREFIX}_t2w_init_restore.nii.gz" -o "$FORCEOVERWRITE" == "YES" ]
+if [ ! -f "${OUTPUTPREFIX}_t2w_init_restore_first_bet_mask.nii.gz" -o "$FORCEOVERWRITE" == "YES" ]
 then
 	ImageMath 3 ${OUTPUTPREFIX}_t2w_rescaled.nii.gz RescaleImage $T2TARGET 10 100
 	N4BiasFieldCorrection --verbose --input-image ${OUTPUTPREFIX}_t2w_rescaled.nii.gz --image-dimensionality 3 -s 4 --output ${OUTPUTPREFIX}_t2w_init_restore.nii.gz
-	#p ${OUTPUTPREFIX}_t2w_rescaled.nii.gz ${OUTPUTPREFIX}_t2w_init_restore.nii.gz
-	#NINETYFIVET2=`fslstats  ${OUTPUTPREFIX}_t2w_init_restore.nii.gz -P 95`
-	#mageMath 3 ${OUTPUTPREFIX}_t2w_init_restore.nii.gz WindowImage ${OUTPUTPREFIX}_t2w_init_restore.nii.gz 0 $NINETYFIVET2 0 1000
 	RescaleNinetyFivePercentile ${OUTPUTPREFIX}_t2w_init_restore.nii.gz ${OUTPUTPREFIX}_t2w_init_restore.nii.gz
 	ImageMath 3 ${OUTPUTPREFIX}_t2w_init_restore.nii.gz PadImage ${OUTPUTPREFIX}_t2w_init_restore.nii.gz $PADAMOUNT
 	rm -f ${OUTPUTPREFIX}_t2w_rescaled.nii.gz
+	bet ${OUTPUTPREFIX}_t2w_init_restore ${OUTPUTPREFIX}_t2w_init_restore_first_bet -f 0.1 -R -m
+	rm -f ${OUTPUTPREFIX}_t2w_init_restore_first_bet.nii.gz ${OUTPUTPREFIX}_t2w_init_restore.nii.gz
 fi
 
-if [ "$BETMASK" == "YES" ]
+if [ ! -f "${OUTPUTPREFIX}_t2w_first_bet_restore.nii.gz" -o "$FORCEOVERWRITE" == "YES" ]
 then
-	bet ${OUTPUTPREFIX}_t2w_init_restore.nii.gz ${OUTPUTPREFIX}_t2w_init_restore_bet.nii.gz -f 0.2 -m -R
-	cp ${OUTPUTPREFIX}_t2w_init_restore_bet_mask.nii.gz ${OUTPUTPREFIX}_brain_mask.nii.gz
+	ImageMath 3 ${OUTPUTPREFIX}_t2w_rescaled.nii.gz RescaleImage $T2TARGET 10 100
+	ImageMath 3 ${OUTPUTPREFIX}_t2w_init_restore_first_bet_mask_unpadded.nii.gz PadImage ${OUTPUTPREFIX}_t2w_init_restore_first_bet_mask.nii.gz -$PADAMOUNT
+	fslcpgeom ${OUTPUTPREFIX}_t2w_rescaled.nii.gz ${OUTPUTPREFIX}_t2w_init_restore_first_bet_mask_unpadded.nii.gz
+	N4BiasFieldCorrection --verbose --input-image ${OUTPUTPREFIX}_t2w_rescaled.nii.gz --image-dimensionality 3 -s 4 --output ${OUTPUTPREFIX}_t2w_first_bet_restore.nii.gz -x ${OUTPUTPREFIX}_t2w_init_restore_first_bet_mask_unpadded.nii.gz
+	RescaleNinetyFivePercentile ${OUTPUTPREFIX}_t2w_first_bet_restore.nii.gz ${OUTPUTPREFIX}_t2w_first_bet_restore.nii.gz
+	ImageMath 3 ${OUTPUTPREFIX}_t2w_first_bet_restore.nii.gz PadImage ${OUTPUTPREFIX}_t2w_first_bet_restore.nii.gz $PADAMOUNT
+	rm -f ${OUTPUTPREFIX}_t2w_rescaled.nii.gz ${OUTPUTPREFIX}_t2w_init_restore_first_bet_mask_unpadded.nii.gz
 fi
+
+# threshold with K-Means into 4 classes
+# 2, 3, 4 will be tissue, 1 will be background
+ThresholdImage 3 ${OUTPUTPREFIX}_t2w_first_bet_restore.nii.gz ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans3.nii.gz Kmeans 3 ${OUTPUTPREFIX}_t2w_init_restore_first_bet_mask.nii.gz
+fslmaths ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4 ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans3 -odt char
+exit
+if [ ! -f "${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4.nii.gz" ]
+then
+    ThresholdImage 3 ${OUTPUTPREFIX}_t2w_first_bet_restore.nii.gz ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4.nii.gz Kmeans 4 ${OUTPUTPREFIX}_t2w_init_restore_first_bet_mask.nii.gz
+    fslmaths ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4 ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4 -odt char
+fi
+
+if [ ! -f "${OUTPUTPREFIX}_brain_mask.nii.gz" ]
+then
+# open and close labels 2, 3, 4
+	mri_binarize --i ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4.nii.gz --o ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg.nii.gz --match 2 3 4 --noverbose
+    #fslmaths ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4 -thr 2 -bin ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg -odt char
+    ImageMath 3 ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_filled.nii.gz FillHoles ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg.nii.gz
+# open
+#mri_binarize --i ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg.nii.gz --o ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_eroded.nii.gz --match 1 --erode 4 --noverbose
+#mri_binarize --i ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_eroded.nii.gz --o ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_opened.nii.gz --match 1 --dilate 4  --noverbose
+    ImageMath 3 ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_opened.nii.gz MO ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_filled.nii.gz 4
+    ImageMath 3 ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_opened_largest.nii.gz GetLargestComponent ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_opened.nii.gz
+    ImageMath 3 ${OUTPUTPREFIX}_brain_mask.nii.gz MC ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_opened_largest.nii.gz 7
+    fslmaths ${OUTPUTPREFIX}_brain_mask ${OUTPUTPREFIX}_brain_mask -odt char
+# close
+#mri_binarize --i ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_opened.nii.gz --o ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_dilated.nii.gz --match 1 --dilate 7  --noverbose
+#mri_binarize --i ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_dilated.nii.gz --o ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_brain_mask.nii.gz --match 1 --erode 7  --noverbose
+fi
+
+rm -f \
+       ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_dilated.nii.gz \
+       ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_opened.nii.gz \
+       ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_eroded.nii.gz \
+       ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg.nii.gz \
+       ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_opened_largest.nii.gz \
+       ${OUTPUTPREFIX}_t2w_first_bet_restore_kmeans4_fg_filled.nii.gz
+
+if [ ! -f "${OUTPUTPREFIX}_t2w_restore.nii.gz" -o "$FORCEOVERWRITE" == "YES" ]
+then
+	ImageMath 3 ${OUTPUTPREFIX}_t2w_rescaled.nii.gz RescaleImage $T2TARGET 10 100
+	ImageMath 3 ${OUTPUTPREFIX}_brain_mask_unpadded.nii.gz PadImage ${OUTPUTPREFIX}_brain_mask.nii.gz -$PADAMOUNT
+	fslcpgeom ${OUTPUTPREFIX}_t2w_rescaled.nii.gz ${OUTPUTPREFIX}_brain_mask_unpadded.nii.gz
+	N4BiasFieldCorrection --verbose --input-image ${OUTPUTPREFIX}_t2w_rescaled.nii.gz --image-dimensionality 3 -s 4 --output ${OUTPUTPREFIX}_t2w_restore.nii.gz -x ${OUTPUTPREFIX}_brain_mask_unpadded.nii.gz
+	RescaleNinetyFivePercentile ${OUTPUTPREFIX}_t2w_restore.nii.gz ${OUTPUTPREFIX}_t2w_restore.nii.gz
+	ImageMath 3 ${OUTPUTPREFIX}_t2w_restore.nii.gz PadImage ${OUTPUTPREFIX}_t2w_restore.nii.gz $PADAMOUNT
+	rm -f ${OUTPUTPREFIX}_t2w_rescaled.nii.gz ${OUTPUTPREFIX}_brain_mask_unpadded.nii.gz
+fi
+fslmaths ${OUTPUTPREFIX}_t2w_restore -mas ${OUTPUTPREFIX}_brain_mask ${OUTPUTPREFIX}_t2w_restore_brain
+fslcpgeom ${OUTPUTPREFIX}_t2w_restore_brain ${OUTPUTPREFIX}_brain_mask
+#exit
+#if [ "$BETMASK" == "YES" ]
+#then#
+#bet ${OUTPUTPREFIX}_t2w_init_restore.nii.gz ${OUTPUTPREFIX}_t2w_init_restore_bet.nii.gz -f 0.2 -m -R
+#	cp ${OUTPUTPREFIX}_t2w_init_restore_bet_mask.nii.gz ${OUTPUTPREFIX}_brain_mask.nii.gz
+#fi
 
 if [ ! -f "${OUTPUTPREFIX}InitialAffine.mat" ]
 then
-	ResampleImageBySpacing 3 $T2TEMPLATE ${OUTPUTPREFIX}T2TemplateDown.nii.gz 3 3 3 1 0
-	ResampleImageBySpacing 3 ${OUTPUTPREFIX}_t2w_init_restore.nii.gz ${OUTPUTPREFIX}_t2w_init_restore_down.nii.gz 3 3 3 1 0
+	ResampleImageBySpacing 3 $T2TEMPLATEBRAIN ${OUTPUTPREFIX}T2TemplateBrainDown.nii.gz 3 3 3 1 0
+	ResampleImageBySpacing 3 ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_down.nii.gz 3 3 3 1 0
 	antsAI -d 3 -v 1 \
-		-m Mattes[${OUTPUTPREFIX}T2TemplateDown.nii.gz,${OUTPUTPREFIX}_t2w_init_restore_down.nii.gz,32,Random,0.2 ] \
+		-m Mattes[${OUTPUTPREFIX}T2TemplateBrainDown.nii.gz,${OUTPUTPREFIX}_t2w_restore_brain_down.nii.gz,32,Random,0.2 ] \
 		-t Affine[ 0.1 ] \
 		-s [ 20,0.12 ] \
 		-g [ 40,0x40x40 ] \
@@ -150,7 +213,7 @@ then
 		-c 10 \
 		-o ${OUTPUTPREFIX}InitialAffine.mat
 		#-m Mattes[RawT1RadiologicalIsotropicCropped/${i}.nii.gz,$T1TEMPLATE,32,Random,0.05 ] \
-	rm -f ${OUTPUTPREFIX}T2TemplateDown.nii.gz ${OUTPUTPREFIX}_t2w_init_restore_down.nii.gz
+	rm -f ${OUTPUTPREFIX}T2TemplateBrainDown.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_brain_down.nii.gz
 fi
 
 #if [ "$LARGEVENTRICLES" == "YES" ]
@@ -178,13 +241,15 @@ fi
 #fi
 #
 
+#bet ${OUTPUTPREFIX}_t2w_init_restore.nii.gz ${OUTPUTPREFIX}_t2w_init_restore_bet.nii.gz -f 0.5 -m -R
+
 if [ ! -f "${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat" ]
 then
 	#-x $TEMPLATEDIR/FinaltemplateBrainProbRegistrationMask.nii.gz \
 	antsRegistration -v -d 3 -u 1 -w [ 0.025,0.975 ] --verbose 1 --float 1  \
 		--initial-moving-transform [${OUTPUTPREFIX}InitialAffine.mat,0] \
-		--transform Rigid[ 0.1 ] --metric MI[ $T2TEMPLATE,${OUTPUTPREFIX}_t2w_init_restore.nii.gz,1,32 ] --convergence [ 1000x500x250x100,1e-6,10 ] --shrink-factors 12x8x4x2 --smoothing-sigmas 4x3x2x1vox --masks $TEMPLATEDIR/FinaltemplateBrainProbRegistrationMask.nii.gz \
-		--transform Affine[ 0.1 ] --metric MI[ $T2TEMPLATE,${OUTPUTPREFIX}_t2w_init_restore.nii.gz,1,32 ] --convergence [ 1000x500x250x100,1e-6,10 ] --shrink-factors 12x8x4x2 --smoothing-sigmas 4x3x2x1vox --masks $TEMPLATEDIR/FinaltemplateBrainProbRegistrationMask.nii.gz \
+		--transform Rigid[ 0.1 ] --metric MI[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_restore_brain.nii.gz,1,32 ] --convergence [ 1000x500x250x100,1e-6,75 ] --shrink-factors 12x8x4x2 --smoothing-sigmas 4x3x2x1vox --masks $TEMPLATEDIR/FinaltemplateBrainProbRegistrationMask.nii.gz \
+		--transform Affine[ 0.1 ] --metric MI[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_restore_brain.nii.gz,1,32 ] --convergence [ 1000x500x250x100,1e-6,75 ] --shrink-factors 12x8x4x2 --smoothing-sigmas 4x3x2x1vox --masks $TEMPLATEDIR/FinaltemplateBrainProbRegistrationMask.nii.gz \
 		--output ${OUTPUTPREFIX}_skullstrip_affine
 #--output [${OUTPUTPREFIX}_affine,${OUTPUTPREFIX}_affineWarped.nii.gz]
 		#-m MI[ $T2TEMPLATE,${OUTPUTPREFIX}_t2w_init_restore.nii.gz,1,32 ] \
@@ -193,48 +258,42 @@ then
 fi
 
 #fslmaths ${OUTPUTPREFIX}_skullstrip_reg_affineWarped.nii.gz -bin -mul $TEMPLATEDIR/FinaltemplateBrainProbRegistrationMask.nii.gz ${OUTPUTPREFIX}_skullstrip_reg_NonLinearMask.nii.gz -odt char
-antsApplyTransforms -v -d 3 --input $TEMPLATEDIR/Finaltemplate0.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_init_restore.nii.gz \
-	--transform [${OUTPUTPREFIX}InitialAffine.mat,1] \
-		--output-data-type float \
-	--output ${OUTPUTPREFIX}_template_initaffine_reg.nii.gz
-antsApplyTransforms -v -d 3 --input $TEMPLATEDIR/Finaltemplate0.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_init_restore.nii.gz \
+# antsApplyTransforms -v -d 3 --input $TEMPLATEDIR/Finaltemplate0.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_init_restore.nii.gz \
+# 	--transform [${OUTPUTPREFIX}InitialAffine.mat,1] \
+# 	--output-data-type short \
+# 	--output ${OUTPUTPREFIX}_template_initaffine_reg.nii.gz
+antsApplyTransforms -v -d 3 --input $TEMPLATEDIR/Finaltemplate0.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz \
 	--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
-		--output-data-type float \
+	--output-data-type short \
 	--output ${OUTPUTPREFIX}_template_affine_reg.nii.gz
 
 #./GaussianLaplacian ${OUTPUTPREFIX}_t2w_restore.nii.gz ${OUTPUTPREFIX}_t2w_restore_laplacian2.nii.gz
 
-if [ ! -f "${OUTPUTPREFIX}_skullstrip_reg1Warp.nii.gz" ]
+if [ ! -f "${OUTPUTPREFIX}_skullstrip_reg1Warp.nii.gz" -o "YES" == "YES" ]
 then
 #	rm -f Stage*.nii.gz
 #antsRegistration -v -d 3 -u 1 --verbose 1 --float 1 --collapse-output-transforms 1 --write-interval-volumes 10 \
 
-	if [ "$BETMASK" == "NO" ]
+	if [ "$NOBSPLINE" == "YES" ]
 	then
-		antsRegistration -v -d 3 -u 1 --verbose 1 --float 1 --collapse-output-transforms 1 \
-			--initial-moving-transform ${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat \
-			--transform BSplineSyN[0.13,26,0,3] \
-			--metric MI[ $T2TEMPLATE,${OUTPUTPREFIX}_t2w_init_restore.nii.gz,1,32 ] \
-			--metric CC[ $T2TEMPLATE,${OUTPUTPREFIX}_t2w_init_restore.nii.gz,1,2 ] \
-			--convergence [ 200x200x200x0x0,1e-6,40 ] --shrink-factors 8x6x4x2x1 --smoothing-sigmas 6x4x2x2x1vox \
-			--transform SyN[0.13,3,0] \
-			--metric MI[ $T2TEMPLATE,${OUTPUTPREFIX}_t2w_init_restore.nii.gz,1,32 ] \
-			--metric CC[ $T2TEMPLATE,${OUTPUTPREFIX}_t2w_init_restore.nii.gz,1,2 ] \
-			--convergence [ 100x0,1e-6,40 ] --shrink-factors 2x1 --smoothing-sigmas 2x1vox \
-			--output ${OUTPUTPREFIX}_skullstrip_reg
+		BSPLINEITERS=1x1x1x0x0
 	else
-		antsRegistration -v -d 3 -u 1 --verbose 1 --float 1 --collapse-output-transforms 1 \
-			--initial-moving-transform ${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat \
-			--transform BSplineSyN[0.13,26,0,3] \
-			--metric MI[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_init_restore_bet.nii.gz,1,32 ] \
-			--metric CC[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_init_restore_bet.nii.gz,1,2 ] \
-			--convergence [ 200x200x200x0x0,1e-6,40 ] --shrink-factors 8x6x4x2x1 --smoothing-sigmas 6x4x2x2x1vox \
-			--transform SyN[0.13,3,0] \
-			--metric MI[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_init_restore_bet.nii.gz,1,32 ] \
-			--metric CC[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_init_restore_bet.nii.gz,1,2 ] \
-			--convergence [ 100x0,1e-6,40 ] --shrink-factors 2x1 --smoothing-sigmas 2x1vox \
-			--output ${OUTPUTPREFIX}_skullstrip_reg
+		BSPLINEITERS=200x200x200x0x0
 	fi
+
+    antsRegistration -v -d 3 -u 1 --verbose 1 --float 1 --collapse-output-transforms 1 \
+        --initial-moving-transform ${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat \
+        --transform BSplineSyN[0.3,26,0,3] \
+        --metric CC[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_restore_brain.nii.gz,1,2 ] \
+		--metric MI[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_restore_brain.nii.gz,1,64 ] \
+        --convergence [ 200x200x200x0x0,1e-6,40 ] --shrink-factors 8x6x4x2x1 --smoothing-sigmas 6x4x2x2x1vox \
+        --transform SyN[0.13,3,0] \
+        --metric CC[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_restore_brain.nii.gz,1,2 ] \
+		--metric MI[ $T2TEMPLATEBRAIN,${OUTPUTPREFIX}_t2w_restore_brain.nii.gz,1,64 ] \
+        --convergence [ 100x0,1e-6,40 ] --shrink-factors 2x1 --smoothing-sigmas 2x1vox \
+        --output ${OUTPUTPREFIX}_skullstrip_reg
+#--masks [$TEMPLATEDIR/FinaltemplateBrainMask.nii.gz,${OUTPUTPREFIX}_brain_mask.nii.gz] \
+		
 #--metric CC[ $T2TEMPLATE,${OUTPUTPREFIX}_t2w_init_restore.nii.gz,1,4 ] \
 #--output [${OUTPUTPREFIX}_ants_reg,${OUTPUTPREFIX}_ants_regWarped.nii.gz]
 #fslmerge -a ${OUTPUTPREFIX}_ants_reg_all_iters Stage*.nii.gz
@@ -248,46 +307,17 @@ then
 	#	--output [${OUTPUTPREFIX}_ants_reg,${OUTPUTPREFIX}_ants_regWarped.nii.gz]
 fi
 
-antsApplyTransforms -v -d 3 --input $TEMPLATEDIR/Finaltemplate0.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_init_restore.nii.gz \
+antsApplyTransforms -v -d 3 --input $TEMPLATEDIR/Finaltemplate0Brain.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz \
 	--transform [${OUTPUTPREFIX}_skullstrip_reg0GenericAffine.mat,1] \
 	--transform ${OUTPUTPREFIX}_skullstrip_reg1InverseWarp.nii.gz \
-	--output-data-type float \
+	--output-data-type short \
 	--output ${OUTPUTPREFIX}_template_skullstrip_reg.nii.gz
-
-if [ "$BETMASK" == "NO" ]
-then
-		antsApplyTransforms -v -d 3 --input $TEMPLATEDIR/FinaltemplateBrainMask.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_init_restore.nii.gz \
-			--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
-			--transform ${OUTPUTPREFIX}_skullstrip_reg1InverseWarp.nii.gz \
-			--output-data-type float \
-			--output ${OUTPUTPREFIX}_brainmask_skullstrip_reg.nii.gz
-
-		MRIBinarize --i ${OUTPUTPREFIX}_brainmask_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_brain_mask.nii.gz --min 0.25 --noverbose
-		rm -f ${OUTPUTPREFIX}_brainmask_skullstrip_reg.nii.gz
-fi
-
-#mri_mask ${OUTPUTPREFIX}_t2w_init_restore.nii.gz ${OUTPUTPREFIX}_brain_mask.nii.gz ${OUTPUTPREFIX}_t2w_init_restore_brain.nii.gz
-fslcpgeom ${OUTPUTPREFIX}_t2w_init_restore.nii.gz ${OUTPUTPREFIX}_brain_mask.nii.gz
-
-if [ ! -f "${OUTPUTPREFIX}_t2w_restore.nii.gz" -o "$FORCEOVERWRITE" == "YES" ]
-then
-	ImageMath 3 ${OUTPUTPREFIX}_t2w_rescaled.nii.gz RescaleImage $T2TARGET 10 100
-	ImageMath 3 ${OUTPUTPREFIX}_brain_mask_unpadded.nii.gz PadImage ${OUTPUTPREFIX}_brain_mask.nii.gz -$PADAMOUNT
-	fslcpgeom ${OUTPUTPREFIX}_t2w_rescaled.nii.gz ${OUTPUTPREFIX}_brain_mask_unpadded.nii.gz
-	N4BiasFieldCorrection --verbose --input-image ${OUTPUTPREFIX}_t2w_rescaled.nii.gz --image-dimensionality 3 -s 2 --output ${OUTPUTPREFIX}_t2w_init_restore2.nii.gz -x ${OUTPUTPREFIX}_brain_mask_unpadded.nii.gz
-	#p ${OUTPUTPREFIX}_t2w_rescaled.nii.gz ${OUTPUTPREFIX}_t2w_init_restore.nii.gz
-	#NINETYFIVET2=`fslstats  ${OUTPUTPREFIX}_t2w_init_restore.nii.gz -P 95`
-	#mageMath 3 ${OUTPUTPREFIX}_t2w_init_restore.nii.gz WindowImage ${OUTPUTPREFIX}_t2w_init_restore.nii.gz 0 $NINETYFIVET2 0 1000
-	RescaleNinetyFivePercentile ${OUTPUTPREFIX}_t2w_init_restore2.nii.gz ${OUTPUTPREFIX}_t2w_init_restore2.nii.gz
-	ImageMath 3 ${OUTPUTPREFIX}_t2w_restore.nii.gz PadImage ${OUTPUTPREFIX}_t2w_init_restore2.nii.gz $PADAMOUNT
-	rm -f ${OUTPUTPREFIX}_t2w_rescaled.nii.gz ${OUTPUTPREFIX}_t2w_init_restore2.nii.gz ${OUTPUTPREFIX}_brain_mask_unpadded.nii.gz
-fi
-fslmaths ${OUTPUTPREFIX}_t2w_restore.nii.gz -mas ${OUTPUTPREFIX}_brain_mask.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz
-fslcpgeom ${OUTPUTPREFIX}_t2w_restore ${OUTPUTPREFIX}_t2w_restore_brain
+exit
 if [ ! -f "${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz" ]
 then
 	DenoiseImage -d 3 -i ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz -x ${OUTPUTPREFIX}_brain_mask.nii.gz -o ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz -v 1
 fi
+
 if [ "$USET1" == "YES" ]
 then
 	if [ ! -f "${OUTPUTPREFIX}_t1w_restore.nii.gz" -o "$FORCEOVERWRITE" == "YES" ]
@@ -303,11 +333,11 @@ fi
 
 #if [ ! -f "${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz" ]
 #then
-	RobustOtsu2 ${OUTPUTPREFIX}_t2w_restore.nii.gz ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz
-	ImageMath 3 ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz GetLargestComponent ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz
-	MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz --o ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz --match 1 --dilate 3 --noverbose
-	fslmaths ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz -odt char
-	fslcpgeom ${OUTPUTPREFIX}_t2w_restore ${OUTPUTPREFIX}_t2w_restore_regmask
+#RobustOtsu2 ${OUTPUTPREFIX}_t2w_restore.nii.gz ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz
+#	ImageMath 3 ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz GetLargestComponent ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz
+#	MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz --o ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz --match 1 --dilate 3 --noverbose
+#	fslmaths ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz ${OUTPUTPREFIX}_t2w_restore_regmask.nii.gz -odt char
+#	fslcpgeom ${OUTPUTPREFIX}_t2w_restore ${OUTPUTPREFIX}_t2w_restore_regmask
 #fi
 
 #if [ ! -f "${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos5_segmentation.nii.gz" ]
@@ -360,7 +390,7 @@ then
 ##       rm -f Stage*.nii.gz
 #        #if [ ! -f "${OUTPUTPREFIX}_skullstrip_reg_largeventricles2Warp.nii.gz" ]
 #
-	mri_binarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_gm.nii.gz --match 9 11 12 13 28 48 50 51 52 60
+	mri_binarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_gm.nii.gz --match 9 11 12 13 28 48 50 51 52 60 --noverbose
 fi
 #        #then
 #        #antsRegistration -v -d 3 -u 1 --verbose 1 --float 1 --collapse-output-transforms 1 --write-interval-volumes 10 \
@@ -405,7 +435,7 @@ fi
 #		--output ${OUTPUTPREFIX}_template_skullstrip_reg.nii.gz
 #fi
 
-fslcpgeom ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_brain_mask.nii.gz
+#slcpgeom ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_brain_mask.nii.gz
 
 
 #if [ -f "${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz" ]
@@ -543,7 +573,7 @@ MakeKMeans34Class $SUBJID
 
 	#MAXINTENSITY=`fslstats ${OUTPUTPREFIX}_t2w_restore_brain_dn -R | awk '{ print $2 }'`
 	#fslmaths ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos5_segmentation -thr 2 -bin -mul -1 -add 1 -mul 1000 -add ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad.nii.gz
-	#fslmaths ${OUTPUTPREFIX}_brain_mask -mul -1 -add 1 -mul 1000 -add ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad.nii.gz
+	fslmaths ${OUTPUTPREFIX}_brain_mask -mul -1 -add 1 -mul 1000 -add ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad.nii.gz
 
 	#./GaussianLaplacian -s 1 ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad_laplacian1.nii.gz
 	#./GaussianLaplacian -s 3 ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian3.nii.gz
@@ -559,12 +589,17 @@ MakeKMeans34Class $SUBJID
 #	fslmaths ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2_neg.nii.gz -mas ${OUTPUTPREFIX}_brain_mask_eroded.nii.gz ${OUTPUTPREFIX}_brain_mask_eroded_to_remove.nii.gz
 
 	#MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_with_latvent_rings_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_with_latvent_rings_skullstrip_reg_rings.nii.gz --match 997 998 --dilate 15 --noverbose
-	#fslmaths ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2_neg.nii.gz -mas ${OUTPUTPREFIX}_majority_dkt_with_latvent_rings_skullstrip_reg_rings.nii.gz ${OUTPUTPREFIX}_rings_dilated_to_remove.nii.gz
-	#./GaussianLaplacian -s 1 ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian1.nii.gz
-	#${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos5_segmentation.nii.gz
-	#MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad_laplacian1.nii.gz --o ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad_laplacian1_neg.nii.gz --max 0
-	#ri_binarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad_laplacian1.nii.gz --o ${OUTPUTPREFIX}_segmentation_gm_init.nii.gz --min 0 --mask ${OUTPUTPREFIX}_brain_mask.nii.gz --noverbose
-	MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz --o ${OUTPUTPREFIX}_segmentation_gm_init.nii.gz --match 1 --noverbose
+	#fslmaths ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2_neg.nii.gz -mas ${OUTPUTPREFIX}_majority_dkt_with_latvent_rings_skullstrip_reg_rings.nii.gz ${OUTPUTPREFIX}_rings_dilated_to_remove.nii.gz${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad.nii.gz
+	if [ "YES" == "NO" ]
+	then
+		GaussianLaplacian -s 2 ${OUTPUTPREFIX}_t2w_restore_brain_dn_brightpad.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2.nii.gz
+		
+		MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2.nii.gz --o ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2_pos.nii.gz --min 0 --noverbose
+		fslmaths ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2_pos -mas ${OUTPUTPREFIX}_brain_mask ${OUTPUTPREFIX}_segmentation_gm_init -odt char
+		rm -f ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_laplacian2_pos.nii.gz
+	else	
+		MRIBinarize --i ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz --o ${OUTPUTPREFIX}_segmentation_gm_init.nii.gz --match 1 --noverbose
+	fi
 
 	#ThresholdImage 3 ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_kmeans4.nii.gz Kmeans 4 ${OUTPUTPREFIX}_brain_mask.nii.gz
 	#ThresholdImage 3 ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_kmeans5.nii.gz Kmeans 5 ${OUTPUTPREFIX}_brain_mask.nii.gz
@@ -633,7 +668,6 @@ MakeKMeans34Class $SUBJID
 	fslmaths ${OUTPUTPREFIX}_brain_mask_border.nii.gz -mul ${OUTPUTPREFIX}_t2w_restore_brain_dn_atropos3_priors_segmentation_csf.nii.gz -bin ${OUTPUTPREFIX}_brain_border_to_remove.nii.gz -odt char
 
 	MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_wm.nii.gz --match 2 41 --noverbose
-
 
 	MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_with_latvent_rings_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_with_latvent_rings_skullstrip_reg_rings.nii.gz --match 997 998 --dilate 3 --noverbose
 	#MRIBinarize --i ${OUTPUTPREFIX}_brightmask_kmeans_class3.nii.gz --o ${OUTPUTPREFIX}_brightmask_kmeans_class3_dilated.nii.gz --match 1 --dilate 2 --noverbose
@@ -938,10 +972,13 @@ fslmaths ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz ${OUTPUTPREFI
 imrm ${OUTPUTPREFIX}_labelfusion_radius_image.nii.gz
 imrm ${TISSUESEGDIR}/${SUBJID}/all_dkt_antsinit_to_${SUBJID}_gm_mask.nii.gz
 #imrm $TISSUESEGDIR/$SUBJID/all_dkt_antsinit_to_${SUBJID}
-if [ ! -f "${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz" ]
-then
-	antsJointFusion $ATLAST2IMAGES $ATLASDKTIMAGES --target-image ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz -d 3 -x ${OUTPUTPREFIX}_brain_mask.nii.gz --output ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz -v --patch-metric PC -s 2 -p 2
-fi
+#if [ ! -f "${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz" ]
+#then
+	#antsJointFusion $ATLAST2IMAGES $ATLASDKTIMAGES --target-image ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz -d 3 -x ${OUTPUTPREFIX}_brain_mask.nii.gz --output ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz -v --patch-metric PC -s 2 -p 2 
+#fi
+
+#antsJointFusion $ATLAST2IMAGES $ATLASDKTIMAGES --target-image ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz -d 3 -x ${OUTPUTPREFIX}_brain_mask.nii.gz --output [${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz,${OUTPUTPREFIX}_labelfusionimage_dkt_intensityfusion.nii.gz,${OUTPUTPREFIX}_labelposterior_%04d.nii.gz] -v --patch-metric PC -s 2 -p 2 
+#fslmaths ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz ${OUTPUTPREFIX}_labelfusionimage_dkt_antsinit_orig.nii.gz -odt short
 #fslmaths ${OUTPUTPREFIX}_labelfusionimage_newmask.nii.gz ${OUTPUTPREFIX}_labelfusionimage_newmask.nii.gz -odt short
 #fslmaths ${OUTPUTPREFIX}_labelfusionimage_dkt2.nii.gz ${OUTPUTPREFIX}_labelfusionimage_dkt2.nii.gz -odt short
 
@@ -971,7 +1008,7 @@ antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz
 	--output-data-type uchar \
 	--output ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 
-rm -f ${TISSUESEGDIR}/${SUBJID}/*reg6*
+#rm -f ${TISSUESEGDIR}/${SUBJID}/*reg6*
 #rm ${TISSUESEGDIR}/${SUBJID}/P*
 
 # MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_wm.nii.gz --match 2 41 --noverbose

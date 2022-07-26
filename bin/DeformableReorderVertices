@@ -376,7 +376,7 @@ if RHDuplicates.size > 0:
     RHIDX = RHIDX[numpy.logical_not(T)]
     PialRHPialCortexIDX = PialRHPialCortexIDX[numpy.logical_not(T)]
 
-#LHIDXMask = numpy.zeros(PialLHPialEqual.size, dtype = numpy.bool)
+#LHIDXMask = numpy.zeros(PialLHPialEqual.size, dtype = numpy.bool_)
 #LHIDXMask[LHIDX] = True
 
 #outS = dict()
@@ -400,8 +400,8 @@ if RHDuplicates.size > 0:
 #
 
 # store the indices that were updated and which ones were not
-outLHMask = numpy.zeros(WhiteLHSurf['vertices'].shape[1], dtype = numpy.bool)
-outRHMask = numpy.zeros(WhiteRHSurf['vertices'].shape[1], dtype = numpy.bool)
+outLHMask = numpy.zeros(WhiteLHSurf['vertices'].shape[1], dtype = numpy.bool_)
+outRHMask = numpy.zeros(WhiteRHSurf['vertices'].shape[1], dtype = numpy.bool_)
 
 outS = dict()
 outS['faces'] = numpy.array(WhiteLHSurf['faces'])
@@ -441,62 +441,62 @@ PialRHV = outS['vertices']
 
 freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
 
-def makeVTKPoints(inV):
+# def makeVTKPoints(inV):
     
-    points = vtk.vtkPoints()
+#     points = vtk.vtkPoints()
     
-    for z in range(inV.shape[1]):
-        p = inV[:, z].tolist()
+#     for z in range(inV.shape[1]):
+#         p = inV[:, z].tolist()
 
-        nextID = points.InsertNextPoint(p)
-    return points
-
-
-WhiteLHReader = vtk.vtkXMLPolyDataReader()
-WhiteLHReader.SetFileName(os.path.join(inDir, 'meshes', 'white-lh.vtp'))
-WhiteLHReader.Update()
-
-D = WhiteLHReader.GetOutput()
-
-#Vrts = D.GetVerts()
-#indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
-p = makeVTKPoints(PialLHV)
-
-#D.SetVerts(v)
-D.SetPoints(p)
-D.Modified()
-
-#ialLHData = PialLHReader.GetOutput()
-#$alLHData.SetVerts(PialLHVTKVerts)
-PialLHWriter = vtk.vtkXMLPolyDataWriter()
-PialLHWriter.SetFileName(os.path.join(inDir, 'meshes', 'pial-lh-reordered.vtp'))
-PialLHWriter.SetInputData(D)
-PialLHWriter.Write()
-
-WhiteRHReader = vtk.vtkXMLPolyDataReader()
-WhiteRHReader.SetFileName(os.path.join(inDir, 'meshes', 'white-rh.vtp'))
-WhiteRHReader.Update()
-
-D = WhiteRHReader.GetOutput()
-
-#Vrts = D.GetVerts()
-#indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
-p = makeVTKPoints(PialRHV)
-
-#D.SetVerts(v)
-D.SetPoints(p)
-D.Modified()
-
-#ialLHData = PialLHReader.GetOutput()
-#$alLHData.SetVerts(PialLHVTKVerts)
-PialRHWriter = vtk.vtkXMLPolyDataWriter()
-PialRHWriter.SetFileName(os.path.join(inDir, 'meshes', 'pial-rh-reordered.vtp'))
-PialRHWriter.SetInputData(D)
-PialRHWriter.Write()
+#         nextID = points.InsertNextPoint(p)
+#     return points
 
 
-# rewrite the pial surfaces with reordered vertices in vtp format
-#PialLHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-lh.vtp'))
-#PialRHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-rh.vtp'))
+# WhiteLHReader = vtk.vtkXMLPolyDataReader()
+# WhiteLHReader.SetFileName(os.path.join(inDir, 'meshes', 'white-lh.vtp'))
+# WhiteLHReader.Update()
+
+# D = WhiteLHReader.GetOutput()
+
+# #Vrts = D.GetVerts()
+# #indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
+# p = makeVTKPoints(PialLHV)
+
+# #D.SetVerts(v)
+# D.SetPoints(p)
+# D.Modified()
+
+# #ialLHData = PialLHReader.GetOutput()
+# #$alLHData.SetVerts(PialLHVTKVerts)
+# PialLHWriter = vtk.vtkXMLPolyDataWriter()
+# PialLHWriter.SetFileName(os.path.join(inDir, 'meshes', 'pial-lh-reordered.vtp'))
+# PialLHWriter.SetInputData(D)
+# PialLHWriter.Write()
+
+# WhiteRHReader = vtk.vtkXMLPolyDataReader()
+# WhiteRHReader.SetFileName(os.path.join(inDir, 'meshes', 'white-rh.vtp'))
+# WhiteRHReader.Update()
+
+# D = WhiteRHReader.GetOutput()
+
+# #Vrts = D.GetVerts()
+# #indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
+# p = makeVTKPoints(PialRHV)
+
+# #D.SetVerts(v)
+# D.SetPoints(p)
+# D.Modified()
+
+# #ialLHData = PialLHReader.GetOutput()
+# #$alLHData.SetVerts(PialLHVTKVerts)
+# PialRHWriter = vtk.vtkXMLPolyDataWriter()
+# PialRHWriter.SetFileName(os.path.join(inDir, 'meshes', 'pial-rh-reordered.vtp'))
+# PialRHWriter.SetInputData(D)
+# PialRHWriter.Write()
+
+
+# # rewrite the pial surfaces with reordered vertices in vtp format
+# #PialLHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-lh.vtp'))
+# #PialRHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-rh.vtp'))
 
 

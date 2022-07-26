@@ -25,7 +25,7 @@ def doMinThickness(whiteSurf, pialSurf, CortexLabel, vertexNeighbours, correspon
 
     whiteToPialCorticalThickness = numpy.array(correspondingDistances)
     pialToWhiteCorticalThickness = numpy.array(correspondingDistances)
-    verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool)
+    verticesVisited = numpy.zeros(numVertices, dtype = numpy.bool_)
 
     for z in CortexLabel['index']:
         curNeighbours = numpy.array([z])
@@ -171,11 +171,11 @@ def main():
     outC['numFaces'] = PialSurf['faces'].shape[1]
     outC['values'] = numpy.single(corticalThickness)
     # zero out non-label
-    M = numpy.ones((corticalThickness.size), dtype = numpy.bool)
+    M = numpy.ones((corticalThickness.size), dtype = numpy.bool_)
     M[CortexLabel['index']] = False
     outC['values'][M] = 0
 
-    freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '2.thickness'))
+    freesurfer.writeCurv(outC, os.path.join(SurfDir, Hemi + '.thickness'))
 
 if __name__ == "__main__":
     main()

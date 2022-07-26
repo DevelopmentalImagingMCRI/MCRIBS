@@ -89,7 +89,7 @@ invAffine = scipy.linalg.inv(T2NII.affine)
 pericalcarineVVox = numpy.matrix(invAffine[0:3, 0:3]) * numpy.matrix(pericalcarineVWorld) + numpy.atleast_2d(invAffine[0:3, 3]).T
 
 pericalcarineVVoxRound = numpy.int32(numpy.round(pericalcarineVVox))
-pericalcarineSeedIMG = numpy.zeros(pericalcarineMaskIMG.shape, dtype = numpy.bool)
+pericalcarineSeedIMG = numpy.zeros(pericalcarineMaskIMG.shape, dtype = numpy.bool_)
 pericalcarineSeedIMG[(pericalcarineVVoxRound[0], pericalcarineVVoxRound[1], pericalcarineVVoxRound[2])] = True
 
 # select components from pericalcarineMaskIMG from outMaskIMG

@@ -24,7 +24,7 @@ LARGECLOSE=
 USEFASTCOLLISION=
 JOINTHRESHOLD=1
 LARGEVENTRICLES=
-
+NOWMLAPLACIANEXPAND=
 while (( "$#" ))
 do
 	case $1 in
@@ -39,6 +39,9 @@ do
 		;;
 		--largeventricles)
 		LARGEVENTRICLES=-l
+		;;
+		--nowmlaplacianexpand)
+			NOWMLAPLACIANEXPAND=--nowmlaplacianexpand
 		;;
 		--jointhreshold)
 		JOINTHRESHOLD=$2
@@ -97,7 +100,8 @@ fi
 export TEMPLATEREGSUFFIX=skullstrip_reg
 #RemoveDarkWMFromGMSegmentation $SUBJID
 mkdir -p TissueSeg
-PostProcessDKTLabelFusion $LARGEVENTRICLES $SUBJID
+PostProcessDKTLabelFusion $LARGEVENTRICLES $NOWMLAPLACIANEXPAND $SUBJID
+
 MakeRegionsBSCutting $SUBJID
 #rm -f ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon_midlinefill.nii.gz ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 FSToDrawEMLabels $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusionimage_regions.nii.gz TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
@@ -194,7 +198,7 @@ MRIBinarize --i ${OUTPUTPREFIX}_labelfusionimage_regions_brainstem_cut.nii.gz --
 W=`fslstats ${OUTPUTPREFIX}_labelfusionimage_regions_brainstem_cut_mask -w`
 fslroi ${OUTPUTPREFIX}_labelfusionimage_regions_brainstem_cut SurfReconDeformable/${SUBJID}/recon/regions $W
 fslroi ${OUTPUTPREFIX}_labelfusionimage_corticalhulldmap SurfReconDeformable/${SUBJID}/recon/cortical-hull-dmap $W
-rm -f ${OUTPUTPREFIX}_labelfusionimage_regions_brainstem_cut_mask.nii.gz ${OUTPUTPREFIX}_labelfusionimage_corticalhulldmap.nii.gz
+rm -f ${OUTPUTPREFIX}_labelfusionimage_regions_brainstem_cut_mask.nii.gz ${OUTPUTPREFIX}_labelfusionimage_corticalhulldmap.nii.gz ${OUTPUTPREFIX}_labelfusionimage_regions_brainstem_cut.nii.gz
 
 GMREPLACE=
 for j in `seq 1000 1035`

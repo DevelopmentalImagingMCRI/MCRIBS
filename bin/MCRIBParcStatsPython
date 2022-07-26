@@ -73,7 +73,7 @@ for Hemi in Hemis:
 
     Annot = freesurfer.readAnnot(AnnotFileName)
     CortexLabelIDX = CortexLabel['index']
-    CortexLabelMask = numpy.zeros(Annot['seg'].size, dtype = numpy.bool)
+    CortexLabelMask = numpy.zeros(Annot['seg'].size, dtype = numpy.bool_)
     CortexLabelMask[CortexLabelIDX] = True
     
     #print(Annot['colortable']['labels'])

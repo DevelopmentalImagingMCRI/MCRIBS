@@ -112,7 +112,7 @@ then
 #			--output-data-type uchar \
 #			--output ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_gm_to_P${i}_ventexpand_reg.nii.gz
 #		cd $T	
-		antsRegistration -v -d 3 -u 1 -w [ 0.025,0.975 ] --verbose 1 --float 1 --collapse-output-transforms 0 --write-interval-volumes 10 \
+		antsRegistration -v -d 3 -u 1 -w [ 0.025,0.975 ] --verbose 1 --float 1 --collapse-output-transforms 0 \
 			--initial-moving-transform [$TEMPLATEDIR/FinalP${i}0GenericAffine.mat,1] \
 			--initial-moving-transform $TEMPLATEDIR/FinalP${i}1InverseWarp.nii.gz \
 			--initial-moving-transform $P/${OUTPUTPREFIX}_skullstrip_reg1Warp.nii.gz \
@@ -125,11 +125,11 @@ then
 			--metric Demons[ $TEMPLATEDIR/P${i}_dkt_gm_rh.nii.gz,${P}/${OUTPUTPREFIX}_segmentation_gm_sep_rh.nii.gz,4 ] \
 			--metric Demons[ $TEMPLATEDIR/P${i}_vent_and_centre_bright.nii.gz,${P}/${OUTPUTPREFIX}_brightmask_kmeans_class3.nii.gz,3 ] \
 			--metric Demons[ $TEMPLATEDIR/P${i}_dkt_subcort_gm.nii.gz,${P}/${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_gm.nii.gz,3 ] \
-			--metric Demons[ $TEMPLATEDIR/P${i}_dkt_cc.nii.gz,${P}/${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_subcort_cc.nii.gz,3 ] \
+			--metric Demons[ $TEMPLATEDIR/P${i}_dkt_cc.nii.gz,${P}/${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_cc.nii.gz,3 ] \
 			--convergence [ 200x100x100x100,1e-6,75 ] --shrink-factors 8x4x2x1 --smoothing-sigmas 4x2x1x1vox --masks $TEMPLATEDIR/P${i}_reg_mask.nii.gz \
 			--output ${P}/${OUTPUTPREFIX}_to_P${i}_antsinit_reg
-		fslmerge -a ${P}/${OUTPUTPREFIX}_to_P${i}_antsinit_reg_all_iters Stage*.nii.gz
-		rm -f Stage*.nii.gz
+		#fslmerge -a ${P}/${OUTPUTPREFIX}_to_P${i}_antsinit_reg_all_iters Stage*.nii.gz
+		#rm -f Stage*.nii.gz
 			#--transform SyN[0.1,0.5,0] \
 			#--convergence [ 0x0x0x0x0,1e-6,75 ] --shrink-factors 10x6x4x2x1 --smoothing-sigmas 5x3x2x1x1vox --masks $TEMPLATEDIR/P${i}_reg_mask.nii.gz \
 			#--initial-moving-transform [$TEMPLATEDIR/FinalP${i}0GenericAffine.mat,1] \
@@ -147,7 +147,12 @@ then
 			#--convergence [ 200x200x50x0x0,1e-6,75 ] --shrink-factors 10x6x4x2x1 --smoothing-sigmas 5x3x2x1x1vox --masks $TEMPLATEDIR/P${i}_reg_mask.nii.gz \
 
 	else
-
+		if [ "$NOBSPLINE" == "YES" ]
+		then
+			BSPLINEITERS=1x1x0x0x0
+		else
+			BSPLINEITERS=200x200x50x0x0
+		fi
 		antsRegistration -v -d 3 -u 1 -w [ 0.025,0.975 ] --verbose 1 --float 1 --collapse-output-transforms 0 \
 			--initial-moving-transform [$TEMPLATEDIR/FinalP${i}0GenericAffine.mat,1] \
 			--initial-moving-transform $TEMPLATEDIR/FinalP${i}1InverseWarp.nii.gz \
@@ -160,7 +165,7 @@ then
 			--metric Demons[ $TEMPLATEDIR/P${i}_dkt_gm_rh.nii.gz,${P}/${OUTPUTPREFIX}_segmentation_gm_sep_rh.nii.gz,1 ] \
 			--metric Demons[ $TEMPLATEDIR/P${i}_vent_and_centre_bright.nii.gz,${P}/${OUTPUTPREFIX}_brightmask_kmeans_class3.nii.gz,0.1 ] \
 			--metric Demons[ $TEMPLATEDIR/P${i}_dkt_cc.nii.gz,${P}/${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_cc.nii.gz,1 ] \
-			--convergence [ 200x200x50x0x0,1e-6,75 ] --shrink-factors 10x6x4x2x1 --smoothing-sigmas 5x3x2x1x1vox --masks $TEMPLATEDIR/P${i}_reg_mask.nii.gz \
+			--convergence [ $BSPLINEITERS,1e-6,75 ] --shrink-factors 10x6x4x2x1 --smoothing-sigmas 5x3x2x1x1vox --masks $TEMPLATEDIR/P${i}_reg_mask.nii.gz \
 			--transform SyN[0.1,0.5,0] \
 			--metric MI[ $TEMPLATEDIR/P${i}_t2_brain.nii.gz,$P/${OUTPUTPREFIX}_t2w_restore_brain.nii.gz,0.01,128 ] \
 			--metric CC[ $TEMPLATEDIR/P${i}_t2_brain.nii.gz,$P/${OUTPUTPREFIX}_t2w_restore_brain.nii.gz,0.5,2 ] \
@@ -397,8 +402,8 @@ fi
 				--output-data-type short \
 				--output $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_rh_antsinit_with_skull_label_to_$SUBJID.nii.gz
 		
-		mri_binarize --i $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_rh_antsinit_with_skull_label_to_$SUBJID.nii.gz --o $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_rh_antsinit_with_skull_label_to_$SUBJID.nii.gz --replace 1 4 --noverbose
-		mri_binarize --i $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_lh_antsinit_with_skull_label_to_$SUBJID.nii.gz --o $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_lh_antsinit_with_skull_label_to_$SUBJID.nii.gz --replace 1 9 --noverbose
+		mri_binarize --i $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_rh_antsinit_with_skull_label_to_$SUBJID.nii.gz --o $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_rh_antsinit_with_skull_label_to_$SUBJID.nii.gz --match 1 --binval 4 --noverbose
+		mri_binarize --i $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_lh_antsinit_with_skull_label_to_$SUBJID.nii.gz --o $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_lh_antsinit_with_skull_label_to_$SUBJID.nii.gz --match 1 --binval 9 --noverbose
 		fslmaths $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_rh_antsinit_with_skull_label_to_$SUBJID.nii.gz -add $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_lh_antsinit_with_skull_label_to_$SUBJID.nii.gz $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_antsinit_with_skull_label_to_$SUBJID.nii.gz -odt char
 		rm -f $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_rh_antsinit_with_skull_label_to_$SUBJID.nii.gz $TISSUESEGDIR/$SUBJID/P${i}_dkt_gm_lh_antsinit_with_skull_label_to_$SUBJID.nii.gz
 

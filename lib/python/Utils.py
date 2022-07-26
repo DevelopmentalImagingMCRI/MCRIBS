@@ -85,7 +85,7 @@ def regionProps(labelImage, properties):
             regionProps['mask'] = list()
             if numLabels >= 1:
                 for curLabel in range(numLabels):
-                    T = numpy.zeros(labelImage.shape, dtype = numpy.bool)
+                    T = numpy.zeros(labelImage.shape, dtype = numpy.bool_)
                     T[pixelLists[curLabel]] = 1
                     regionProps['mask'].append(numpy.array(T))
         elif properties[z].lower() == 'centroid':

@@ -1074,7 +1074,7 @@ def recon_cortical_surface(name, mask=None, regions=None,
     if debug > 0:
         assert name, "Invalid 'name' argument"
         assert mask or regions, "Either 'regions' or 'mask' argument required"
-    print(opts)
+    #print(opts)
     name = os.path.abspath(name)
     (base, ext) = splitext(name)
     if not ext:

@@ -6,6 +6,7 @@ import os
 import nibabel
 import scipy.ndimage
 import numpy.linalg
+import scipy.linalg
 
 def largestComponent(BW):
     if not numpy.any(BW):
@@ -64,11 +65,26 @@ def main():
 
     RegionsWMBorderIMG = largestComponent(numpy.logical_and(RegionsWMLHDilated, RegionsWMRHDilated))
 
+    # find LH and RH WM border voxels that arent next to GM voxels or the other hemisphere WM
+    LHWMBorderVoxels = numpy.logical_and(numpy.logical_not(scipy.ndimage.binary_erosion(RegionsIMG == 2)), RegionsIMG == 2)
+    RHWMBorderVoxels = numpy.logical_and(numpy.logical_not(scipy.ndimage.binary_erosion(RegionsIMG == 41)), RegionsIMG == 41)
+
+    GMMask = numpy.logical_or(numpy.logical_and(RegionsIMG >= 1000, RegionsIMG <= 1035), numpy.logical_and(RegionsIMG >= 1000, RegionsIMG <= 1035))
+    GMMaskDilated = scipy.ndimage.binary_dilation(GMMask)
+    
+    LHWMBorderVoxels = numpy.logical_and(LHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
+    LHWMBorderVoxels = numpy.logical_and(LHWMBorderVoxels, numpy.logical_not(RegionsWMRHDilated))
+    RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
+    RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(RegionsWMLHDilated))
+    
+
+
     RegionsWMBorderIDX = numpy.where(RegionsWMBorderIMG)
     RegionsWMBorderCoordsVox = numpy.vstack(RegionsWMBorderIDX)
     del RegionsWMBorderIDX
 
     VoxToWorld = T2NII.affine
+    WorldToVox = scipy.linalg.inv(VoxToWorld)
 
     RegionsWMBorderCoordsWorld = VoxToWorld[0:3, 0:3] * numpy.matrix(RegionsWMBorderCoordsVox) + numpy.atleast_2d(VoxToWorld[0:3, 3]).T
     del RegionsWMBorderCoordsVox
@@ -80,9 +96,6 @@ def main():
     EigenValues = EigenValues[EigenValuesSortI]
     EigenVectors = numpy.take(EigenVectors, EigenValuesSortI, axis = 1)
 
-    #print(EigenValues)
-    #print(EigenVectors)
-    
     I, J, K = numpy.meshgrid(numpy.arange(T2IMG.shape[0]), numpy.arange(T2IMG.shape[1]), numpy.arange(T2IMG.shape[2]), indexing = 'ij')
 
     IJK = numpy.vstack((I.ravel(), J.ravel(), K.ravel()))
@@ -101,9 +114,9 @@ def main():
     D = -numpy.mean(numpy.sum(EigenVectors[:, 0] * RegionsWMBorderCoordsWorld, axis = 0))
 
     MidlinePlaneEqn = numpy.concatenate((EigenVectors[:, 0].ravel(), numpy.array([D])))
-    #print(MidlinePlaneEqn)
-
-    MPlaneSign = numpy.int8(numpy.sign(MidlinePlaneEqn[0] * X + MidlinePlaneEqn[1] * Y + MidlinePlaneEqn[2] * Z + MidlinePlaneEqn[3]))
+    
+    MPlane = MidlinePlaneEqn[0] * X + MidlinePlaneEqn[1] * Y + MidlinePlaneEqn[2] * Z + MidlinePlaneEqn[3]
+    MPlaneSign = numpy.int8(numpy.sign(MPlane))
     
     # make the left hemisphere positive
     NegMask = numpy.logical_and(MPlaneSign < 0, RegionsIMG == 2)
@@ -113,6 +126,7 @@ def main():
     
     if NumNeg > NumPos:
         MPlaneSign = -MPlaneSign
+        MPlane = -MPlane
 
     #NewNII = nibabel.Nifti1Image(numpy.int16(numpy.sign(MPlane)), T2NII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_mplane.nii.gz"))
@@ -139,11 +153,6 @@ def main():
     BrainstemHemiBoundaryCoordsWorld = VoxToWorld[0:3, 0:3] * numpy.matrix(BrainstemHemiBoundaryCoordsVox) + numpy.atleast_2d(VoxToWorld[0:3, 3]).T
     BrainstemHemiBoundaryCentroid = numpy.mean(BrainstemHemiBoundaryCoordsWorld, axis = 1)
     
-    #NewNII = nibabel.Nifti1Image(numpy.uint8(BrainstemHemiBoundaryIMG), T2NII.affine)
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_brainstemboundary.nii.gz"))
-    
-    #print(numpy.matrix(BrainstemHemiBoundaryCentroid).T.shape)
-    #print(numpy.matrix(BrainstemPrincipalDirection).T.shape)
     BrainstemHemiBoundaryPlaneEqnD = -numpy.array(numpy.matrix(BrainstemHemiBoundaryCentroid).T * numpy.matrix(BrainstemPrincipalDirection).T).ravel()
 
     BrainstemHemiBoundaryPlaneEqn = numpy.concatenate((BrainstemPrincipalDirection, BrainstemHemiBoundaryPlaneEqnD)) 
@@ -168,6 +177,10 @@ def main():
     # replace CC with WM labels
     NewRegionsIMG[numpy.logical_and(MPlaneSign > 0, NewRegionsIMG == 192)] = 2
     NewRegionsIMG[numpy.logical_and(MPlaneSign <= 0, NewRegionsIMG == 192)] = 41
+
+    #NewNII = nibabel.Nifti1Image(numpy.int16(NewRegionsIMG), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_beforechange.nii.gz"))
+    
 
     # change from freesurfer labels regions values
     T = numpy.array(NewRegionsIMG)

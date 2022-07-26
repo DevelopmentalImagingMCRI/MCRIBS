@@ -34,7 +34,7 @@ FSSurf = freesurfer.readSurf(inFSFileName)
 
 FaceCortexMask = (FaceCortexMask == 1)
 
-VertexCortexMask = numpy.zeros(VTPSurf['vertices'].shape[1], dtype = numpy.bool)
+VertexCortexMask = numpy.zeros(VTPSurf['vertices'].shape[1], dtype = numpy.bool_)
 
 for z in range(VTPSurf['faces'].shape[1]):
 	if FaceCortexMask[z] == True:
