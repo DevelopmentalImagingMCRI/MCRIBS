@@ -40,5 +40,4 @@ FSCSFLabel = 24
 NewASEGIMG[numpy.logical_and(ASEGIMG == 0, ASEGPresurfIMG > 0)] = FSCSFLabel
 
 NewASEGNII = nibabel.MGHImage(NewASEGIMG, ASEGNII.affine, ASEGNII.header)
-
 nibabel.save(NewASEGNII, OutFileName)
