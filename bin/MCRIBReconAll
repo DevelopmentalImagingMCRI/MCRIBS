@@ -60,7 +60,6 @@ def main():
     tissueSegArgGroup.add_argument('--tissueseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--notissueseg', help = "DISABLE tissueseg", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--largeventricles', help = "Large ventricle options", required = False, action = 'store_true')
-    tissueSegArgGroup.add_argument('--betmask', help = "Use BET for brain mask", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--nobspline', help = "Do not use B-Spline in registration step", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--nowmlaplacianexpand', help = "Do not expand WM segmentation using bright regions", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM', 'MCRIBS'], default = 'MCRIBS')
@@ -352,11 +351,9 @@ def main():
             print(" ".join(cmd))
             runCommand(cmd, log_file_name = logFileName)
         elif options.tissuesegmethod == 'MCRIBS':
-            cmd = ["MCRIBTissueSegMCRIBS", options.subjectid]
+            cmd = ["MCRIBTissueSegMCRIBSANTSForRegister", options.subjectid]
             if options.largeventricles:
                 cmd.append('-largeventricles')
-            if options.betmask:
-                cmd.append('-betmask')
             if options.nobspline:
                 cmd.append('-nobspline')
             if options.nowmlaplacianexpand:
@@ -442,7 +439,7 @@ def main():
         for curAtlas in options.cortparcatlases:
             curCmd = cmd[:]
             curCmd.extend([curAtlas])
-            runCommand(curCmd, isPython = True, log_file_name = logFileName)
+            runCommand(curCmd, isPython = False, log_file_name = logFileName)
         pass
 
     logFileFID.write("Finished without error\n\n")

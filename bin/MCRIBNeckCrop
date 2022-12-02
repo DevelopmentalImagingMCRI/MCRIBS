@@ -1,6 +1,5 @@
 #!/bin/bash
 
-T2NECKCROPPED=T2NeckCropped
 T2NECKCROPPEDISO=T2NeckCroppedIsotropic
 
 if [ -z "$1" ]
@@ -10,32 +9,53 @@ then
 	echo "Performs neckcropping and conforming to isotropic"
 else
 	SUBJID=$1
-        if [ "x`imglob RawT2/${SUBJID}.nii*`" = "x" ]
-        then
-                echo "The Raw T2 file RawT2/$1 does not exist"
-                exit 1;
-        fi
+	if [ "x`imglob RawT2/${SUBJID}.nii*`" = "x" ]
+	then
+			echo "The Raw T2 file RawT2/$1 does not exist"
+			exit 1;
+	fi
 
-        mkdir -p $T2NECKCROPPED
+	mkdir -p $T2NECKCROPPEDISO
 	
 	MCRIBNeckCropInitialCrop $SUBJID -no-initial-crop
-	export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=`nproc`
-	antsRegistrationSyNQuick.sh -m $T2NECKCROPPED/${SUBJID}_maxlabel_cropped.nii.gz -t a -d 3 -f $TEMPLATEDIR/Finaltemplate0.nii.gz -o $T2NECKCROPPED/${1}_to_std_affine
-	#fslmaths $T2NECKCROPPED/${1}_to_std_affineInverseWarped.nii.gz -thr 5 -bin $T2NECKCROPPED/${1}_brainmask.nii.gz -odt char
+	export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$OMP_NUM_THREADS
+	#antsRegistrationSyNQuick.sh -m $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz -p f -t a -d 3 -f $TEMPLATEDIR/Finaltemplate0.nii.gz -o $T2NECKCROPPEDISO/${1}_to_std_affine
+	antsRegistration --verbose 1 --dimensionality 3 --float 1 --collapse-output-transforms 1 \
+		--output $T2NECKCROPPEDISO/${SUBJID}_to_std_affine \
+		--interpolation Linear \
+		--use-histogram-matching 0 \
+		--winsorize-image-intensities [ 0.005,0.995 ] \
+		--initial-moving-transform [ $TEMPLATEDIR/Finaltemplate0.nii.gz,$T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz,1 ] \
+		--transform Rigid[ 0.1 ] \
+		--metric MI[ $TEMPLATEDIR/Finaltemplate0.nii.gz,$T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz,1,32,Regular,0.25 ] \
+		--convergence [ 1000x500x250x0,1e-6,10 ] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox \
+		--transform Affine[ 0.1 ] \
+		--metric MI[ $TEMPLATEDIR/Finaltemplate0.nii.gz,$T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz,1,32,Regular,0.25 ] \
+		--convergence [ 1000x500x250x0,1e-6,10 ] --shrink-factors 8x4x2x1 --smoothing-sigmas 3x2x1x0vox
+
+	#fslmaths $T2NECKCROPPEDISO/${1}_to_std_affineInverseWarped.nii.gz -thr 5 -bin $T2NECKCROPPEDISO/${1}_brainmask.nii.gz -odt char
 	#echo `nproc`
-	fslmaths $T2NECKCROPPED/${1}_to_std_affineInverseWarped.nii.gz $T2NECKCROPPED/${1}_to_std_affineInverseWarped.nii.gz -odt float
-	mri_binarize --i $T2NECKCROPPED/${1}_to_std_affineInverseWarped.nii.gz --o $T2NECKCROPPED/${1}_brainmask.nii.gz --min 5 --dilate 1 --noverbose
-	ZBRAIN=`fslstats $T2NECKCROPPED/${1}_brainmask -w`
-	fslroi $T2NECKCROPPED/${1}_maxlabel_cropped $T2NECKCROPPED/${1} $ZBRAIN
-	imrm $T2NECKCROPPED/${1}_brainmask
-	imrm $T2NECKCROPPED/${1}_maxlabel_cropped
-	rm -f $T2NECKCROPPED/${1}_to_std*
+	#fslmaths $T2NECKCROPPEDISO/${1}_to_std_affineInverseWarped.nii.gz $T2NECKCROPPEDISO/${1}_to_std_affineInverseWarped.nii.gz -odt float
+	#mri_binarize --i $T2NECKCROPPEDISO/${1}_to_std_affineInverseWarped.nii.gz --o $T2NECKCROPPEDISO/${1}_brainmask.nii.gz --min 5 --dilate 1 --noverbose
+
+	antsApplyTransforms -d 3 -v \
+		--transform [$T2NECKCROPPEDISO/${1}_to_std_affine0GenericAffine.mat,1] \
+		--reference-image $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz \
+		--input $TEMPLATEDIR/FinaltemplateBrainMask.nii.gz \
+		--output $T2NECKCROPPEDISO/${1}_brainmask.nii.gz
+	
+
+	ZBRAIN=`fslstats $T2NECKCROPPEDISO/${1}_brainmask -w`
+	fslroi $T2NECKCROPPEDISO/${1}_maxlabel_cropped $T2NECKCROPPEDISO/${1}_crop $ZBRAIN
+	imrm $T2NECKCROPPEDISO/${1}_brainmask
+	imrm $T2NECKCROPPEDISO/${1}_maxlabel_cropped
+	rm -f $T2NECKCROPPEDISO/${1}_to_std*
         
 	mkdir -p $T2NECKCROPPEDISO
 	
-	XSIZE=`fslsize $T2NECKCROPPED/${1} | grep -e "^pixdim1" | awk '{ print $2; }'`
-	YSIZE=`fslsize $T2NECKCROPPED/${1} | grep -e "^pixdim2" | awk '{ print $2; }'`
-	ZSIZE=`fslsize $T2NECKCROPPED/${1} | grep -e "^pixdim3" | awk '{ print $2; }'`
+	XSIZE=`fslsize $T2NECKCROPPEDISO/${1}_crop | grep -e "^pixdim1" | awk '{ print $2; }'`
+	YSIZE=`fslsize $T2NECKCROPPEDISO/${1}_crop | grep -e "^pixdim2" | awk '{ print $2; }'`
+	ZSIZE=`fslsize $T2NECKCROPPEDISO/${1}_crop | grep -e "^pixdim3" | awk '{ print $2; }'`
 	
 	if [ -z "$2" -o "$2" == "volumepreserve" ]
 	then
@@ -45,5 +65,6 @@ else
 	else
 		SZ=$2
 	fi
-	ResampleImageBySpacing 3 $T2NECKCROPPED/${1}.nii.gz $T2NECKCROPPEDISO/${1}.nii.gz $SZ $SZ $SZ
+	ResampleImageBySpacing 3 $T2NECKCROPPEDISO/${1}_crop.nii.gz $T2NECKCROPPEDISO/${1}.nii.gz $SZ $SZ $SZ
+	rm -f $T2NECKCROPPEDISO/${1}_crop.nii.gz
 fi

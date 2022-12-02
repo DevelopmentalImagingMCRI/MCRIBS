@@ -77,8 +77,6 @@ def main():
     RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
     RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(RegionsWMLHDilated))
     
-
-
     RegionsWMBorderIDX = numpy.where(RegionsWMBorderIMG)
     RegionsWMBorderCoordsVox = numpy.vstack(RegionsWMBorderIDX)
     del RegionsWMBorderIDX
@@ -174,14 +172,47 @@ def main():
         NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign > 0)] = 2
         NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign <= 0)] = 41
     
+    
     # replace CC with WM labels
     NewRegionsIMG[numpy.logical_and(MPlaneSign > 0, NewRegionsIMG == 192)] = 2
     NewRegionsIMG[numpy.logical_and(MPlaneSign <= 0, NewRegionsIMG == 192)] = 41
 
-    #NewNII = nibabel.Nifti1Image(numpy.int16(NewRegionsIMG), T2NII.affine)
+    # do a closing on the WM labels to smooth out near the boundary in the middle    
+    LHWMToAdd = NewRegionsIMG == 2
+    RHWMToAdd = NewRegionsIMG == 41
+    BGIMG = NewRegionsIMG < 1000
+
+    n = 5
+    for z in range(n):
+        LHWMToAdd = numpy.logical_and(scipy.ndimage.binary_dilation(LHWMToAdd), BGIMG)
+        RHWMToAdd = numpy.logical_and(scipy.ndimage.binary_dilation(RHWMToAdd), BGIMG)
+        #NewNII = nibabel.Nifti1Image(numpy.int16(NewRegionsIMG), T2NII.affine)
+    
+    LHWMToAdd = scipy.ndimage.binary_erosion(LHWMToAdd, iterations=n)
+    RHWMToAdd = scipy.ndimage.binary_erosion(RHWMToAdd, iterations=n)
+    LHWMToAdd = numpy.logical_and(LHWMToAdd, ismember(NewRegionsIMG, [0, 24]))
+    RHWMToAdd = numpy.logical_and(RHWMToAdd, ismember(NewRegionsIMG, [0, 24]))
+    NewRegionsIMG[LHWMToAdd] = 2
+    NewRegionsIMG[RHWMToAdd] = 41
+
+    T = numpy.zeros_like(NewRegionsIMG)
+    T[LHWMToAdd] = 2
+    T[RHWMToAdd] = 41
+    NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_toadd.nii.gz"))
+    
+    LHWMDilated = scipy.ndimage.binary_dilation(NewRegionsIMG == 2, iterations = 2)
+    RHWMDilated = scipy.ndimage.binary_dilation(NewRegionsIMG == 41, iterations = 2)
+
+    T = scipy.ndimage.binary_dilation(numpy.logical_and(LHWMDilated, RHWMDilated))
+    T = numpy.logical_and(T, NewRegionsIMG < 1000)
+    
+    # make a straight cut down the middle
+    NewRegionsIMG[numpy.logical_and(T, numpy.logical_and(MPlaneSign > 0, NewRegionsIMG == 41))] = 2
+    NewRegionsIMG[numpy.logical_and(T, numpy.logical_and(MPlaneSign <= 0, NewRegionsIMG == 2))] = 41
+    
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_beforechange.nii.gz"))
     
-
     # change from freesurfer labels regions values
     T = numpy.array(NewRegionsIMG)
 
@@ -202,7 +233,12 @@ def main():
     T[ismember(NewRegionsIMG, [24, 258, 14, 15, 165])] = 0
     
     T[NewRegionsIMG == 999] = 1 
-
+    
+    LeftWMHoleFilled = scipy.ndimage.binary_fill_holes(T == 3)
+    T[LeftWMHoleFilled] = 3
+    RightWMHoleFilled = scipy.ndimage.binary_fill_holes(T == 2)
+    T[RightWMHoleFilled] = 2
+    
     NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_brainstem_cut.nii.gz"))
     

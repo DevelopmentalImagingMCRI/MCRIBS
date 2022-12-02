@@ -37,7 +37,10 @@ T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore.n
 T2IMG = T2NII.get_fdata()
 
 DKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_skullstrip_reg.nii.gz"))
-DKTIMG = numpy.int16(DKTNII.get_fdata())
+DKTIMG = numpy.int16(DKTNII.dataobj)
+
+DrawEMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_drawem_alberts_tissueseg.nii.gz"))
+DrawEMIMG = numpy.squeeze(numpy.uint8(DrawEMNII.dataobj))
 
 GMMaskIMG = ismember(DKTIMG, [3, 42])
 GMMaskIMG = numpy.logical_or(GMMaskIMG, numpy.logical_and(DKTIMG >= 1000, DKTIMG <= 1035))
@@ -51,6 +54,8 @@ WMMaskIMG = ismember(DKTIMG, [2, 41])
 GMMaskIMGClosed = scipy.ndimage.binary_closing(GMMaskIMG, iterations = 1)
 
 #outMask = ismember(DKTIMG, [4, 9, 28, 11, 12, 13, 31, 18, 51, 52, 43, 50, 60, 48, 54, 63, 14, 192])
+
+# all subcortical grey and ventricles
 outMask = ismember(DKTIMG, [4, 9, 11, 12, 13, 31, 18, 51, 52, 43, 50, 48, 54, 63, 14, 192])
 
 HippoDilated = scipy.ndimage.binary_dilation(ismember(DKTIMG, [17, 53]), iterations = 10)
@@ -101,6 +106,7 @@ centroids = numpy.sort(centroids)
 XC = numpy.abs(numpy.atleast_2d(centroids) - numpy.atleast_2d(T2IMG[outMask]).T)
 
 K = numpy.argmin(XC, axis = 1)
+del XC
 #print(I)
 #NewNII = nibabel.Nifti1Image(numpy.uint8(outMask), DKTNII.affine)
 #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask.nii.gz"))
@@ -122,8 +128,17 @@ else:
     outIMG = scipy.ndimage.binary_opening(outIMG, iterations = 2)
     L, numLabels = scipy.ndimage.label(outIMG)
     H = numpy.bincount(L[L > 0])
-    outIMG = (L == numpy.argmax(H))
+    # doesnt always work
+    #outIMG = (L == numpy.argmax(H))
+
+    outIMG = ismember(L, numpy.where(H > 1000)[0])
+
+    DrawEMIMGVentClosed = scipy.ndimage.binary_closing(DrawEMIMG == 5, iterations=50)
+    outIMG = numpy.logical_and(outIMG, DrawEMIMGVentClosed)
+    #T = H[L]
+    #NewNII = nibabel.Nifti1Image(numpy.int16(T), DKTNII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_L.nii.gz"))
+
 
 NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), DKTNII.affine)
 nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans_class3.nii.gz"))
-

@@ -1,0 +1,606 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.cluster
+import scipy.ndimage
+import skimage.morphology
+import getopt
+
+
+def varianceFilter(IMG, SZ):
+    """Compute neighbourhood variance in a neighbourhood of size SZ.
+    
+    Parameters
+    ----------
+    IMG : numpy.ndarray
+        Image to filter.
+    SZ : int
+        Size of the neighbourhood, must be odd and positive.
+
+    Returns
+    -------
+    numpy.ndarray
+        Variance image.
+    """
+    if not isinstance(IMG, numpy.ndarray):
+        raise TypeError("IMG must be a numpy.ndarray")
+    if not isinstance(SZ, int):
+        raise TypeError("SZ must be an int")
+
+    if SZ <= 0 or SZ % 2 == 0:
+        raise ValueError("SZ must be positive and odd")
+    
+    kernelNumElements = SZ ** IMG.ndim
+
+    # compute the variance of each neighbourhood
+    # V = 1 / (n - 1) \sum (x - mean(x))(x - mean(x))
+    # reorder
+    # V = 1 / (n - 1) (\sum xx - 2 mean(x) \sum x + mean(x)^2 \sum 1)
+    # because \sum x = mean(x) * numElements
+    # so
+    # V = 1 / (n - 1) (\sum xx - 2 mean(x)^2 \sum 1 + mean(x)^2 \sum 1)
+    # V = 1 / (n - 1) (\sum xx - mean(x)^2 \sum 1)
+    
+    # i.e. V = E(x^2) - E(x)^2
+    DIMG = numpy.double(IMG)
+    # \sum xx
+    sumXX = scipy.ndimage.uniform_filter(DIMG * DIMG, size=SZ) * kernelNumElements
+    
+    meanX = scipy.ndimage.uniform_filter(DIMG, size=SZ)
+
+    # mean(x) \sum x
+    meanXSumX = meanX * meanX * kernelNumElements
+    
+    return (sumXX - meanXSumX) / (kernelNumElements - 1)
+
+def largestComponent(BW):
+    if not numpy.any(BW):
+        return BW
+    else:
+        L, numLabels = scipy.ndimage.label(BW)
+        H = numpy.bincount(L[L > 0])
+        return (L == numpy.argmax(H))
+
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+if len(sys.argv) < 2:
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+
+def gaussianSecondDerivMax1d(SIGMA, spacing=1):
+    """Second derivative of Gaussian kernel for convolution.
+
+    Parameters
+    ----------
+    SIGMA : float
+        Standard deviation of the filter.
+    spacing : float, optional
+        Spacing of the points. Default = 1.
+    
+    Returns
+    -------
+    numpy.ndarray:
+        Second derivative of Gaussian kernel for convolution.
+    """
+
+    GaussianDieOff = 0.0001
+
+    SIGMASQ = SIGMA * SIGMA
+
+    W = numpy.arange(1, 501) * spacing
+
+    FirstGaussian = numpy.exp(-(W * W) / (2 * SIGMASQ))
+    
+    MaxWidth = numpy.where(FirstGaussian > GaussianDieOff)[0]
+    
+    if MaxWidth.size == 0:
+        MaxWidth = 1
+    else:
+        MaxWidth = MaxWidth[-1]
+    
+    X = numpy.arange(-MaxWidth, MaxWidth + 1) * spacing
+
+    Exponential = numpy.exp(-(X * X) / (2 * SIGMASQ))
+
+    return ((X * X / (numpy.sqrt(2 * numpy.pi) * SIGMA * SIGMASQ * SIGMASQ)) - (1 / (numpy.sqrt(2 * numpy.pi) * SIGMA * SIGMASQ))) * Exponential
+
+
+def main():
+        
+    opts, args = getopt.getopt(sys.argv[1:], '', [])
+
+    try:
+        TissueSegDir = os.environ['TISSUESEGDIR']
+    except Exception:
+        TissueSegDir = 'TissueSegMCRIBS'
+
+    subjID = args[0]
+
+    if not os.path.isdir(os.path.join(TissueSegDir, subjID)):
+        print("Tissue segmentation directory not found")
+        quit()
+    
+    # perform second-derivative gaussian filtering along the T2 image gradient directions for each brain voxel
+
+    T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
+    T2IMG = numpy.single(T2NII.dataobj)
+    
+    T2CannyNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_canny.nii.gz"))
+    T2CannyIMG = numpy.array(T2CannyNII.dataobj) > 0
+
+    BrainMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
+    BrainMaskIMG = numpy.array(BrainMaskNII.dataobj) > 0
+    
+    DrawEMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_drawem_alberts_tissueseg.nii.gz"))
+    DrawEMIMG = numpy.squeeze(numpy.uint8(DrawEMNII.dataobj))
+
+    LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_with_latvent_rings_skullstrip_reg.nii.gz"))
+    LabelFusionIMG = numpy.int16(LabelFusionNII.dataobj)
+    
+    #DarkWMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_dark_wm_prob_skullstrip_reg.nii.gz"))
+    #DarkWMIMG = numpy.single(DarkWMNII.dataobj)
+    
+    
+    BrainMaskEroded = scipy.ndimage.binary_erosion(BrainMaskIMG, iterations=1)
+
+    T2IMGBrightPadded = numpy.array(T2IMG)
+    T2IMGBrightPadded[numpy.logical_not(BrainMaskEroded)] = 0
+    T2IMGBrightPadded = scipy.ndimage.grey_dilation(T2IMGBrightPadded, size=(11, 11, 11))
+    T2IMGBrightPadded[BrainMaskEroded] = T2IMG[BrainMaskEroded]
+    
+    # fill the ventricles with WM mean
+    #WMMean = numpy.mean(T2IMG[ismember(DrawEMIMG, [3, 8])])
+    #T2IMGWMFilled = numpy.array(T2IMG)
+    #T2IMGWMFilled[scipy.ndimage.binary_dilation(ismember(DrawEMIMG, [5, 7]), iterations=2)] = WMMean
+    # T2IMGBrightPadded = numpy.array(T2IMG)
+    # T2IMGBrightPadded[numpy.logical_not(BrainMaskEroded)] = numpy.max(T2IMG) + 5
+
+    # DrawEMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_drawem_alberts_tissueseg.nii.gz"))
+    # DrawEMIMG = numpy.int8(DrawEMNII.dataobj)
+
+    pixDims = T2NII.header.get_zooms()
+
+    sigma = numpy.array(pixDims) * 2
+    GX = scipy.ndimage.gaussian_filter(T2IMG, sigma, order=[1, 0, 0], output=None, mode='reflect', cval=0.0, truncate=4.0)
+    GY = scipy.ndimage.gaussian_filter(T2IMG, sigma, order=[0, 1, 0], output=None, mode='reflect', cval=0.0, truncate=4.0)
+    GZ = scipy.ndimage.gaussian_filter(T2IMG, sigma, order=[0, 0, 1], output=None, mode='reflect', cval=0.0, truncate=4.0)
+
+    GMAG = numpy.sqrt(GX * GX + GY * GY + GZ * GZ)
+    GMAG[GMAG == 0] = 1
+
+    spacing = numpy.cbrt(numpy.prod(pixDims))
+    
+    GX = GX / GMAG * spacing
+    GY = GY / GMAG * spacing
+    GZ = GZ / GMAG * spacing
+
+    GX = scipy.ndimage.gaussian_filter(GX, 1)
+    GY = scipy.ndimage.gaussian_filter(GY, 1)
+    GZ = scipy.ndimage.gaussian_filter(GZ, 1)
+    allBrainMaskIDX = numpy.where(BrainMaskIMG)
+
+    F = gaussianSecondDerivMax1d(1 / spacing, spacing=spacing)
+    #print(F)
+    #print(F.size)
+    filterVectorWidth = int(numpy.floor(F.size / 2))
+    #print(filterVectorWidth)
+    # now, for each voxel in the brain
+
+    # do Canny edge detection
+    # GMAGScaled = (GMAG - numpy.min(GMAG[BrainMaskIMG])) / numpy.ptp(GMAG[BrainMaskIMG])
+
+    # WeakIMG = GMAGScaled > 0.1
+
+    # CannyIMG = skimage.morphology.reconstruction(GMAGScaled > 0.3, WeakIMG)
+
+    L = numpy.zeros(T2IMG.shape)
+    
+    # vectorised version
+    
+    leftIDX = 0
+    blockSize = 200000
+    while leftIDX < allBrainMaskIDX[0].size:
+        rightIDX = numpy.minimum(leftIDX + blockSize, allBrainMaskIDX[0].size)
+
+        BrainMaskIDX = (allBrainMaskIDX[0][leftIDX:rightIDX], allBrainMaskIDX[1][leftIDX:rightIDX], allBrainMaskIDX[2][leftIDX:rightIDX])
+        #print(GX[(BrainMaskIDX[0], BrainMaskIDX[1], BrainMaskIDX[2])].shape)
+
+        BrainGX = numpy.atleast_2d(numpy.single(GX[(BrainMaskIDX[0], BrainMaskIDX[1], BrainMaskIDX[2])]).ravel())
+        BrainGY = numpy.atleast_2d(numpy.single(GY[(BrainMaskIDX[0], BrainMaskIDX[1], BrainMaskIDX[2])]).ravel())
+        BrainGZ = numpy.atleast_2d(numpy.single(GZ[(BrainMaskIDX[0], BrainMaskIDX[1], BrainMaskIDX[2])]).ravel())
+        
+        FW = numpy.atleast_2d(numpy.arange(-filterVectorWidth, filterVectorWidth + 1).ravel()).T
+        #print(FW)
+        #print(BrainGX)
+        VX = numpy.atleast_2d(BrainMaskIDX[0].ravel() * pixDims[0]) + FW * BrainGX
+        del BrainGX
+        VY = numpy.atleast_2d(BrainMaskIDX[1].ravel() * pixDims[1]) + FW * BrainGY
+        del BrainGY
+        VZ = numpy.atleast_2d(BrainMaskIDX[2].ravel() * pixDims[2]) + FW * BrainGZ
+        del BrainGZ
+        
+        #print((BrainMaskIDX[0][0], BrainMaskIDX[1][0], BrainMaskIDX[2][0]))
+        #print(GX[(BrainMaskIDX[0][0], BrainMaskIDX[1][0], BrainMaskIDX[2][0])])
+        #print(VX[:, 0])
+        #print(VY[:, 0])
+        #print(VZ[:, 0])
+
+        #print(VX.shape)
+        # make the vectors along the gradient directions
+        # VX = BrainMaskIDX[0] * pixDims[0] + numpy.arange(-filterVectorWidth, filterVectorWidth + 1) * GX[(BrainMaskIDX[0][z], BrainMaskIDX[1][z], BrainMaskIDX[2][z])]
+        # VY = BrainMaskIDX[1] * pixDims[1] + numpy.arange(-filterVectorWidth, filterVectorWidth + 1) * GY[(BrainMaskIDX[0][z], BrainMaskIDX[1][z], BrainMaskIDX[2][z])]
+        # VZ = BrainMaskIDX[2] * pixDims[2] + numpy.arange(-filterVectorWidth, filterVectorWidth + 1) * GZ[(BrainMaskIDX[0][z], BrainMaskIDX[1][z], BrainMaskIDX[2][z])]
+
+        # # clamp to the image boundaries
+        VX = numpy.maximum(VX, 0)
+        VX = numpy.minimum(VX, (T2IMG.shape[0] - 1) * pixDims[0])
+
+        VY = numpy.maximum(VY, 0)
+        VY = numpy.minimum(VY, (T2IMG.shape[1] - 1) * pixDims[1])
+        
+        VZ = numpy.maximum(VZ, 0)
+        VZ = numpy.minimum(VZ, (T2IMG.shape[2] - 1) * pixDims[2])
+        
+        # # interpolate the image intensities
+        XIDX = VX / pixDims[0]
+        YIDX = VY / pixDims[1]
+        ZIDX = VZ / pixDims[2]
+        del VX
+        del VY
+        del VZ
+        # # get the cells and fractional components
+        XI = numpy.floor(XIDX)
+        XFrac = XIDX - XI
+        I = (XI == T2IMG.shape[0] - 1)
+        if numpy.any(I):
+            XI[I] = XI[I] - 1
+            XFrac[I] = 1
+        
+        YI = numpy.floor(YIDX)
+        YFrac = YIDX - YI
+        I = (YI == T2IMG.shape[1] - 1)
+        if numpy.any(I):
+            YI[I] = YI[I] - 1
+            YFrac[I] = 1
+        
+        ZI = numpy.floor(ZIDX)
+        ZFrac = ZIDX - ZI
+        I = (ZI == T2IMG.shape[2] - 1)
+        if numpy.any(I):
+            ZI[I] = ZI[I] - 1
+            ZFrac[I] = 1
+
+        XI = numpy.int16(XI)
+        YI = numpy.int16(YI)
+        ZI = numpy.int16(ZI)
+
+        XFrac = numpy.single(XFrac)
+        YFrac = numpy.single(YFrac)
+        ZFrac = numpy.single(ZFrac)
+
+        V =     (1 - XFrac) * (1 - YFrac) * (1 - ZFrac) * T2IMGBrightPadded[(    XI,     YI,     ZI)]
+        V = V + (    XFrac) * (1 - YFrac) * (1 - ZFrac) * T2IMGBrightPadded[(XI + 1,     YI,     ZI)]
+        V = V + (1 - XFrac) * (    YFrac) * (1 - ZFrac) * T2IMGBrightPadded[(    XI, YI + 1,     ZI)]
+        V = V + (    XFrac) * (    YFrac) * (1 - ZFrac) * T2IMGBrightPadded[(XI + 1, YI + 1,     ZI)]
+        V = V + (1 - XFrac) * (1 - YFrac) * (    ZFrac) * T2IMGBrightPadded[(    XI,     YI, ZI + 1)]
+        V = V + (    XFrac) * (1 - YFrac) * (    ZFrac) * T2IMGBrightPadded[(XI + 1,     YI, ZI + 1)]
+        V = V + (1 - XFrac) * (    YFrac) * (    ZFrac) * T2IMGBrightPadded[(    XI, YI + 1, ZI + 1)]
+        V = V + (    XFrac) * (    YFrac) * (    ZFrac) * T2IMGBrightPadded[(XI + 1, YI + 1, ZI + 1)]
+        
+        #print(XI)
+        del XFrac
+        del XI
+        del YFrac
+        del YI
+        del ZFrac
+        del ZI
+
+        
+        #print(V.shape)
+        #print(numpy.atleast_2d(F.ravel()).T.shape)
+        L[(BrainMaskIDX[0], BrainMaskIDX[1], BrainMaskIDX[2])] = numpy.dot(numpy.atleast_2d(F.ravel()), V).ravel()
+        leftIDX = leftIDX + blockSize
+
+    LPos = (L > 0)
+    
+    #LEroded = scipy.ndimage.grey_erosion(L, size=3)
+    #LEdge = numpy.logical_and(LEroded < 0, LPos)
+    # attempt to find GM near WM <-> CSF border voxels
+    # dilate voxels that are classified WM nex
+
+    backgroundIMG = ismember(DrawEMIMG, [1, 4])
+    DrawEMIMGWM = ismember(DrawEMIMG, [3, 8])
+    curIMG = numpy.logical_and(scipy.ndimage.binary_dilation(DrawEMIMGWM), backgroundIMG)
+
+    outGMToAdd = numpy.zeros(curIMG.shape, dtype=numpy.bool_)
+    for k in range(5):
+        # dilate outwards
+        # add any positive L values to the component
+        oldCurIMG = numpy.array(curIMG)
+        curIMG = numpy.logical_and(scipy.ndimage.binary_dilation(curIMG, iterations = 2), backgroundIMG)
+        M = numpy.logical_and(curIMG, LPos)
+        if numpy.any(M):
+            outGMToAdd[M] = 1
+            curIMG = numpy.logical_and(curIMG, numpy.logical_not(M))
+        if numpy.array_equal(curIMG, oldCurIMG):
+            break
+    
+    curIMG = numpy.logical_and(scipy.ndimage.binary_dilation(DrawEMIMGWM), DrawEMIMG == 6)
+    if numpy.any(curIMG):
+        outGMToAdd = numpy.logical_or(outGMToAdd, numpy.logical_and(scipy.ndimage.binary_dilation(curIMG), numpy.logical_not(DrawEMIMGWM)))
+
+    # V = varianceFilter(T2IMGWMFilled, 11)
+    # add GM near the cerebellum
+    
+    #M = numpy.logical_and(numpy.logical_and(ismember(DrawEMIMG, [2, 3, 8]), LPos), DarkWMIMG <= 0.3)
+    M = numpy.logical_and(ismember(DrawEMIMG, [2, 3, 8]), LPos)
+
+    NotRingsEroded = scipy.ndimage.binary_erosion(numpy.logical_not(ismember(LabelFusionIMG, [997, 998, 999])), iterations=2)
+    M = numpy.logical_and(M, NotRingsEroded)
+    
+    # remove hippocampus and amygdala
+    M = numpy.logical_and(M, numpy.logical_not(ismember(LabelFusionIMG, [17, 18, 53, 54])))
+
+    # firstly to a 2-class separation which should
+    # brightest class will be GM near CSF at the edge of the brain
+    # second class will be GM
+    
+    #C, Classes = scipy.cluster.vq.kmeans2(V[M], 2)
+    
+    # 3 class K-means on variance in the mask
+    
+    #C = numpy.zeros(T2IMG.shape, dtype=numpy.uint8)
+    #C[M] = numpy.uint8(Classes)
+    
+    #D, Classes2 = scipy.cluster.vq.kmeans2(V[C == 1], 2)
+    #D = numpy.zeros(T2IMG.shape, dtype=numpy.uint8)
+    #D[C == 1] = numpy.uint8(Classes2)
+    
+    
+    M = largestComponent(M)
+    M[DrawEMIMG == 2] = False
+    # H, binEdges = numpy.histogram(V[M], bins=100)
+    # I = numpy.argmax(H)
+    # HMode = (binEdges[I] + binEdges[I + 1]) / 2
+    # MLow = numpy.logical_and(numpy.logicalHigh_and(V < HMode, M), numpy.logical_not(T2CannyIMG))
+    #MHigh = numpy.logical_and(numpy.logical_and(V > HMode, M), numpy.logical_not(scipy.ndimage.binary_closing(T2CannyIMG)))
+
+    CannyDilated = scipy.ndimage.binary_dilation(T2CannyIMG)
+    MHigh = numpy.logical_and(M, numpy.logical_not(CannyDilated))
+    #MHigh = scipy.ndimage.binary_erosion(MHigh)
+    M = numpy.logical_and(M, numpy.logical_not(T2CannyIMG))
+    
+    MHighLabels, numMHighLabels = scipy.ndimage.label(MHigh)
+    
+    
+    #NewNII = nibabel.Nifti1Image(numpy.int32(MHighLabels), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MHighLabels.nii.gz"))
+    # MLowLabels, numMHighLabels = scipy.ndimage.label(MLow)
+
+    MHighI = numpy.where(MHigh)
+    I = numpy.argsort(MHighLabels[MHigh])
+    MHighLabelsSorted = MHighLabels[MHigh][I]
+    MHighI = (MHighI[0][I], MHighI[1][I], MHighI[2][I])
+    MHighLabelBoundaries = numpy.concatenate((numpy.array([0]), numpy.where(numpy.diff(MHighLabelsSorted) != 0)[0] + 1, numpy.array([MHighLabelsSorted.size])))
+
+    outToRemove = numpy.zeros(T2IMG.shape, dtype=numpy.bool_)
+    outProps = numpy.zeros(T2IMG.shape, dtype=numpy.single)
+    DrawEMGMDilated = scipy.ndimage.binary_dilation(DrawEMIMG == 2, iterations = 1)
+    for z in range(1, MHighLabelBoundaries.size):
+        LIDX = (
+            MHighI[0][MHighLabelBoundaries[z - 1]:MHighLabelBoundaries[z]],
+            MHighI[1][MHighLabelBoundaries[z - 1]:MHighLabelBoundaries[z]],
+            MHighI[2][MHighLabelBoundaries[z - 1]:MHighLabelBoundaries[z]]
+        )
+
+        LabelBorderCount = 0
+        GMBorderCount = 0
+        
+        TIDX = (numpy.maximum(LIDX[0] - 1, 0), LIDX[1], LIDX[2])
+        VNotZ = MHighLabels[TIDX] != z
+        LabelBorderCount = LabelBorderCount + numpy.count_nonzero(VNotZ)
+        GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(VNotZ, DrawEMGMDilated[TIDX]))
+        
+        TIDX = (numpy.minimum(LIDX[0] + 1, LabelFusionIMG.shape[0] - 1), LIDX[1], LIDX[2])
+        VNotZ = MHighLabels[TIDX] != z
+        LabelBorderCount = LabelBorderCount + numpy.count_nonzero(VNotZ)
+        GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(VNotZ, DrawEMGMDilated[TIDX]))
+        
+        TIDX = (LIDX[0], numpy.maximum(LIDX[1] - 1, 0), LIDX[2])
+        VNotZ = MHighLabels[TIDX] != z
+        LabelBorderCount = LabelBorderCount + numpy.count_nonzero(VNotZ)
+        GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(VNotZ, DrawEMGMDilated[TIDX]))
+
+        TIDX = (LIDX[0], numpy.minimum(LIDX[1] + 1, LabelFusionIMG.shape[1] - 1), LIDX[2])
+        VNotZ = MHighLabels[TIDX] != z
+        LabelBorderCount = LabelBorderCount + numpy.count_nonzero(VNotZ)
+        GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(VNotZ, DrawEMGMDilated[TIDX]))
+        
+        TIDX = (LIDX[0], LIDX[1], numpy.maximum(LIDX[2] - 1, 0))
+        VNotZ = MHighLabels[TIDX] != z
+        LabelBorderCount = LabelBorderCount + numpy.count_nonzero(VNotZ)
+        GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(VNotZ, DrawEMGMDilated[TIDX]))
+        
+        TIDX = (LIDX[0], LIDX[1], numpy.minimum(LIDX[2] + 1, LabelFusionIMG.shape[2] - 1))
+        VNotZ = MHighLabels[TIDX] != z
+        LabelBorderCount = LabelBorderCount + numpy.count_nonzero(VNotZ)
+        GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(VNotZ, DrawEMGMDilated[TIDX]))
+        
+        del VNotZ
+        outProps[LIDX] = float(GMBorderCount + 0.0001 * (GMBorderCount == 0)) / float(LabelBorderCount + (LabelBorderCount == 0))
+
+
+        #outToRemove[LIDX] = (GMBorderCount / LabelBorderCount) + 1
+            #if GMBorderCount < 5:
+            #outProps[LIDX] = float(GMBorderCount) / float(LabelBorderCount)
+            # if float(GMBorderCount) / float(LabelBorderCount) < 0.1:
+            #    outToRemove[LIDX] = True
+        #else:
+        #    outToRemove[LIDX] = 2
+    
+    # maybe instead of selecting a binary weight by the number of voxels in the label that are connected to the GM
+
+    #M = numpy.logical_and(M, numpy.logical_not(outToRemove))
+    
+    # MLowI = numpy.where(MLow)
+    
+    # I = numpy.argsort(MLowLabels[MLow])
+    # MLowLabelsSorted = MLowLabels[MLow][I]
+    # MLowI = (MLowI[0][I], MLowI[1][I], MLowI[2][I])
+    # MLowLabelBoundaries = numpy.concatenate((numpy.array([0]), numpy.where(numpy.diff(MLowLabelsSorted) != 0)[0], numpy.array([MLowLabelsSorted.size])))
+
+    # outToRemove = numpy.zeros(T2IMG.shape, dtype=numpy.bool_)
+    # DrawEMGMDilated = scipy.ndimage.binary_dilation(DrawEMIMG == 2, iterations = 2)
+    # for z in range(MLowLabelBoundaries.size - 1):
+    #     LIDX = (
+    #         MLowI[0][MLowLabelBoundaries[z]:MLowLabelBoundaries[z + 1]],
+    #         MLowI[1][MLowLabelBoundaries[z]:MLowLabelBoundaries[z + 1]],
+    #         MLowI[2][MLowLabelBoundaries[z]:MLowLabelBoundaries[z + 1]]
+    #     )
+
+    #     LabelBorderCount = 0
+    #     GMBorderCount = 0
+
+    #     V = MLowLabels[(numpy.maximum(LIDX[0] - 1, 0), LIDX[1], LIDX[2])]
+    #     LabelBorderCount = LabelBorderCount + numpy.count_nonzero(V != z + 1)
+    #     D = DrawEMGMDilated[(numpy.maximum(LIDX[0] - 1, 0), LIDX[1], LIDX[2])]
+    #     GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(V != z + 1, D))
+
+    #     V = MLowLabels[(numpy.minimum(LIDX[0] + 1, LabelFusionIMG.shape[0] - 1), LIDX[1], LIDX[2])]
+    #     LabelBorderCount = LabelBorderCount + numpy.count_nonzero(V != z + 1)
+    #     D = DrawEMGMDilated[(numpy.minimum(LIDX[0] + 1, LabelFusionIMG.shape[0] - 1), LIDX[1], LIDX[2])]
+    #     GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(V != z + 1, D))
+
+    #     V = MLowLabels[(LIDX[0], numpy.maximum(LIDX[1] - 1, 0), LIDX[2])]
+    #     LabelBorderCount = LabelBorderCount + numpy.count_nonzero(V != z + 1)
+    #     D = DrawEMGMDilated[(LIDX[0], numpy.maximum(LIDX[1] - 1, 0), LIDX[2])]
+    #     GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(V != z + 1, D))
+
+    #     V = MLowLabels[(LIDX[0], numpy.minimum(LIDX[1] + 1, LabelFusionIMG.shape[1] - 1), LIDX[2])]
+    #     LabelBorderCount = LabelBorderCount + numpy.count_nonzero(V != z + 1)
+    #     D = DrawEMGMDilated[(LIDX[0], numpy.minimum(LIDX[1] + 1, LabelFusionIMG.shape[1] - 1), LIDX[2])]
+    #     GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(V != z + 1, D))
+
+    #     V = MLowLabels[(LIDX[0], LIDX[1], numpy.maximum(LIDX[2] - 1, 0))]
+    #     LabelBorderCount = LabelBorderCount + numpy.count_nonzero(V != z + 1)
+    #     D = DrawEMGMDilated[(LIDX[0], LIDX[1], numpy.maximum(LIDX[2] - 1, 0))]
+    #     GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(V != z + 1, D))
+
+    #     V = MLowLabels[(LIDX[0], LIDX[1], numpy.minimum(LIDX[2] + 1, LabelFusionIMG.shape[2] - 1))]
+    #     LabelBorderCount = LabelBorderCount + numpy.count_nonzero(V != z + 1)
+    #     D = DrawEMGMDilated[(LIDX[0], LIDX[1], numpy.minimum(LIDX[2] + 1, LabelFusionIMG.shape[2] - 1))]
+    #     GMBorderCount = GMBorderCount + numpy.count_nonzero(numpy.logical_and(V != z + 1, D))
+
+    #     #outToRemove[LIDX] = (GMBorderCount / LabelBorderCount) + 1
+    #     if GMBorderCount < LabelBorderCount * 0.1:
+    #         outToRemove[LIDX] = True
+    #     #else:
+    #     #    outToRemove[LIDX] = 2
+    
+    #     #outToRemove[LIDX] = (GMBorderCount / LabelBorderCount) + 1
+    #     if GMBorderCount < LabelBorderCount * 0.1:
+    #         outToRemove[LIDX] = True
+    #     #else:
+    #     #    outToRemove[LIDX] = 2
+    
+    #M = numpy.logical_and(M, numpy.logical_not(MLow))
+
+    M = numpy.logical_or(M, DrawEMIMG == 2)
+    # retain large components
+    MLabels, numLabels = scipy.ndimage.label(M)
+
+    H = numpy.bincount(MLabels[MLabels > 0])
+    M = ismember(MLabels, numpy.where(H > 1000)[0])
+
+    #M2 = numpy.logical_or(numpy.logical_and(M, numpy.logical_not(MM)), DrawEMIMG == 2)
+    #M3 = numpy.logical_and(numpy.logical_not(M2), ismember(DrawEMIMG, [3, 8]))
+    
+    # for each component removed by numpy.logical_not(scipy.ndimage.binary_closing(M3, iterations=2)
+    # check to see how closely it is connected to the main component
+
+    #T = numpy.logical_not(scipy.ndimage.binary_closing(M3, iterations=2))
+    #M4 = largestComponent(numpy.logical_and(M2, T))
+
+    outIMG = numpy.logical_or(M, numpy.logical_or(outGMToAdd, DrawEMIMG == 2))
+
+    # dilate the proportions
+    outPropsDilated = scipy.ndimage.grey_dilation(outProps, size=3)
+    outPropsDilatedPos = scipy.ndimage.binary_dilation(MHighLabels > 0)
+    outPropsDilated[outPropsDilatedPos] = 0.5 * numpy.tanh((outPropsDilated[outPropsDilatedPos] - 0.2) * 10) + 0.5
+    outPropsDilated[numpy.logical_not(outPropsDilatedPos)] = outIMG[numpy.logical_not(outPropsDilatedPos)]
+    # remove hippocampus and amygdala
+    outPropsDilated[scipy.ndimage.binary_dilation(ismember(LabelFusionIMG, [17, 18, 53, 54]))] = 0
+    outPropsDilated[scipy.ndimage.binary_dilation(ismember(LabelFusionIMG, [4, 31, 43, 63]), iterations=3)] = 0
+    #outIMG = numpy.logical_or(M, DrawEMIMG == 2)
+    segmentationGM = outPropsDilated > 0.5
+    L, numlabels = scipy.ndimage.label(segmentationGM)
+    H = numpy.bincount(L[L > 0])
+    segmentationGM = ismember(L, numpy.where(H > 100)[0])
+
+    NewNII = nibabel.Nifti1Image(numpy.uint8(segmentationGM), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(MHighLabels, T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MHighLabels.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(outProps, T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_outprops.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(numpy.single(outPropsDilated), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_outpropsdilated.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(LEdge), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_LEdge.nii.gz"))
+
+    #NewNII = nibabel.Nifti1Image(CannyIMG, T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_CannyIMG.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(M), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_init2.nii.gz"))
+
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(numpy.logical_and(numpy.logical_not(M4), T)), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_removed.nii.gz"))
+    # L = scipy.ndimage.gaussian_laplace(T2IMG, 2)
+    #NewNII = nibabel.Nifti1Image(numpy.single(L), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_Lap.nii.gz"))
+#    NewNII = nibabel.Nifti1Image(numpy.single(V), T2NII.affine)
+#    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_V.nii.gz"))
+#    NewNII = nibabel.Nifti1Image(numpy.uint8(M), T2NII.affine)
+#    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_M.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(MM), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MM.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(MLow), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MLow.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(MHigh), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MHigh.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(M2), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_M2.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(M3), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_M3.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(M4), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_M4.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_T.nii.gz"))
+#    NewNII = nibabel.Nifti1Image(numpy.single(GMAG), T2NII.affine)
+#    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_GMAG.nii.gz"))
+    
+    #NewNII = nibabel.Nifti1Image(C, T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_C.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(D, T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_D.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.int16(outGMToAdd), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_D.nii.gz"))
+    
+    #NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3)), LabelFusionNII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_lh_pericalcarine.nii.gz"))
+
+    #NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 2021), axis = 3)), LabelFusionNII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_rh_pericalcarine.nii.gz"))
+
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(VoxelsToReplace), LabelFusionNII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_voxelstoreplace.nii.gz")    )
+
+if __name__ == "__main__":
+    main()
+

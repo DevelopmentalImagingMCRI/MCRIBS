@@ -59,7 +59,7 @@ else:
         NoZCropping = False
 
     InputDir = 'RawT2'
-    OutputDir = 'T2NeckCropped'
+    OutputDir = 'T2NeckCroppedIsotropic'
     
     NIIFileNameBase = os.path.join(InputDir, sys.argv[1])
 

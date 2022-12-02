@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage
+#import matplotlib.pyplot as plt
+#import pylab
+#import Otsu
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+if len(sys.argv) < 2:
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+# fills midline WM labels for regions filling
+# replaces small WM components with GM
+
+subjID = sys.argv[1]
+
+#TissueSegDir = os.environ['TISSUESEGDIR']
+TissueSegDir = 'TissueSegMCRIBS'
+BrainMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
+BrainMaskIMG = numpy.array(BrainMaskNII.dataobj) > 0
+
+GMMask = None
+for z in range(10):
+    zStr = str(z + 1).zfill(2)
+    curNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'P' + zStr + '_dkt_antsinit_with_skull_label_to_' + subjID + '.nii.gz'))
+    curIMG = numpy.array(curNII.dataobj)
+
+    curMask = numpy.logical_or(numpy.logical_and(curIMG >= 1000, curIMG <= 1036), numpy.logical_and(curIMG >= 2000, curIMG <= 2036))
+    if GMMask is None:
+        GMMask = numpy.array(curMask)
+    else:
+        GMMask = numpy.logical_or(GMMask, curMask)
+    del curNII
+    del curIMG
+    del curMask
+
+GMMask = scipy.ndimage.binary_dilation(GMMask, iterations = 5)
+GMMask = scipy.ndimage.binary_erosion(GMMask, iterations = 4)
+
+outIMG = numpy.single(BrainMaskIMG) + numpy.single(numpy.logical_and(BrainMaskIMG, GMMask))
+newNII = nibabel.Nifti1Image(outIMG, BrainMaskNII.affine)
+nibabel.save(newNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_radius_image.nii.gz"))

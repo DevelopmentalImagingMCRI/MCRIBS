@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-import vtk
+import VTPUtils
 import numpy
 import sys
 import os
 import freesurfer
 import nibabel
 import getopt
-import vtk.util.numpy_support
 
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom=', 'tkr-only'])
 
@@ -20,9 +19,9 @@ numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
 
 inFileName = args[0]
 
-Reader = vtk.vtkXMLPolyDataReader()
-Reader.SetFileName(inFileName)
-Reader.Update()
+#Reader = vtk.vtkXMLPolyDataReader()
+#Reader.SetFileName(inFileName)
+#Reader.Update()
 
 inFilePrefix = os.path.splitext(inFileName)[0]
 
@@ -40,33 +39,9 @@ for o, a in opts:
 
 if verbose == True:
     print(inFilePrefix)
-#SurfReader = vtk.vtkXMLPolyDataReader()
-#SurfReader.SetFileName(surfFileName)
-#SurfReader.Update()
 
-# the curvature files have scalar arrays in the point data
-#A = surfData.GetPointData()
-#B = A.GetArray(0)
-#C = numpy.array([B.GetValue(i) for i in range(B.GetNumberOfTuples())])
-
-#surfData = SurfReader.GetOutput()
-
-Data = Reader.GetOutput()
-#Vrts = Data.GetVerts()
-#indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
-S = dict()
-#S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
-#S['vertices'] = numpy.stack(S['vertices']).T
-S['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
-
-if Data.GetNumberOfPolys() > 0:
-    D = Data.GetPolys().GetData()
-    #S['faces'] = [[int(D.GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
-    #S['faces'] = numpy.stack(S['faces']).T
-    S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(D))
-    S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
-    S['faces'] = S['faces'][1:]
-    freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
-    if TKROnly == False:
-       freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
+S = VTPUtils.readVTPSurf(inFileName)
+freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+if TKROnly == False:
+   freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
     

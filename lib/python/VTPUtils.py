@@ -36,8 +36,14 @@ def readVTPSurf(inFileName):
     S['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
     if Data.GetNumberOfPolys() > 0:
         S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPolys().GetData()))
-        S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
-        S['faces'] = S['faces'][1:]
+        
+        if S['faces'].size == Data.GetNumberOfPolys() * 5:
+            S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 5), 5)).T
+            S['faces'] = S['faces'][2:]
+        else:
+            S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
+            S['faces'] = S['faces'][1:]
+
         #
         # D = Data.GetPolys().GetData()
         # S['faces'] = [[int(D.GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]

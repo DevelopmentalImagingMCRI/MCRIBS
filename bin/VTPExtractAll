@@ -78,18 +78,30 @@ S = dict()
 #S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
 #S['vertices'] = numpy.stack(S['vertices']).T
 S['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
+#print(S['vertices'])
 
 if Data.GetNumberOfPolys() > 0:
     D = Data.GetPolys().GetData()
     #S['faces'] = [[int(D.GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
     #S['faces'] = numpy.stack(S['faces']).T
     S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(D))
-    S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
-    S['faces'] = S['faces'][1:]
+    print(str(Data.GetNumberOfPolys()) + " " + str(S['faces'].size))
+    if S['faces'].size == Data.GetNumberOfPolys() * 5:
+        S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 5), 5)).T
+        S['faces'] = S['faces'][2:]
+    else:
+        S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
+        S['faces'] = S['faces'][1:]
 
     freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
     if TKROnly == False:
         freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
+else:
+    S['faces'] = None
+    freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+    if TKROnly == False:
+        freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
+
 # now do the point data arrays
 pointData = Data.GetPointData()
 

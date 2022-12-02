@@ -58,7 +58,7 @@ if [ "$LARGECLOSE" == "YES" ]
 then
 	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-large.cfg
 else
-	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-large.cfg
+	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex.cfg
 fi
 #echo noensure $NOENSURE
 #echo largeclose $LARGECLOSE
@@ -78,12 +78,6 @@ done
 export TISSUESEGDIR=TissueSegMCRIBS
 export OUTPUTPREFIX=${TISSUESEGDIR}/${SUBJID}/${SUBJID}
 
-# antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/FinaltemplateRibbonMajority.nii.gz \
-# 	--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
-# 	--transform ${OUTPUTPREFIX}_skullstrip_reg1InverseWarp.nii.gz \
-# 	--interpolation GenericLabel \
-# 	--output-data-type uchar \
-# 	--output ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 
 #antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/FinaltemplateRibbonMajorityMidlineFill.nii.gz \
 #	--transform [${OUTPUTPREFIX}_skullstrip_affine0GenericAffine.mat,1] \
@@ -100,14 +94,33 @@ fi
 export TEMPLATEREGSUFFIX=skullstrip_reg
 #RemoveDarkWMFromGMSegmentation $SUBJID
 mkdir -p TissueSeg
-PostProcessDKTLabelFusion $LARGEVENTRICLES $NOWMLAPLACIANEXPAND $SUBJID
+P=`pwd`
+T=`mktemp -d`
 
+# fslsplit $P/$TISSUESEGDIR/${SUBJID}/all_dkt_antsinit_to_${SUBJID}.nii.gz tmp -t
+# for z in `seq 0 9`
+# do
+# 	ZPADDED=$(printf "%04d" $z)
+# 	IPADDED=$(printf "%02d" `expr $z + 1`)
+# 	mv tmp${ZPADDED}.nii.gz $P/$TISSUESEGDIR/${SUBJID}/P${IPADDED}_dkt_antsinit_with_skull_label_to_${SUBJID}.nii.gz
+# done
+# cd $P
+# rm -fr $T
+
+#MakeKMeans34Class $SUBJID
+#MakeGMSegmentation $SUBJID
+#exit
+#PostProcessDKTLabelFusion $LARGEVENTRICLES $NOWMLAPLACIANEXPAND $SUBJID
+PostProcessDKTLabelFusion $LARGEVENTRICLES $SUBJID
+
+#exit
 MakeRegionsBSCutting $SUBJID
+#exit
 #rm -f ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon_midlinefill.nii.gz ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 FSToDrawEMLabels $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusionimage_regions.nii.gz TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
-cp $TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore.nii.gz TissueSeg/${SUBJID}_t2w_restore.nii.gz
+#cp $TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore.nii.gz TissueSeg/${SUBJID}_t2w_restore.nii.gz
 #cp $TISSUESEGDIR/${SUBJID}/${SUBJID}_brain_mask.nii.gz TissueSeg/${SUBJID}_brain_mask.nii.gz
-fslmaths $TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore_brain_dn_atropos3_priors_segmentation -bin TissueSeg/${SUBJID}_brain_mask
+fslmaths $TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore_brain_dn_atropos3_priors_segmentation -bin TissueSeg/${SUBJID}_brain_mask -odt char
 
 mkdir -p freesurfer/${SUBJID}/mri
 mkdir -p SurfReconDeformable/${SUBJID}/temp SurfReconDeformable/${SUBJID}/meshes SurfReconDeformable/${SUBJID}/recon
@@ -207,12 +220,12 @@ do
        GMREPLACE="$GMREPLACE --replace `expr $j + 1000` 42"
 done
 MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusionimage_dkt_antsinit.nii.gz --o freesurfer/${SUBJID}/mri/aseg.presurf.mgz $GMREPLACE
-mri_mask TissueSeg/${SUBJID}_t2w_restore.nii.gz TissueSeg/${SUBJID}_brain_mask.nii.gz freesurfer/${SUBJID}/mri/brainmask.mgz
+mri_mask $TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore.nii.gz $TISSUESEGDIR/${SUBJID}/${SUBJID}_brain_mask.nii.gz freesurfer/${SUBJID}/mri/brainmask.mgz
 if [ ! -f "freesurfer/${SUBJID}/mri/norm.mgz" ]
 then
-	mri_convert TissueSeg/${SUBJID}_t2w_restore.nii.gz freesurfer/${SUBJID}/mri/norm.mgz
+	mri_convert TissueSegMCRIBS/$SUBJID/${SUBJID}_t2w_restore.nii.gz freesurfer/${SUBJID}/mri/norm.mgz
 fi
-
+#exit
 NUMPROC=`nproc`
 NUMTHREADS=`expr $NUMPROC / 2`
 #NUMTHREADS=`expr $NUMPROC`
@@ -220,7 +233,7 @@ NUMTHREADS=`nproc`
 #NUMTHREADS=3
 export VTK_MAX_THREADS=$NUMTHREADS
 #CRIBReconAll --surfrecon $NOENSURE $LARGECLOSE -openmp $NUMTHREADS ${SUBJID}
-
+#exit
 recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $JOINTHRESHOLD $USEFASTCOLLISION 2>&1 | tee -a logs/$SUBJID.log
 
 RECONRETURNCODE=${PIPESTATUS[0]}
@@ -260,28 +273,33 @@ then
 	mkdir -p freesurfer/$SUBJID/surf
 	mkdir -p freesurfer/$SUBJID/label
 
-	if [ "$USEBONNIE" == "YES" ]
-	then
-		VOLGEOM=TissueSeg/${SUBJID}_t2w_restore.nii.gz
-	else
-		#VOLGEOM=/$SUBJID.nii.gz
-		VOLGEOM=TissueSeg/${SUBJID}_t2w_restore.nii.gz
-	fi
+	# if [ "$USEBONNIE" == "YES" ]
+	# then
+	# 	VOLGEOM=TissueSegMCRIBS/${SUBJID}_t2w_restore.nii.gz
+	# else
+	# 	#VOLGEOM=/$SUBJID.nii.gz
+	# 	VOLGEOM=TissueSeg/${SUBJID}_t2w_restore.nii.gz
+	# fi
+	VOLGEOM=TissueSegMCRIBS/${SUBJID}/${SUBJID}_t2w_restore.nii.gz
 	#echo $VOLGEOM
 	for HEMI in $HEMIS
 	do
 		for SURF in $SURFS
 		do
-			`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+			
+			#`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+			`dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
 			#rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
 			mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
 
 		done
-		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-${HEMI}.vtp freesurfer/$SUBJID/surf/$HEMI.white freesurfer/$SUBJID/label/$HEMI.cortex.label
+		#`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-${HEMI}.vtp freesurfer/$SUBJID/surf/$HEMI.white freesurfer/$SUBJID/label/$HEMI.cortex.label
+		`dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-${HEMI}.vtp freesurfer/$SUBJID/surf/$HEMI.white freesurfer/$SUBJID/label/$HEMI.cortex.label
 	done
 
 	# make the pial surfaces by reordering the pial vertices in the VTP files
-	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
+	#`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
+	`dirname $0`/DeformableReorderVertices --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
 
 	# cleanup
 	rm -f $OUTDIR/$SUBJID/temp/*hull* $OUTDIR/$SUBJID/temp/wm.nii.gz $OUTDIR/$SUBJID/temp/*iso*.vtp $OUTDIR/$SUBJID/temp/*mask*.nii.gz $OUTDIR/$SUBJID/temp/*dmap*.nii.gz $OUTDIR/$SUBJID/temp/*mask*.nii.gz

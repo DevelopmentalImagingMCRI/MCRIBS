@@ -1812,11 +1812,17 @@ void SmoothLineStrip(vtkSmartPointer<vtkPolyData> cut, int niter = 1)
 double LineStripIncircleRadius(vtkSmartPointer<vtkPolyData> cut)
 {
   Point p, c;
+  // double b[6];
   cut->GetCenter(c);
+  
+  // GetCenter doesnt work properly in VTK8
+  
   double r = inf;
   for (vtkIdType ptId = 0; ptId < cut->GetNumberOfPoints(); ++ptId) {
     cut->GetPoint(ptId, p);
     r = min(r, p.Distance(c));
+    //std::cout << "r:: " << r << std::endl;
+    // std::cout << "pt:: " << p[0] << ", " << p[1] << ", " << p[2] << std::endl;
   }
   return r;
 }
@@ -1995,6 +2001,8 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
   double    r, l;
   double    best_tn, best_rx, best_ry, best_l = inf;
   vtkIdType best_ct = 0;
+  double best_error = 0.0;
+  double cur_error = 0.0;
 
   // Remove cells which are never cut to speed up vtkPolyDataIntersectionFilter
   Point center;
@@ -2038,7 +2046,9 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
   // Try different normal offsets and plane rotations in the order of preference
   int n = 0, m = 0;
   bool abort = false;
+
   for (double angle = 0., rx, ry; angle <= max_angle && !abort; angle += delta_angle) {
+    
     for (int dim = (angle > 0. ? 0 : 1); dim < 2 && !abort; ++dim) {
       if (dim == 0) {
         rx = angle;
@@ -2051,6 +2061,7 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
         for (double sry = (ry > 0. ? -1. : 1.); sry <= 1. && !abort; sry += 2.)
         for (double srx = (rx > 0. ? -1. : 1.); srx <= 1. && !abort; srx += 2.)
         for (double stn = (tn > 0. ? -1. : 1.); stn <= 1. && !abort; stn += 2.) {
+          //cout << "tn: " << tn << ", sry: " << sry << ", srx: " << srx << ", max_offset: " << max_offset << std::endl;
           if (verbose > 4) {
             cout << "    Cutting plane with: offset = " << fixed
                      << setprecision(offset_precision) << setw(offset_precision+3) << stn * tn
@@ -2061,6 +2072,7 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
           plane  = CuttingPlane(attr, stn * tn, srx * rx, sry * ry, margin);
           cut    = LargestClosedIntersection(cells, plane);
           if (IsValidIntersection(cut, tol)) {
+            cout << "valid intersection " << std::endl;
             if (verbose == 4) {
               cout << "    Cutting plane with: offset = " << fixed
                    << setprecision(offset_precision) << setw(offset_precision+3) << stn * tn
@@ -2071,6 +2083,7 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
             bool accept = false;
             SmoothLineStrip(cut, 2);
             r = LineStripIncircleRadius(cut);
+            //cout << "r: " << r << ", center.Distance(cut->GetCenter(): " << center.Distance(cut->GetCenter()) << std::endl;
             if (center.Distance(cut->GetCenter()) < r) {
               ++m;
               if (verbose == 3) {
@@ -2081,7 +2094,11 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
                      << " ...";
               }
               l = LineStripLength(cut);
-              if (best_ct == 0 || l < .95 * best_l) {
+              // select the cutting plane with the shortest perimeter
+              vtkSmartPointer<vtkPolyData> divider = Divider(cut);
+              cur_error = DividerError(divider, boundary->GetPoints());
+              //l < .95 * best_l) {
+              if (best_ct == 0 || (cur_error < best_error && l < .95 * best_l)) {
                 accept = true;
               }
               if (accept) {
@@ -2091,38 +2108,40 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
                 best_ry = sry * ry;
                 best_l  = l;
                 best_ct = cut->GetNumberOfCells();
+                best_error = cur_error;
+                //cout << "best_ct: " << best_ct << " " << best_tn << " " << best_rx << " " << best_ry << " " << best_l << std::endl;
                 if (prefer_default_plane && best_tn == 0. && best_rx == 0. && best_ry == 0.) {
                   abort = true;
                 }
               } else {
                 if (verbose > 2) cout << " rejected";
               }
-              if (verbose > 2) {
-                vtkSmartPointer<vtkPolyData> divider = Divider(cut);
-                double area  = DividerArea(divider);
-                double error = DividerError(divider, boundary->GetPoints());
-                cout << ": perimeter = " << setprecision(5) << setw(8) << l;
-                cout << ", area = "      << setprecision(5) << setw(8) << area;
-                cout << ", RMS = "       << setprecision(5) << setw(8) << error;
-                cout << endl;
-              }
+              // if (verbose > 2) {
+              //   vtkSmartPointer<vtkPolyData> divider = Divider(cut);
+              //   double area  = DividerArea(divider);
+              //   double error = DividerError(divider, boundary->GetPoints());
+              //   cout << ": perimeter = " << setprecision(5) << setw(8) << l;
+              //   cout << ", area = "      << setprecision(5) << setw(8) << area;
+              //   cout << ", RMS = "       << setprecision(5) << setw(8) << error;
+              //   cout << endl;
+              // }
               if (m >= max_suitable_planes && best_ct > 0) {
                 abort = true;
               }
             } else {
               if (verbose > 3) cout << " rejected" << endl;
             }
-            if (debug > 1) {
-              if (debug > 2 || center.Distance(cut->GetCenter()) < r) {
-                ++n;
-                char fname[64];
-                const char *suffix = accept ? "accepted" : "rejected";
-                snprintf(fname, 64, "debug_cutting_plane_%d_%d_%s.vtp", call, n, suffix);
-                WritePolyData(fname, plane);
-                snprintf(fname, 64, "debug_cutting_lines_%d_%d_%s.vtp", call, n, suffix);
-                WritePolyData(fname, cut);
-              }
-            }
+            // if (debug > 1) {
+            //   if (debug > 2 || center.Distance(cut->GetCenter()) < r) {
+            //     ++n;
+            //     char fname[64];
+            //     const char *suffix = accept ? "accepted" : "rejected";
+            //     snprintf(fname, 64, "debug_cutting_plane_%d_%d_%s.vtp", call, n, suffix);
+            //     WritePolyData(fname, plane);
+            //     snprintf(fname, 64, "debug_cutting_lines_%d_%d_%s.vtp", call, n, suffix);
+            //     WritePolyData(fname, cut);
+            //   }
+            // }
           } else {
             if (verbose > 4) cout << " invalid" << endl;
           }
@@ -2135,6 +2154,7 @@ bool FindCuttingPlane(vtkSmartPointer<vtkPolyData> surface,
   if (best_ct > 0) {
     if (verbose > 1) {
       cout << "    Found cutting plane with: offset = " << fixed
+           << ", index = " << best_ct << ", "
            << setprecision(offset_precision) << setw(offset_precision+3) << best_tn
            << ", alpha = " << setprecision(angle_precision) << setw(angle_precision+3) << best_rx
            << ", beta = "  << setprecision(angle_precision) << setw(angle_precision+3) << best_ry << endl;

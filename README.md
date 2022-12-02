@@ -112,4 +112,4 @@ The parameter `<subj id>` is the subject id of a subject that has been processed
  - ?h.thickness
  - ?h.sulc
  - ?h.curv
-  - ?h.aparc+DKTatlas.annot (DKT parcellation)
+ - ?h.aparc+DKTatlas.annot (DKT parcellation)

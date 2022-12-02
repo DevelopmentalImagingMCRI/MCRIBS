@@ -27,7 +27,7 @@ P=`pwd`
 
 if [ ! -f "$FSDIR/.isFromDHCP" ]
 then
-	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
+	`dirname $0`/ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
 fi
 
 for CURHEMI in $HEMIS
@@ -52,7 +52,7 @@ do
 		mris_ca_label -t `dirname $0`/../lib/${CURHEMI}.aparcLUT.txt  -aseg $ASEGIMAGE -L ../label/${CURHEMI}.cortex.label $SUBJID $CURHEMI sphere.reg2 `dirname $0`/../lib/sphere_templates/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.nomask.annot
 		cd $P
 		# don't do this if the data was originally dHCP
-		`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/FSAnnotMaskCortexLabel $FSDIR/label/${CURHEMI}.${ATLAS}.auto.nomask.annot $FSDIR/label/${CURHEMI}.cortex.label $FSDIR/label/${CURHEMI}.${ATLAS}.annot
+		`dirname $0`/FSAnnotMaskCortexLabel $FSDIR/label/${CURHEMI}.${ATLAS}.auto.nomask.annot $FSDIR/label/${CURHEMI}.cortex.label $FSDIR/label/${CURHEMI}.${ATLAS}.annot
 		#FreesurferCorticalThickness $SUBJID $CURHEMI
 	done
 done
