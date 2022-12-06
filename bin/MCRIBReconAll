@@ -62,7 +62,7 @@ def main():
     tissueSegArgGroup.add_argument('--largeventricles', help = "Large ventricle options", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--nobspline', help = "Do not use B-Spline in registration step", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--nowmlaplacianexpand', help = "Do not expand WM segmentation using bright regions", required = False, action = 'store_true')
-    tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM', 'MCRIBS'], default = 'MCRIBS')
+    tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['MCRIBS'], default = 'MCRIBS')
     tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 
     surfReconArgGroup = argParser.add_argument_group('surfrecon', 'Perform cortical surface extraction, depends --tissueseg')
