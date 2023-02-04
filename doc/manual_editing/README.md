@@ -231,7 +231,7 @@ As an example, `foo3` has the last file cerebrum-1.vtp so you would run:
 ```bash
 ./DisplayCerebrum1 foo3
 ```
-## Inserting white matter voxels
+## White matter label edits
 
 If you need to change a label to a white matter label, use 254 for left hemisphere WM and 255 for right hemisphere WM. The example in the screenshot below shows a thin gyrus that has not been sufficiently
 penetrated by the white matter surface. The white matter voxels have been filled in with 255 and upon rerunning, where the edits are preserved, the error is fixed.
