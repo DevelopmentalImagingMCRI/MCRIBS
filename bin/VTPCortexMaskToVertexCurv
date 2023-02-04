@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+
+import vtk
+import numpy
+import sys
+import os
+import freesurfer
+import nibabel
+import getopt
+
+import VTPUtils
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
+
+if len(args) != 2:
+    print("The number of arguments must be 2")
+    print(sys.argv[0] + " <vtp file> <curv file>")
+    exit()
+
+numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
+
+inVTPFileName = args[0]
+inFSFileName = args[1]
+
+VTPSurf = VTPUtils.readVTPSurf(inVTPFileName)
+FaceCortexMask = VTPUtils.readVTPCellArray(inVTPFileName, 'CortexMask')
+
+FaceCortexMask = (FaceCortexMask == 1)
+
+VertexCortexMask = numpy.zeros(VTPSurf['vertices'].shape[1], dtype = numpy.bool_)
+
+for z in range(VTPSurf['faces'].shape[1]):
+    if FaceCortexMask[z] == True:
+        VertexCortexMask[VTPSurf['faces'][:, z]] = True
+
+C = {
+        'numFaces': VTPSurf['faces'].shape[1],
+        'numVertices': VTPSurf['vertices'].shape[1],
+        'values': numpy.single(VertexCortexMask)
+    }
+
+#C['values'] = VTPUtils.vertexRegionId(S['faces'], FaceCortexMask)
+
+freesurfer.writeCurv(C, args[1])
+
+

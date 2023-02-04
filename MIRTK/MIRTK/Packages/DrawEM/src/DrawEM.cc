@@ -825,7 +825,11 @@ void DrawEM::huiPVCorrection(bool changePosterior){
     cc.Output(&outscc);
     cc.Run();
 
-
+    
+    // wmvol, so for each CSF component i csfneighborswm[i] is the number of WM voxels bordering that component
+    // csfneighborswm, so for CSF each component i csfneighborswm[i] is the number of WM voxels bordering that component
+    // csfneighbors, so for CSF each component i csfneighborswm[i] is the number of voxels bordering that component
+    
     Array<int> csfneighborswm(csfcomps);
     Array<int> csfneighbors(csfcomps);
     Array<int> csfneighborslven(csfcomps);
@@ -835,6 +839,7 @@ void DrawEM::huiPVCorrection(bool changePosterior){
     }
 
 
+    // wmvol is simply a histogram of WM components
     Array<int> wmvol(wmcomps);
     for(int i=0;i<wmcomps;i++) wmvol[i]=0;
 
@@ -853,7 +858,7 @@ void DrawEM::huiPVCorrection(bool changePosterior){
 
                 comp= csfscc.Get(x,y,z)-1;
 
-
+                // this ignores the largest CSF component
                 if (comp > 0) {
                     int lx = max(x-1,0);
                     int rx = min(x+1, _input.GetX()-1 );

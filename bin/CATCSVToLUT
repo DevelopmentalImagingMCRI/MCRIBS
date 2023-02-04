@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+
+import pandas
+import sys
+import os
+
+if len(sys.argv) < 3:
+    print(sys.argv[0] + " <csv> <lut>")
+    quit()
+
+DF = pandas.read_table(sys.argv[1], sep=';', header=0)
+
+if 'ROIcolor' not in DF.columns:
+    quit()
+
+DF['R'] = 0
+DF['G'] = 0
+DF['B'] = 0
+DF['A'] = 0
+
+S = DF.ROIcolor.str.split(' ')
+
+for z in range(len(S)):
+    DF.loc[z, 'R'] = S[z][0]
+    DF.loc[z, 'G'] = S[z][1]
+    DF.loc[z, 'B'] = S[z][2]
+DF['ROIname'] = DF['ROIname'].str.replace(' ', '_')
+
+DF = DF.loc[:, ['ROIid', 'ROIname', 'R', 'G', 'B', 'A']]
+DF.to_csv(sys.argv[2], sep="\t", index=False, header=False)

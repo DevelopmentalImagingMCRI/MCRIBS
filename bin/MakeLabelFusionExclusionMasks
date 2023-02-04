@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import getopt
+
+import scipy.ndimage
+import scipy.cluster.vq
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+
+
+def largestComponent(BW):
+    if not numpy.any(BW):
+        return BW
+    else:
+        L, numLabels = scipy.ndimage.label(BW)
+        H = numpy.bincount(L[L > 0])
+        return (L == numpy.argmax(H))
+
+
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['largeventricles'])
+
+if len(args) != 1:
+        print("The number of arguments must be 1")
+        print(sys.argv[0] + " <subjid>")
+        exit()
+
+verbose = False
+for o, a in opts:
+        if o == '-v':
+                verbose = True
+
+
+# makes a CSF mask around the subcortical grey and ventricles
+
+subjID = args[0]
+TissueSegDir = os.environ['TISSUESEGDIR']
+
+T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore.nii.gz"))
+T2IMG = T2NII.get_fdata()
+
+DKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_all_dkt_majority.nii.gz"))
+DKTIMG = numpy.int16(DKTNII.get_fdata())
+
+BrainmaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
+BrainmaskIMG = (BrainmaskNII.get_fdata()) > 0
+
+GMSEGLHNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep_lh.nii.gz"))
+GMSEGLHIMG = (GMSEGLHNII.get_fdata() > 0)
+GMSEGRHNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep_rh.nii.gz"))
+GMSEGRHIMG = (GMSEGRHNII.get_fdata() > 0)
+
+GMSEGIMG = numpy.logical_or(GMSEGLHIMG, GMSEGRHIMG)
+
+del GMSEGLHNII
+del GMSEGLHIMG
+del GMSEGRHNII
+del GMSEGRHIMG
+
+Atropos3NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz"))
+Atropos3IMG = numpy.uint8(Atropos3NII.get_fdata())
+
+# laplacian 3, make the non-brain voxels bright
+
+T = numpy.array(T2IMG)
+T[BrainmaskIMG == 0] = 1000
+
+DarkBandExclude = scipy.ndimage.gaussian_laplace(T, 2) < 0
+
+DarkBandExclude = numpy.logical_and(scipy.ndimage.binary_dilation(GMSEGIMG), DarkBandExclude)
+# voxels that are DarkBandExclude cant be CSF
+# voxels that are DarkBandExclude and not brightest label class cant be WM
+
+# CSF exclude
+# bright voxels attached to the main WM component
+
+# main WM component
+#mainWMComponent = numpy.logical_and(ismember(DKTIMG, [2, 41]), numpy.logical_not(DarkBandExclude))
+
+# WM exclude
+# GM exclude
+
+#L, numLabels = scipy.ndimage.label(Atropos3IMG == 2)
+#overlappingLabels = numpy.unique(L[mainWMComponent])
+
+#WMNotCSF = scipy.ndimage.binary_erosion(ismember(L, overlappingLabels[overlappingLabels > 0]))
+
+# voxels that are DarkBandExclude and not brightest label class cant be WM
+
+# CSF cant be WM or dark band GM
+#excludeCSF = numpy.logical_or(DarkBandExclude, WMNotCSF)
+#excludeCSF = numpy.array(DarkBandExclude)
+# GM cant be 
+#excludeGM = numpy.array(WMNotCSF)
+
+# components of the WM class in the intensity segmentation that overlap with the main WM component cant be CSF
+NewNII = nibabel.Nifti1Image(numpy.uint8(DarkBandExclude), DKTNII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_exclusion_csf.nii.gz"))
+
+#NewNII = nibabel.Nifti1Image(numpy.uint8(excludeGM), DKTNII.affine)
+#nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_exclusion_gm.nii.gz"))
+NewNII = nibabel.Nifti1Image(numpy.uint8(DarkBandExclude), DKTNII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_exclusion_wm.nii.gz"))

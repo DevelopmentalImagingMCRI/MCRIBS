@@ -226,7 +226,7 @@ string ElapsedTimeToString(double t, TimeUnit units = TIME_IN_SECONDS,
 #  ifdef HAVE_TBB
 #    define MIRTK_DEBUG_TIMING(level, section)                                 \
        do {                                                                    \
-         if (debug_time >= level) {                                            \
+       if (debug_time >= level) {                                              \
            ostringstream oss;                                                  \
            oss << section;                                                     \
            PrintElapsedTime(oss.str().c_str(),                                 \

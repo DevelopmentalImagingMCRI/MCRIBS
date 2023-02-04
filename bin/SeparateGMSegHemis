@@ -46,8 +46,8 @@ outIMG = numpy.zeros(GMSegIMG.shape, dtype = numpy.uint8)
 outIMG[numpy.logical_and(LabelFusionLHGMDT < LabelFusionRHGMDT, GMSegIMG)] = 1
 outIMG[numpy.logical_and(LabelFusionLHGMDT >= LabelFusionRHGMDT, GMSegIMG)] = 2
 
-NewNII = nibabel.Nifti1Image(outIMG, LabelFusionNII.affine)
-nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep.nii.gz"))
+#NewNII = nibabel.Nifti1Image(outIMG, LabelFusionNII.affine)
+#nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep.nii.gz"))
 
 NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG == 1), LabelFusionNII.affine)
 nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep_lh.nii.gz"))

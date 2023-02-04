@@ -314,13 +314,13 @@ def main():
     T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore.nii.gz"))
     T2IMG = numpy.single(T2NII.get_fdata())
 
-    # OrigLabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_dkt_antsinit.nii.gz"))
+    # OrigLabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt.nii.gz"))
     # OrigLabelFusionIMG = numpy.int16(OrigLabelFusionNII.get_fdata())
     
     DrawEMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_drawem_alberts_tissueseg.nii.gz"))
     DrawEMIMG = numpy.squeeze(numpy.uint8(DrawEMNII.dataobj))
 
-    LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_dkt_antsinit_edited.nii.gz"))
+    LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
     LabelFusionIMG = numpy.int16(LabelFusionNII.dataobj)
 
     SegmentationGMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
@@ -361,19 +361,14 @@ def main():
     #Atropos3IMG = numpy.uint8(Atropos3NII.get_fdata())
 
     # make a mask of all GM labels, both hemispheres
-    GMMaskIMG = ismember(LabelFusionIMG, [3, 42])
-    GMMaskIMG = numpy.logical_or(GMMaskIMG, numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035))
+    GMMaskIMG = numpy.logical_or(ismember(LabelFusionIMG, [3, 42]), numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035))
     GMMaskIMG = numpy.logical_or(GMMaskIMG, numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035))
 
     # mask of cortical WM
-    WMMaskIMG = ismember(LabelFusionIMG, [2, 41])
-    CSFMaskIMG = (LabelFusionIMG == 24)
+    #WMMaskIMG = ismember(LabelFusionIMG, [2, 41])
+    #CSFMaskIMG = (LabelFusionIMG == 24)
 
     GMMaskIMGClosed = scipy.ndimage.binary_closing(GMMaskIMG, iterations = 3)
-
-    # lateral ventricle, thalamus, caudate, putamen, hippocampus, choroid plexus, amygdala, accumbens, ventralDC
-    LHVoxelsToAdd = ismember(LabelFusionIMG, [4, 9, 28, 11, 12, 13, 17, 31, 18, 26])
-    RHVoxelsToAdd = ismember(LabelFusionIMG, [51, 52, 43, 50, 60, 48, 54, 63, 53, 58])
 
     # intersection between the ribbon WM and the label fusion WM and the subcortical grey
     # we want to find the voxels at the
@@ -393,15 +388,11 @@ def main():
     RibbonWMRHDT = scipy.ndimage.distance_transform_cdt(RibbonIMG != 41)
 
     CloserToWMLHDT = RibbonWMLHDT < RibbonWMRHDT
+    CloserToWMRHDT = numpy.logical_not(CloserToWMLHDT)
     #del RibbonWMLHDT
     #del RibbonWMRHDT
 
-    # there are gaps between the CC and thalamus that we want to add to the WM labels
-    CCAndThalamusIMG = ismember(LabelFusionIMG, [9, 48, 192])
-    CCAndThalamusIMGClosed = scipy.ndimage.binary_closing(CCAndThalamusIMG, iterations = 25)
-    # voxels added by the closing, so the gap between the CC and the thalamus
-    CCAndThalamusIMGToAdd = numpy.logical_and(CCAndThalamusIMGClosed, numpy.logical_not(CCAndThalamusIMG))
-
+    
     #LHVentricleDilated = scipy.ndimage.binary_dilation(LabelFusionIMG == 4, iterations = 10)
     #RHVentricleDilated = scipy.ndimage.binary_dilation(LabelFusionIMG == 43, iterations = 10)
 
@@ -411,18 +402,25 @@ def main():
     # replace the boundary voxels at the ribbon, 3rd ventricle, CC/Thalamus gap with WM labels from the ribbon
     NewLabelFusionIMG = numpy.array(LabelFusionIMG)
     #NewLabelFusionIMG[numpy.logical_and(BoundaryRibbon, CloserToWMLHDT)] = 2
-    #NewLabelFusionIMG[numpy.logical_and(BoundaryRibbon, numpy.logical_not(CloserToWMLHDT))] = 41
+    #NewLabelFusionIMG[numpy.logical_and(BoundaryRibbon, CloserToWMRHDT)] = 41
     NewLabelFusionIMG[numpy.logical_and(LabelFusionIMG == 14, CloserToWMLHDT)] = 2
-    NewLabelFusionIMG[numpy.logical_and(LabelFusionIMG == 14, numpy.logical_not(CloserToWMLHDT))] = 41
+    NewLabelFusionIMG[numpy.logical_and(LabelFusionIMG == 14, CloserToWMRHDT)] = 41
+
+    # there are gaps between the CC and thalamus that we want to add to the WM labels
+    CCAndThalamusIMG = ismember(LabelFusionIMG, [9, 48, 192])
+    CCAndThalamusIMGClosed = scipy.ndimage.binary_closing(CCAndThalamusIMG, iterations = 25)
+    # voxels added by the closing, so the gap between the CC and the thalamus
+    CCAndThalamusIMGToAdd = numpy.logical_and(CCAndThalamusIMGClosed, numpy.logical_not(CCAndThalamusIMG))
+
     NewLabelFusionIMG[numpy.logical_and(CCAndThalamusIMGToAdd, CloserToWMLHDT)] = 2
-    NewLabelFusionIMG[numpy.logical_and(CCAndThalamusIMGToAdd, numpy.logical_not(CloserToWMLHDT))] = 41
+    NewLabelFusionIMG[numpy.logical_and(CCAndThalamusIMGToAdd, CloserToWMRHDT)] = 41
 
     #NewNII = nibabel.Nifti1Image(numpy.uint8(CCAndThalamusIMGToAdd) * 4, LabelFusionNII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_CCAndThalamusIMGToAdd.nii.gz"))
         
     #T = numpy.logical_and(numpy.logical_and(GradLapPosIMG, SegmentationGMIMG), ismember(NewLabelFusionIMG, [2, 41, 24]))
     #NewLabelFusionIMG[numpy.logical_and(T, CloserToWMLHDT)] = 1000
-    #NewLabelFusionIMG[numpy.logical_and(T, numpy.logical_not(CloserToWMLHDT))] = 2000
+    #NewLabelFusionIMG[numpy.logical_and(T, CloserToWMRHDT)] = 2000
     #del T
     # fill in the midline
     # get transformed ribbon
@@ -433,14 +431,14 @@ def main():
     # fill holes on the WM labels
     #RibbonMidlineFillIMGClosed = scipy.ndimage.binary_closing(numpy.logical_or(RibbonMidlineFillIMG, LabelFusionIMG == 192), iterations = 5)
     #NewLabelFusionIMG[numpy.logical_and(RibbonMidlineFillIMGClosed, CloserToWMLHDT)] = 2
-    #NewLabelFusionIMG[numpy.logical_and(RibbonMidlineFillIMGClosed, numpy.logical_not(CloserToWMLHDT))] = 41
+    #NewLabelFusionIMG[numpy.logical_and(RibbonMidlineFillIMGClosed, CloserToWMRHDT)] = 41
 
     #NewLabelFusionIMG[numpy.logical_and(VentToAdd, CloserToWMLHDT)] = 2
-    #NewLabelFusionIMG[numpy.logical_and(VentToAdd, numpy.logical_not(CloserToWMLHDT))] = 41
+    #NewLabelFusionIMG[numpy.logical_and(VentToAdd, CloserToWMRHDT)] = 41
 
-    # replace the subcortical grey structures with WM labels
-    NewLabelFusionIMG[LHVoxelsToAdd] = 2
-    NewLabelFusionIMG[RHVoxelsToAdd] = 41
+    # lateral ventricle, thalamus, caudate, putamen, hippocampus, choroid plexus, amygdala, accumbens, ventralDC
+    NewLabelFusionIMG[ismember(LabelFusionIMG, [4, 9, 28, 11, 12, 13, 17, 31, 18, 26])] = 2
+    NewLabelFusionIMG[ismember(LabelFusionIMG, [51, 52, 43, 50, 60, 48, 54, 63, 53, 58])] = 41
 
     # replace WM labelled regions that have CSF intensity with CSF labels
     # label the brightest class of the 3-class atropos segmentation
@@ -493,7 +491,7 @@ def main():
     # GM voxels near the pericalcarine GM regions and near the laterval ventricles will often get mislabelled as WM
     
 
-    #allDKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'all_dkt_antsinit_to_' + subjID + '.nii.gz'))
+    #allDKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'all_dkt_to_' + subjID + '.nii.gz'))
     #allDKTIMG = numpy.int16(allDKTNII.get_fdata())
     # change to read the transformed volumes individually    
     # only do this if we arent doing large ventricles
@@ -501,7 +499,7 @@ def main():
     #     allDKTIMG = []
     #     for z in range(10):
     #         zStr = str(z + 1).zfill(2)
-    #         curNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'P' + zStr + '_dkt_antsinit_with_skull_label_to_' + subjID + '.nii.gz'))
+    #         curNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'P' + zStr + '_dkt_with_skull_label_to_' + subjID + '.nii.gz'))
     #         allDKTIMG.append(numpy.int16(curNII.get_fdata()))
     #         del curNII
     #     allDKTIMG = numpy.stack(allDKTIMG, axis = 3)
@@ -530,7 +528,7 @@ def main():
     #     T = scipy.ndimage.binary_closing(numpy.logical_or(allLHPericalcarineMask, T), iterations = 2)
         
     #     #NewNII = nibabel.Nifti1Image(numpy.uint8(numpy.logical_and(numpy.logical_and(numpy.logical_not(allLHPericalcarineMask), T), allLHGMNotPericalcarine)), LabelFusionNII.affine)
-    #     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_tt.nii.gz"))
+    #     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_tt.nii.gz"))
 
     #     NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_not(allLHPericalcarineMask), T), allLHGMNotPericalcarine)] = 1000
 
@@ -555,28 +553,28 @@ def main():
     LatVentsDilated = scipy.ndimage.binary_dilation(ismember(LabelFusionIMG, [4, 43]), iterations = 5)
 
     # fill in small gaps between the pericalcarine label and voxels that were changed to 1000 near the lateral ventricles, change to 1000
-    T = ismember(NewLabelFusionIMG, [1021, 1000])
-    S = scipy.ndimage.binary_closing(T, iterations = 2)
-    NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_and(S, numpy.logical_not(T)), ismember(NewLabelFusionIMG, [2, 24])), LatVentsDilated)] = 1000
+    # T = ismember(NewLabelFusionIMG, [1021, 1000])
+    # S = scipy.ndimage.binary_closing(T, iterations = 2)
+    # NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_and(S, numpy.logical_not(T)), ismember(NewLabelFusionIMG, [2, 24])), LatVentsDilated)] = 1000
 
     # fill in small gaps between the pericalcarine label and voxels that were changed to 2000 near the lateral ventricles, change to 2000
-    T = ismember(NewLabelFusionIMG, [2021, 2000])
-    S = scipy.ndimage.binary_closing(T, iterations = 2)
-    NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_and(S, numpy.logical_not(T)), ismember(NewLabelFusionIMG, [41, 24])), LatVentsDilated)] = 2000
+    # T = ismember(NewLabelFusionIMG, [2021, 2000])
+    # S = scipy.ndimage.binary_closing(T, iterations = 2)
+    # NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(numpy.logical_and(S, numpy.logical_not(T)), ismember(NewLabelFusionIMG, [41, 24])), LatVentsDilated)] = 2000
 
     # get the largest component of the LH and RH lateral ventricles
-    LHVentLargest = largestComponent(ismember(LabelFusionIMG, [4, 31]))
-    RHVentLargest = largestComponent(ismember(LabelFusionIMG, [43, 63]))
+    # LHVentLargest = largestComponent(ismember(LabelFusionIMG, [4, 31]))
+    # RHVentLargest = largestComponent(ismember(LabelFusionIMG, [43, 63]))
 
-    #RHVentNotLargest = numpy.logical_and(L > 0, L != numpy.argmax(H))
+    # #RHVentNotLargest = numpy.logical_and(L > 0, L != numpy.argmax(H))
 
-    LHVentLargestDilated = numpy.array(LHVentLargest)
-    for z in range(3):
-        LHVentLargestDilated = numpy.logical_and(scipy.ndimage.binary_dilation(LHVentLargestDilated, iterations = 2), LabelFusionIMG == 2)
+    # LHVentLargestDilated = numpy.array(LHVentLargest)
+    # for z in range(3):
+    #     LHVentLargestDilated = numpy.logical_and(scipy.ndimage.binary_dilation(LHVentLargestDilated, iterations = 2), LabelFusionIMG == 2)
 
-    RHVentLargestDilated = numpy.array(RHVentLargest)
-    for z in range(3):
-        RHVentLargestDilated = numpy.logical_and(scipy.ndimage.binary_dilation(RHVentLargestDilated, iterations = 2), LabelFusionIMG == 41)
+    # RHVentLargestDilated = numpy.array(RHVentLargest)
+    # for z in range(3):
+    #     RHVentLargestDilated = numpy.logical_and(scipy.ndimage.binary_dilation(RHVentLargestDilated, iterations = 2), LabelFusionIMG == 41)
 
     # mask image that is segmentation_gm without voxels near the lateral ventricles
     #RHVentLargestDilated = numpy.logical_or(RHVentLargestDilated, ismember(LabelFusionIMG, [43, 63]))
@@ -620,10 +618,8 @@ def main():
     #    CCIMG = numpy.logical_and(scipy.ndimage.binary_dilation(CCIMG, iterations = 1), numpy.logical_not(GMMaskIMGClosed))
 
     #NewLabelFusionIMG[numpy.logical_and(CCIMG, CloserToWMLHDT)] = 2
-    #NewLabelFusionIMG[numpy.logical_and(CCIMG, numpy.logical_not(CloserToWMLHDT))] = 41
+    #NewLabelFusionIMG[numpy.logical_and(CCIMG, CloserToWMRHDT)] = 41
     ###
-
-    # restore the original CC
 
     # fill holes in the WM labels
     T = scipy.ndimage.binary_fill_holes(NewLabelFusionIMG == 2)
@@ -771,9 +767,9 @@ def main():
         RibbonWMLHDilatedLargest = largestComponent(RibbonWMLHDilated)
         RibbonWMRHDilatedLargest = largestComponent(RibbonWMRHDilated)
         #NewNII = nibabel.Nifti1Image(numpy.uint8(RibbonWMLHDilatedLargest), LabelFusionNII.affine)
-        #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_RibbonWMLHDilatedLargest.nii.gz"))
+        #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_RibbonWMLHDilatedLargest.nii.gz"))
         #NewNII = nibabel.Nifti1Image(numpy.uint8(RibbonWMRHDilatedLargest), LabelFusionNII.affine)
-        #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_RibbonWMRHDilatedLargest.nii.gz"))
+        #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_RibbonWMRHDilatedLargest.nii.gz"))
 
         CSFDilated = scipy.ndimage.binary_dilation(RibbonIMG == 0)
         RibbonBoundary = numpy.logical_and(RibbonWMLHDilatedLargest, RibbonWMRHDilatedLargest)
@@ -802,20 +798,26 @@ def main():
     CSFLHToReplace = CSFReplaceNearMainWM(LabelFusionIMG, T, 2)
     CSFRHToReplace = CSFReplaceNearMainWM(LabelFusionIMG, T, 41)
 
-    T = numpy.zeros_like(NewLabelFusionIMG)
+    T = numpy.zeros(NewLabelFusionIMG.shape, dtype=numpy.uint8)
     T[scipy.ndimage.binary_dilation(CSFLHToReplace)] = 2
     T[scipy.ndimage.binary_dilation(CSFRHToReplace)] = 41
     
+    T[T > 0] = 1
+    NewNII = nibabel.Nifti1Image(T, LabelFusionNII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_csfwmreplace.nii.gz"))
+    print(subjID + ": " + str(numpy.count_nonzero(T)))
+    del T
+    
     NewLabelFusionIMG[CSFLHToReplace] = 2
     NewLabelFusionIMG[CSFRHToReplace] = 41
-    del T
+    
     del CSFLHToReplace
     del CSFRHToReplace
     #NewNII = nibabel.Nifti1Image(numpy.uint8(T), LabelFusionNII.affine)
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_csftoreplace.nii.gz"))
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_csftoreplace.nii.gz"))
 
     #NewNII = nibabel.Nifti1Image(T, LabelFusionNII.affine)
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_csftoreplace.nii.gz"))
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_csftoreplace.nii.gz"))
         
     #RibbonBoundary[RibbonIMG == 0] = 0
     #NewLabelFusionIMG[RibbonBoundary] = RibbonIMG[RibbonBoundary]
@@ -885,7 +887,7 @@ def main():
 
     #NewLabelFusionIMG[RibbonBoundaryDilated] = RibbonIMG[RibbonBoundaryDilated]
     #NewNII = nibabel.Nifti1Image(numpy.uint8(RibbonBoundary), LabelFusionNII.affine)
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_ribbonboundaryclosedlargest.nii.gz"))
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_ribbonboundaryclosedlargest.nii.gz"))
 
 #    MaskToFill = ismember(NewLabelFusionIMG, [2, 1002, 2002, 192, 1010, 2010])
 #    NewNII = nibabel.Nifti1Image(numpy.uint8(MaskToFill), LabelFusionNII.affine)
@@ -906,7 +908,7 @@ def main():
     ThirdVentricleDilated = scipy.ndimage.binary_dilation(LabelFusionIMG == 14, iterations = 2)
 
     NewLabelFusionIMG[numpy.logical_and(ThirdVentricleDilated, CloserToWMLHDT)] = 2
-    NewLabelFusionIMG[numpy.logical_and(ThirdVentricleDilated, numpy.logical_not(CloserToWMLHDT))] = 41
+    NewLabelFusionIMG[numpy.logical_and(ThirdVentricleDilated, CloserToWMRHDT)] = 41
     NewLabelFusionIMG[LabelFusionIMG == 254] = 2
     NewLabelFusionIMG[LabelFusionIMG == 255] = 41
     NewLabelFusionIMG[LabelFusionIMG == 258] = 1000
@@ -943,23 +945,20 @@ def main():
     R = replaceWMToLeftInBetweenAnyLabels(LabelFusionIMG, 28, 60)
     #print(R)
     NewLabelFusionIMG[numpy.logical_and(R, CloserToWMLHDT)] = 2
-    NewLabelFusionIMG[numpy.logical_and(R, numpy.logical_not(CloserToWMLHDT))] = 41
+    NewLabelFusionIMG[numpy.logical_and(R, CloserToWMRHDT)] = 41
     NewLabelFusionIMG[LabelFusionIMG == 28] = 2
     NewLabelFusionIMG[LabelFusionIMG == 60] = 41
 
-    LHVoxelsToAdd = ismember(LabelFusionIMG, [9, 28, 11, 12, 13, 17, 18, 26])
-    RHVoxelsToAdd = ismember(LabelFusionIMG, [51, 52, 50, 60, 48, 54, 53, 58])
-
-    NewLabelFusionIMG[LHVoxelsToAdd] = 2
-    NewLabelFusionIMG[RHVoxelsToAdd] = 41
+    NewLabelFusionIMG[ismember(LabelFusionIMG, [9, 28, 11, 12, 13, 17, 18, 26])] = 2
+    NewLabelFusionIMG[ismember(LabelFusionIMG, [51, 52, 50, 60, 48, 54, 53, 58])] = 41
 
     # NewNII = nibabel.Nifti1Image(NewLabelFusionIMG, LabelFusionNII.affine)
-    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_new2.nii.gz"))
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_new2.nii.gz"))
 
     VentClosed = scipy.ndimage.binary_closing(ismember(NewLabelFusionIMG, [4, 31]), iterations = 25)
     
     NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(VentClosed, CloserToWMLHDT), NewLabelFusionIMG != 4)] = 2
-    NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(VentClosed, numpy.logical_not(CloserToWMLHDT)), NewLabelFusionIMG != 31)] = 41
+    NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(VentClosed, CloserToWMRHDT), NewLabelFusionIMG != 31)] = 41
 
     NewLabelFusionIMG[scipy.ndimage.binary_dilation(LabelFusionIMG == 192)] = 192
 
@@ -969,7 +968,7 @@ def main():
     WMBoundaryClosed = scipy.ndimage.binary_closing(numpy.logical_and(WMRHDilated, WMLHDilated), iterations=5)
 
     #NewNII = nibabel.Nifti1Image(NewLabelFusionIMG, LabelFusionNII.affine)
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_new2.nii.gz"))
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_new2.nii.gz"))
     T = numpy.logical_or(ismember(NewLabelFusionIMG, [2, 31, 41, 4, 192]), WMBoundaryClosed)
     V = scipy.ndimage.binary_fill_holes(T)
     Vadded = numpy.logical_and(V, numpy.logical_not(T))
@@ -977,7 +976,7 @@ def main():
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_V.nii.gz"))
 
     NewLabelFusionIMG[numpy.logical_and(Vadded, CloserToWMLHDT)] = 2
-    NewLabelFusionIMG[numpy.logical_and(Vadded, numpy.logical_not(CloserToWMLHDT))] = 41
+    NewLabelFusionIMG[numpy.logical_and(Vadded, CloserToWMRHDT)] = 41
     
     # do this again to really close off
     WMLHDilated = numpy.logical_and(scipy.ndimage.binary_dilation(NewLabelFusionIMG == 2, iterations=2), numpy.logical_not(GMMaskIMGClosed))
@@ -987,7 +986,7 @@ def main():
     WMBoundaryClosed = scipy.ndimage.binary_erosion(WMBoundaryClosed, iterations=4)
     Vadded = numpy.logical_and(WMBoundaryClosed, ismember(NewLabelFusionIMG, [0, 24]))
     NewLabelFusionIMG[numpy.logical_and(Vadded, CloserToWMLHDT)] = 2
-    NewLabelFusionIMG[numpy.logical_and(Vadded, numpy.logical_not(CloserToWMLHDT))] = 41
+    NewLabelFusionIMG[numpy.logical_and(Vadded, CloserToWMRHDT)] = 41
     
     # restore CC 
     NewLabelFusionIMG[scipy.ndimage.binary_dilation(LabelFusionIMG == 192)] = 192
@@ -1009,7 +1008,7 @@ def main():
     
     # T = numpy.logical_and(LeftDilatedRHWM, RightDilatedRHWM)
     # NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(T, CloserToWMLHDT), numpy.logical_not(ismember(NewLabelFusionIMG, [2, 4])))] = 2
-    # NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(T, numpy.logical_not(CloserToWMLHDT)), numpy.logical_not(ismember(NewLabelFusionIMG, [41, 31])))] = 41
+    # NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(T, CloserToWMRHDT), numpy.logical_not(ismember(NewLabelFusionIMG, [41, 31])))] = 41
     # # NewNII = nibabel.Nifti1Image(numpy.uint8(R), LabelFusionNII.affine)
     # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_R.nii.gz"))
     # NewNII = nibabel.Nifti1Image(numpy.uint8(FF), LabelFusionNII.affine)
@@ -1017,7 +1016,7 @@ def main():
     
     #R = replaceWMToLeftInBetweenAnyLabels(NewLabelFusionIMG, 4, 41)
     #NewLabelFusionIMG[numpy.logical_and(R, CloserToWMLHDT)] = 2
-    #NewLabelFusionIMG[numpy.logical_and(R, numpy.logical_not(CloserToWMLHDT))] = 41
+    #NewLabelFusionIMG[numpy.logical_and(R, CloserToWMRHDT)] = 41
 
     # DrawEM CC method
     #CSFLToReplace = drawEMCSFReplaceWM(LabelFusionIMG, BrainMaskIMG, 24)
@@ -1025,12 +1024,12 @@ def main():
     
 
     # NewNII = nibabel.Nifti1Image(CSFL, LabelFusionNII.affine)
-    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_csfl.nii.gz"))
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_csfl.nii.gz"))
     #NewNII = nibabel.Nifti1Image(ZeroToReplace, LabelFusionNII.affine)
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_zerotoreplace.nii.gz"))
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_zerotoreplace.nii.gz"))
     
     NewLabelFusionIMG[numpy.logical_and(CCAndThalamusIMGToAdd, CloserToWMLHDT)] = 2
-    NewLabelFusionIMG[numpy.logical_and(CCAndThalamusIMGToAdd, numpy.logical_not(CloserToWMLHDT))] = 41
+    NewLabelFusionIMG[numpy.logical_and(CCAndThalamusIMGToAdd, CloserToWMRHDT)] = 41
         
     #G = scipy.ndimage.gaussian_laplace(T2IMG, 5)
     
@@ -1042,13 +1041,14 @@ def main():
     #NewNII = nibabel.Nifti1Image(numpy.uint8(R), LabelFusionNII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_leftdilate3.nii.gz"))
 
+    NewLabelFusionIMG[LabelFusionIMG == 254] = 2
+    NewLabelFusionIMG[LabelFusionIMG == 255] = 41
+    
     NewNII = nibabel.Nifti1Image(NewLabelFusionIMG, LabelFusionNII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions.nii.gz"))
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
 
     LHGMMaskIMG = numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035)
     RHGMMaskIMG = numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035)
-
-    CCMaskIMG = LabelFusionIMG == 192
 
     nDilate = 5
 
@@ -1068,7 +1068,7 @@ def main():
     GMDilatedOverlapIMG = numpy.logical_and(LHGMMaskIMGDilated, RHGMMaskIMGDilated)
 
     allGMClosed = scipy.ndimage.binary_closing(numpy.logical_or(RHGMMaskIMG, LHGMMaskIMG), iterations = 3)
-    CCMaskIMGDilated = numpy.array(CCMaskIMG)
+    CCMaskIMGDilated = numpy.array(LabelFusionIMG == 192)
 
     nDilate = 8
 
@@ -1081,7 +1081,7 @@ def main():
     GMDilatedOverlapIMG[CCMaskIMGDilated] = False
 
     NewNII = nibabel.Nifti1Image(numpy.uint8(GMDilatedOverlapIMG), LabelFusionNII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_interhemispheric.nii.gz"))
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interhemispheric.nii.gz"))
 
     #NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3)), LabelFusionNII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_lh_pericalcarine.nii.gz"))
