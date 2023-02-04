@@ -62,6 +62,7 @@ def main():
     tissueSegArgGroup.add_argument('--largeventricles', help = "Large ventricle options", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--nobspline', help = "Do not use B-Spline in registration step", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--nowmlaplacianexpand', help = "Do not expand WM segmentation using bright regions", required = False, action = 'store_true')
+    tissueSegArgGroup.add_argument('--gmsegcompthreshold', help = "Threshold for GM segmentation connected components (0, 1]", required = False, type = float, default = 0.2)
     tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM', 'MCRIBS'], default = 'MCRIBS')
     tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 
@@ -351,14 +352,17 @@ def main():
             print(" ".join(cmd))
             runCommand(cmd, log_file_name = logFileName)
         elif options.tissuesegmethod == 'MCRIBS':
-            cmd = ["MCRIBTissueSegMCRIBSANTSForRegister", options.subjectid]
+            cmd = ["MCRIBTissueSegMCRIBSANTSForRegister"]
             if options.largeventricles:
                 cmd.append('-largeventricles')
             if options.nobspline:
                 cmd.append('-nobspline')
             if options.nowmlaplacianexpand:
                 cmd.append('-nowmlaplacianexpand')
+            cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
+            cmd.append(options.subjectid)
             print(" ".join(cmd))
+
             runCommand(cmd, log_file_name = logFileName)
         pass
 

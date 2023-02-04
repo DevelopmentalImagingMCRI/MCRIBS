@@ -1,0 +1,21 @@
+#!/bin/bash -x
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+TISSUESEGDIR=TissueSegMCRIBS
+VOLGEOM=$TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore.nii.gz
+VTPExtractSurfs --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/temp/cerebrum-lh.vtp
+VTPExtractSurfs --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/temp/cerebrum-rh.vtp
+
+freeview \
+	-v $VOLGEOM \
+	-v $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz:colormap=lut \
+	-v SurfReconDeformable/$SUBJID/recon/regions.nii.gz:opacity=0.3:colormap=lut \
+	-f SurfReconDeformable/$SUBJID/temp/cerebrum-lh_tkr.surf:edgecolor=red \
+	-f SurfReconDeformable/$SUBJID/temp/cerebrum-rh_tkr.surf:edgecolor=green

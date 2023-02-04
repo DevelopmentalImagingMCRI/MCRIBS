@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import numpy
-
+import pandas
 import os
 import sys
 import struct
@@ -851,3 +851,34 @@ def readICO(order):
     FID.close()
 
     return surface
+
+
+def readLUT(fileName = None, return_as_annot=False):
+    if fileName is None:
+        fileToRead = os.path.join(os.environ['FREESURFER_HOME'], 'FreeSurferColorLUT.txt')
+    else:
+        fileToRead = fileName
+    if not os.path.isfile(fileToRead):
+        return None
+    
+    DF = pandas.read_table(fileToRead, comment='#', names=['IDX', 'Name', 'R', 'G', 'B', 'A'], delim_whitespace=True)
+    if not return_as_annot:
+        return DF
+    else:
+        outDict = {
+            'IDX': numpy.uint32(DF['IDX'].values),
+            'colortable': {
+                'numEntries': DF.shape[0],
+                'orig_tab': fileToRead,
+                'struct_names': DF['Name'].values.tolist(),
+                'table': DF.loc[:, ['R', 'G', 'B', 'A']].values
+            }
+        }
+        outDict['colortable']['labels'] = numpy.uint32(outDict['colortable']['table'][:, 0])
+        outDict['colortable']['labels'] = numpy.bitwise_or(outDict['colortable']['labels'], numpy.left_shift(numpy.uint32(outDict['colortable']['table'][:, 1]), 8))
+        outDict['colortable']['labels'] = numpy.bitwise_or(outDict['colortable']['labels'], numpy.left_shift(numpy.uint32(outDict['colortable']['table'][:, 2]), 16))
+        outDict['colortable']['labels'] = numpy.bitwise_or(outDict['colortable']['labels'], numpy.left_shift(numpy.uint32(outDict['colortable']['table'][:, 3]), 24))
+        
+        #I = numpy.where(numpy.logical_and(DF['IDX'] >= 1000, DF['IDX'] <= 1035))[0]
+        return outDict
+

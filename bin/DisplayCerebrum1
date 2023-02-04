@@ -1,0 +1,18 @@
+#!/bin/bash -x
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+VOLGEOM=TissueSegMCRIBS/${SUBJID}/${SUBJID}_t2w_restore.nii.gz
+
+VTPExtractSurfs --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/temp/cerebrum-1.vtp
+
+freeview \
+	-v $VOLGEOM \
+	-v SurfReconDeformable/$SUBJID/recon/regions.nii.gz:colormap=lut:opacity=0.3 \
+	-f SurfReconDeformable/$SUBJID/temp/cerebrum-1_tkr.surf

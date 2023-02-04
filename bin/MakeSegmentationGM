@@ -121,6 +121,11 @@ def main():
         TissueSegDir = 'TissueSegMCRIBS'
 
     subjID = args[0]
+    
+    try:
+        ConnectedCompThreshold = float(args[1])
+    except ValueError:
+        ConnectedCompThreshold = 0.2
 
     if not os.path.isdir(os.path.join(TissueSegDir, subjID)):
         print("Tissue segmentation directory not found")
@@ -538,7 +543,7 @@ def main():
     outPropsDilated[scipy.ndimage.binary_dilation(ismember(LabelFusionIMG, [17, 18, 53, 54]))] = 0
     outPropsDilated[scipy.ndimage.binary_dilation(ismember(LabelFusionIMG, [4, 31, 43, 63]), iterations=3)] = 0
     #outIMG = numpy.logical_or(M, DrawEMIMG == 2)
-    segmentationGM = outPropsDilated > 0.5
+    segmentationGM = outPropsDilated >= ConnectedCompThreshold
     L, numlabels = scipy.ndimage.label(segmentationGM)
     H = numpy.bincount(L[L > 0])
     segmentationGM = ismember(L, numpy.where(H > 100)[0])

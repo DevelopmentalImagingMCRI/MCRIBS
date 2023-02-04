@@ -52,7 +52,7 @@ def main():
     #RibbonMidlineFillNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_compositereg_ribbon_midlinefill.nii.gz"))
     #RibbonMidlineFillIMG = RibbonMidlineFillNII.get_fdata() > 0
 
-    RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions.nii.gz"))
+    RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
     RegionsIMG = numpy.uint16(RegionsNII.get_fdata())
 
     #BrightMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_dark_wm_bright_gm_to_remove.nii.gz"))
@@ -127,7 +127,7 @@ def main():
         MPlane = -MPlane
 
     #NewNII = nibabel.Nifti1Image(numpy.int16(numpy.sign(MPlane)), T2NII.affine)
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_mplane.nii.gz"))
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_mplane.nii.gz"))
     
     # get principal direction of brainstem
     BrainstemIDX = numpy.where(RegionsIMG == 170)
@@ -172,7 +172,6 @@ def main():
         NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign > 0)] = 2
         NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign <= 0)] = 41
     
-    
     # replace CC with WM labels
     NewRegionsIMG[numpy.logical_and(MPlaneSign > 0, NewRegionsIMG == 192)] = 2
     NewRegionsIMG[numpy.logical_and(MPlaneSign <= 0, NewRegionsIMG == 192)] = 41
@@ -198,8 +197,8 @@ def main():
     T = numpy.zeros_like(NewRegionsIMG)
     T[LHWMToAdd] = 2
     T[RHWMToAdd] = 41
-    NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_toadd.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_toadd.nii.gz"))
     
     LHWMDilated = scipy.ndimage.binary_dilation(NewRegionsIMG == 2, iterations = 2)
     RHWMDilated = scipy.ndimage.binary_dilation(NewRegionsIMG == 41, iterations = 2)
@@ -211,7 +210,7 @@ def main():
     NewRegionsIMG[numpy.logical_and(T, numpy.logical_and(MPlaneSign > 0, NewRegionsIMG == 41))] = 2
     NewRegionsIMG[numpy.logical_and(T, numpy.logical_and(MPlaneSign <= 0, NewRegionsIMG == 2))] = 41
     
-    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_beforechange.nii.gz"))
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_beforechange.nii.gz"))
     
     # change from freesurfer labels regions values
     T = numpy.array(NewRegionsIMG)
@@ -232,7 +231,7 @@ def main():
     T[ismember(NewRegionsIMG, [90, 91, 93, 70, 71, 72, 73, 74, 75, 76, 170])] = 4
     T[ismember(NewRegionsIMG, [24, 258, 14, 15, 165])] = 0
     
-    T[NewRegionsIMG == 999] = 1 
+    T[NewRegionsIMG == 999] = 1
     
     LeftWMHoleFilled = scipy.ndimage.binary_fill_holes(T == 3)
     T[LeftWMHoleFilled] = 3
@@ -240,7 +239,7 @@ def main():
     T[RightWMHoleFilled] = 2
     
     NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_brainstem_cut.nii.gz"))
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut.nii.gz"))
     
     # make the file cortical-hull-dmap.nii.gz
     #line 1835 in subdivide_brain_image.cc
@@ -253,12 +252,12 @@ def main():
     
     InteriorMask[numpy.logical_and(T == 1, numpy.logical_and(LeftMPlaneDilated, RightMPlaneDilated))] = False
     NewNII = nibabel.Nifti1Image(numpy.uint8(InteriorMask), T2NII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_interiormask.nii.gz"))
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interiormask.nii.gz"))
     
     CorticalHullDMAP = scipy.ndimage.distance_transform_edt(InteriorMask)
     
     NewNII = nibabel.Nifti1Image(numpy.single(CorticalHullDMAP), T2NII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_corticalhulldmap.nii.gz"))
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_corticalhulldmap.nii.gz"))
 
     #NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3)), LabelFusionNII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_all_lh_pericalcarine.nii.gz"))
