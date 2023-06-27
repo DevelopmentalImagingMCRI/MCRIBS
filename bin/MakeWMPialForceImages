@@ -49,11 +49,18 @@ def main():
     T2IMG = numpy.single(T2NII.dataobj)
     
     LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt.nii.gz"))
+    LabelFusionIMG = numpy.uint16(LabelFusionNII.get_fdata())
+    LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt.nii.gz"))
     LabelFusionIMG = numpy.uint16(LabelFusionNII.dataobj)
 
     LabelFusionEditedNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
     LabelFusionEditedIMG = numpy.uint16(LabelFusionEditedNII.dataobj)
 
+    LabelFusionEditedNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
+    LabelFusionEditedIMG = numpy.uint16(LabelFusionEditedNII.get_fdata())
+    
+    RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
+    RegionsIMG = numpy.uint16(RegionsNII.get_fdata())
     SegmentationGMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
     SegmentationGMIMG = numpy.array(SegmentationGMNII.dataobj) > 0
 
@@ -61,7 +68,7 @@ def main():
     #RegionsIMG = numpy.uint16(RegionsNII.dataobj)
     
     InterhemisphericNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interhemispheric.nii.gz"))
-    InterhemisphericIMG = numpy.array(InterhemisphericNII.dataobj) > 0
+    InterhemisphericIMG = (InterhemisphericNII.get_fdata()) > 0
     
     BrainMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
     BrainMaskIMG = numpy.array(BrainMaskNII.dataobj) > 0

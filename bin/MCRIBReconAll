@@ -63,6 +63,7 @@ def main():
     tissueSegArgGroup.add_argument('--nobspline', help = "Do not use B-Spline in registration step", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--nowmlaplacianexpand', help = "Do not expand WM segmentation using bright regions", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--gmsegcompthreshold', help = "Threshold for GM segmentation connected components (0, 1]", required = False, type = float, default = 0.2)
+    tissueSegArgGroup.add_argument('--gmsegcompthreshold', help = "Threshold for GM segmentation connected components (0, 1]", required = False, type = float, default = 0.2)
     tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM', 'MCRIBS'], default = 'MCRIBS')
     tissueSegArgGroup.add_argument('--parallel', help = "Training images -> Subject images in parallel", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--antsaffineinit', help = "Use antsAffineInitializer rather than COG, use if affine reg fails", required = False, action = 'store_true')
@@ -359,6 +360,7 @@ def main():
             print(" ".join(cmd))
             runCommand(cmd, log_file_name = logFileName)
         elif options.tissuesegmethod == 'MCRIBS':
+            cmd = ["MCRIBTissueSegMCRIBSANTSForRegister"]
             cmd = ["MCRIBTissueSegMCRIBS"]
             if options.largeventricles:
                 cmd.append('-largeventricles')
@@ -366,6 +368,8 @@ def main():
                 cmd.append('-nobspline')
             if options.nowmlaplacianexpand:
                 cmd.append('-nowmlaplacianexpand')
+            cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
+            cmd.append(options.subjectid)
             if options.parallel:
                 cmd.append('-parallel')
             if options.antsaffineinit:

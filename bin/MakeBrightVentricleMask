@@ -53,7 +53,7 @@ GMMaskIMG = numpy.logical_and(GMMaskIMG, numpy.logical_not(ismember(DKTIMG, [102
 
 WMMaskIMG = ismember(DKTIMG, [2, 41])
 #CSFMaskIMG = (DKTIMG == 24)
-#
+
 GMMaskIMGClosed = scipy.ndimage.binary_closing(GMMaskIMG, iterations = 1)
 
 #outMask = ismember(DKTIMG, [4, 9, 28, 11, 12, 13, 31, 18, 51, 52, 43, 50, 60, 48, 54, 63, 14, 192])
@@ -85,8 +85,10 @@ for z in range(20):
 #outMask = numpy.logical_or(LHVoxelsToAdd, RHVoxelsToAdd)
 #outMask = numpy.logical_or(outMask, ismember(DKTIMG, [14, 192]))
 NotGMMaskIMGClosed = numpy.logical_not(GMMaskIMGClosed)
+NotGMMaskIMGClosed = numpy.logical_not(GMMaskIMGClosed)
 
 for z in range(5):
+    outMask = numpy.logical_and(scipy.ndimage.binary_dilation(outMask, iterations = 1), NotGMMaskIMGClosed)
     outMask = numpy.logical_and(scipy.ndimage.binary_dilation(outMask, iterations = 1), NotGMMaskIMGClosed)
 
 WMToAdd = numpy.logical_and(outMask, WMMaskIMG)
@@ -126,9 +128,16 @@ outIMG = numpy.zeros_like(DKTIMG)
 outIMG[outMask] = K + 1
 NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), DKTNII.affine)
 nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans.nii.gz"))
+NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), DKTNII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans.nii.gz"))
 outIMG = (outIMG == 3)
 
+
 HippoClosed = scipy.ndimage.binary_closing(ismember(DKTIMG, [17, 53]), iterations = 3)
+
+T = numpy.logical_or(HippoClosed, AmygDilatedMask)
+outIMG = numpy.logical_and(outIMG, numpy.logical_not(T))
+del T
 
 T = numpy.logical_or(HippoClosed, AmygDilatedMask)
 outIMG = numpy.logical_and(outIMG, numpy.logical_not(T))

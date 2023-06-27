@@ -5,6 +5,7 @@ i=$1
 P=`pwd`
 
 if [ ! -f "$TISSUESEGDIR/$SUBJID/P${i}_dkt_with_skull_label_to_$SUBJID.nii.gz" ]
+if [ ! -f "$TISSUESEGDIR/$SUBJID/P${i}_dkt_with_skull_label_to_$SUBJID.nii.gz" ]
 then
 
 	if [ -f "T2NeckCroppedIsotropic/${SUBJID}_manual_latvent.nii.gz" ]
@@ -148,6 +149,7 @@ then
 		--transform $TISSUESEGDIR/$SUBJID/P${i}_to_${SUBJID}_reg0GenericAffine.mat \
 		--interpolation Linear \
 		--output-data-type short \
+		--output $TISSUESEGDIR/$SUBJID/P${i}_t2_to_$SUBJID.nii.gz
 		--output $TISSUESEGDIR/$SUBJID/P${i}_t2_to_$SUBJID.nii.gz
 
 	# antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/P${i}_t2.nii.gz \
