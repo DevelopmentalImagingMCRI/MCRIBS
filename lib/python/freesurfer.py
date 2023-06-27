@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 
 import numpy
-
+import pandas
 import os
 import sys
 import struct
-
+from collections import OrderedDict
+import nibabel
 import copy
 
 surfaceMagicNumber = b'\xff\xff\xfe'
@@ -302,7 +303,79 @@ import subprocess
 import tempfile
 import shutil
 
-def writeSurf(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = None, convertToTKR = True):
+
+def writeSurf(surfStruct: dict, fileName: str, geometryIMGFileName=None, convertToTKR=False):
+    """Writes the freesurfer surface file with optional volume geometry. TKR conversion if required, assumes input is in world coordinates. Uses nibabel.
+
+    Parameters
+    ----------
+    surfStruct : dict
+        Dict with 'vertices' 3 x NumVertices, 'faces' 3 x NumFaces
+    fileName : str
+        _description_
+    geometryIMGFileName : str, optional
+        Name of file to use for volume geometry, may be NII or MGH. by default None.
+    convertToTKR : bool, optional
+        Converts from world (assumed) to TKR, by default False. Requires volume geometry file specified.
+    """
+    if not isinstance(surfStruct, dict):
+        raise TypeError("surfStruct must be a dict")
+    if not isinstance(fileName, str):
+        raise TypeError("fileName must be a str")
+    if not (isinstance(geometryIMGFileName, str) or geometryIMGFileName is None):
+        raise TypeError("geometryFileName must be a str or None")
+    
+    if 'vertices' not in surfStruct or 'faces' not in surfStruct:
+        raise AttributeError('surfStruct requires vertices and faces')
+    
+    outSurfV = numpy.array(surfStruct['vertices'])
+    if geometryIMGFileName is None:
+        volume_info = None
+    else:
+        geometryIMG = nibabel.load(geometryIMGFileName)
+
+        if isinstance(geometryIMG, nibabel.nifti1.Nifti1Image):
+            RAS2VOX = numpy.linalg.inv(geometryIMG.affine)
+            ds = numpy.array(geometryIMG.header.get_zooms())
+            ns = numpy.array(geometryIMG.shape) * ds / 2.0
+            
+            VOX2RASTKR = numpy.array([
+                [-ds[0],      0,     0,  ns[0]],
+                [     0,      0, ds[2], -ns[2]],
+                [     0, -ds[1],     0,  ns[1]],
+                [     0,      0,     0,      1]
+            ])
+        elif isinstance(geometryIMG, nibabel.freesurfer.mghformat.MGHImage):
+            RAS2VOX = geometryIMG.header.get_ras2vox()
+            VOX2RASTKR = geometryIMG.header.get_vox2ras_tkr()
+
+        volume_info = OrderedDict()
+        # ‘head’ : array of int
+        volume_info['head'] = numpy.array([2, 0, 20], dtype=numpy.int32)
+        # ‘valid’ : str
+        volume_info['valid'] = '1  # volume info valid'
+        # ‘filename’ : str
+        volume_info['filename'] = geometryIMGFileName
+        # ‘volume’ : array of int, shape (3,)
+        volume_info['volume'] = geometryIMG.shape
+        # ‘voxelsize’ : array of float, shape (3,)
+        volume_info['voxelsize'] = geometryIMG.header.get_zooms()
+
+        # ‘xras’ : array of float, shape (3,)
+        volume_info['xras'] = RAS2VOX[0:3, 0] * volume_info['voxelsize'][0]
+        # ‘yras’ : array of float, shape (3,)
+        volume_info['yras'] = RAS2VOX[0:3, 1] * volume_info['voxelsize'][1]
+        # ‘zras’ : array of float, shape (3,)
+        volume_info['zras'] = RAS2VOX[0:3, 2] * volume_info['voxelsize'][2]
+        # ‘cras’ : array of float, shape (3,)
+        volume_info['cras'] = numpy.array(numpy.matrix(numpy.vstack((volume_info['xras'], volume_info['yras'], volume_info['zras']))) * numpy.matrix((numpy.array(geometryIMG.shape) / 2 - RAS2VOX[0:3, 3]) * geometryIMG.header.get_zooms()).T).ravel()
+        if convertToTKR:
+            M = numpy.dot(VOX2RASTKR, RAS2VOX)
+            outSurfV = numpy.dot(M[0:3, 0:3], outSurfV) + numpy.atleast_2d(M[0:3, 3]).T
+    nibabel.freesurfer.io.write_geometry(fileName, outSurfV.T, surfStruct['faces'].T, volume_info=volume_info)
+    
+# deprecated by the nibabel version
+def writeSurfOld(surfStruct, fileName, fileFormat = 'binary', geometryNIIFile = None, convertToTKR = True):
     if not isinstance(surfStruct, dict):
         raise("surfStruct should be a dict")
 
@@ -851,3 +924,34 @@ def readICO(order):
     FID.close()
 
     return surface
+
+
+def readLUT(fileName = None, return_as_annot=False):
+    if fileName is None:
+        fileToRead = os.path.join(os.environ['FREESURFER_HOME'], 'FreeSurferColorLUT.txt')
+    else:
+        fileToRead = fileName
+    if not os.path.isfile(fileToRead):
+        return None
+    
+    DF = pandas.read_table(fileToRead, comment='#', names=['IDX', 'Name', 'R', 'G', 'B', 'A'], delim_whitespace=True)
+    if not return_as_annot:
+        return DF
+    else:
+        outDict = {
+            'IDX': numpy.uint32(DF['IDX'].values),
+            'colortable': {
+                'numEntries': DF.shape[0],
+                'orig_tab': fileToRead,
+                'struct_names': DF['Name'].values.tolist(),
+                'table': DF.loc[:, ['R', 'G', 'B', 'A']].values
+            }
+        }
+        outDict['colortable']['labels'] = numpy.uint32(outDict['colortable']['table'][:, 0])
+        outDict['colortable']['labels'] = numpy.bitwise_or(outDict['colortable']['labels'], numpy.left_shift(numpy.uint32(outDict['colortable']['table'][:, 1]), 8))
+        outDict['colortable']['labels'] = numpy.bitwise_or(outDict['colortable']['labels'], numpy.left_shift(numpy.uint32(outDict['colortable']['table'][:, 2]), 16))
+        outDict['colortable']['labels'] = numpy.bitwise_or(outDict['colortable']['labels'], numpy.left_shift(numpy.uint32(outDict['colortable']['table'][:, 3]), 24))
+        
+        #I = numpy.where(numpy.logical_and(DF['IDX'] >= 1000, DF['IDX'] <= 1035))[0]
+        return outDict
+

@@ -42,19 +42,17 @@ Reader.Update()
 
 inFilePrefix = os.path.splitext(inFileName)[0]
 
-geometryNIIFile = None
+geometryIMGFileName=None
 
 verbose = False
 TKROnly = False
 for o, a in opts:
     if o == '--surf-volgeom':
-        geometryNIIFile = a
+        geometryIMGFileName=a
     if o == '--tkr-only':
         TKROnly = True
     if o == '-v':
         verbose = True
-    if o == '--surf-volgeom':
-            geometryNIIFile = a
 
 if verbose == True:
     print(inFilePrefix)
@@ -85,7 +83,7 @@ if Data.GetNumberOfPolys() > 0:
     #S['faces'] = [[int(D.GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
     #S['faces'] = numpy.stack(S['faces']).T
     S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(D))
-    print(str(Data.GetNumberOfPolys()) + " " + str(S['faces'].size))
+    #print(str(Data.GetNumberOfPolys()) + " " + str(S['faces'].size))
     if S['faces'].size == Data.GetNumberOfPolys() * 5:
         S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 5), 5)).T
         S['faces'] = S['faces'][2:]
@@ -93,14 +91,14 @@ if Data.GetNumberOfPolys() > 0:
         S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
         S['faces'] = S['faces'][1:]
 
-    freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+    freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', geometryIMGFileName=geometryIMGFileName, convertToTKR=True)
     if TKROnly == False:
-        freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
+        freesurfer.writeSurf(S, inFilePrefix + '_world.surf', geometryIMGFileName=None)
 else:
-    S['faces'] = None
-    freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+    S['faces'] = numpy.array([])
+    freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', geometryIMGFileName=geometryIMGFileName, convertToTKR=True)
     if TKROnly == False:
-        freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
+        freesurfer.writeSurf(S, inFilePrefix + '_world.surf', geometryIMGFileName=None)
 
 # now do the point data arrays
 pointData = Data.GetPointData()
@@ -119,9 +117,9 @@ for arrayIDX in range(pointData.GetNumberOfArrays()):
     if curArray.ndim > 1:
         if curArray.shape[1] == 3:
             # these are 3d points, save them as a surface
-            curSurf = {'vertices': None, 'faces': None}
+            curSurf = {'vertices': None, 'faces': numpy.array([])}
             curSurf['vertices'] = numpy.array(curArray).T
-            freesurfer.writeSurf(curSurf, inFilePrefix + '.' + curArrayName + '.surf' , fileFormat = 'binary')
+            freesurfer.writeSurf(curSurf, inFilePrefix + '.' + curArrayName + '.surf')
             del curSurf
     else:
         # this is a scalar for each vertex, save as a curvature file
@@ -140,9 +138,9 @@ for arrayIDX in range(cellData.GetNumberOfArrays()):
     if curArray.ndim > 1:
         if curArray.shape[1] == 3:
             # these are 3d points, save them as a surface
-            curSurf = {'vertices': None, 'faces': None}
+            curSurf = {'vertices': None, 'faces': numpy.array([])}
             curSurf['vertices'] = numpy.array(curArray).T
-            freesurfer.writeSurf(curSurf, inFilePrefix + '.' + curArrayName + '.surf' , fileFormat = 'binary')
+            freesurfer.writeSurf(curSurf, inFilePrefix + '.' + curArrayName + '.surf')
             del curSurf
     else:
         # this is a scalar for each vertex, save as a curvature file

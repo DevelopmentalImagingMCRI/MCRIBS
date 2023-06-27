@@ -46,9 +46,10 @@ def ismember(A, B):
 
 opts, args = getopt.getopt(sys.argv[1:], "vh", [])
 
-if len(args) != 1:
-        print("The number of arguments must be 1")
+if len(args) not in [1, 3]:
+        print("The number of arguments must be 1 or 3")
         print(sys.argv[0] + " <subjid>")
+        print(sys.argv[0] + " <subjid> <label> <output>")
         exit()
 
 largeVentricles = False
@@ -63,6 +64,13 @@ for o, a in opts:
 # makes a CSF mask around the subcortical grey and ventricles
 
 subjID = args[0]
+
+labelImageName = subjID + "_majority_dkt_skullstrip_reg.nii.gz"
+outputImageName = subjID + "_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz"
+if len(args) > 2:
+    labelImageName = args[1]
+    outputImageName = args[2]
+
 try:
     TissueSegDir = os.environ['TISSUESEGDIR']
 except:
@@ -71,7 +79,7 @@ except:
 T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
 T2IMG = numpy.single(T2NII.get_fdata())
 
-DKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_skullstrip_reg.nii.gz"))
+DKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, labelImageName))
 DKTIMG = numpy.int16(DKTNII.get_fdata())
 
 BrainMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
@@ -120,4 +128,4 @@ if numpy.mean(Dices4) > numpy.mean(Dices3):
     KMeans3IMG[BrainMaskIMG] = KMeans3IMG[BrainMaskIMG] - 1
 
 NewNII = nibabel.Nifti1Image(KMeans3IMG, DKTNII.affine)
-nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz"))
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, outputImageName))

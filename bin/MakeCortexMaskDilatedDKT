@@ -39,14 +39,14 @@ except:
 T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
 T2IMG = T2NII.get_fdata()
 
-LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_dkt_antsinit_orig.nii.gz"))
+LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_orig.nii.gz"))
 LabelFusionIMG = numpy.int16(LabelFusionNII.get_fdata())
 
 #InternalVTP = VTPUtils.readVTPSurf(os.path.join('SurfReconDeformable', subjID, 'temp',
 
 #if not os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'):
 #    quit()
-#subprocess.call(['project-onto-surface', os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'), os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3-labelfusionimage_dkt.vtp'), '-labels', os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_dkt_antsinit_edited.nii.gz"), '-dilation-radius', str(1), '-fill', 'False', '-name', 'DKTLabels'])
+#subprocess.call(['project-onto-surface', os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'), os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3-labelfusion_dkt.vtp'), '-labels', os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"), '-dilation-radius', str(1), '-fill', 'False', '-name', 'DKTLabels'])
 
 VTPFileName = os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-2.vtp')
 

@@ -35,7 +35,7 @@ except:
 T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
 T2IMG = T2NII.get_fdata()
 
-LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions.nii.gz"))
+LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
 LabelFusionIMG = numpy.uint16(LabelFusionNII.get_fdata())
 
 Atropos3NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz"))

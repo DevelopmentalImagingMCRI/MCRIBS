@@ -420,7 +420,7 @@ outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
 PialLHV = outS['vertices']
 
 #print("saving pials")
-freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), geometryIMGFileName=geometryNIIFile, convertToTKR=True)
 
 outS = dict()
 outS['faces'] = numpy.array(WhiteRHSurf['faces'])
@@ -439,7 +439,7 @@ outS = replaceUnvisitedVerticesSmooth(outS, outRHMask)
 
 PialRHV = outS['vertices']
 
-freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.pial'), geometryIMGFileName=geometryNIIFile, convertToTKR=True)
 
 # def makeVTKPoints(inV):
     

@@ -121,6 +121,11 @@ def main():
         TissueSegDir = 'TissueSegMCRIBS'
 
     subjID = args[0]
+    
+    try:
+        ConnectedCompThreshold = float(args[1])
+    except ValueError:
+        ConnectedCompThreshold = 0.2
 
     if not os.path.isdir(os.path.join(TissueSegDir, subjID)):
         print("Tissue segmentation directory not found")
@@ -142,7 +147,11 @@ def main():
 
     LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_with_latvent_rings_skullstrip_reg.nii.gz"))
     LabelFusionIMG = numpy.int16(LabelFusionNII.dataobj)
-    
+
+    RibbonNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_ribbon_skullstrip_reg.nii.gz"))
+    RibbonIMG = numpy.int16(LabelFusionNII.dataobj)
+
+        
     #DarkWMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_dark_wm_prob_skullstrip_reg.nii.gz"))
     #DarkWMIMG = numpy.single(DarkWMNII.dataobj)
     
@@ -341,7 +350,7 @@ def main():
     #M = numpy.logical_and(numpy.logical_and(ismember(DrawEMIMG, [2, 3, 8]), LPos), DarkWMIMG <= 0.3)
     M = numpy.logical_and(ismember(DrawEMIMG, [2, 3, 8]), LPos)
 
-    NotRingsEroded = scipy.ndimage.binary_erosion(numpy.logical_not(ismember(LabelFusionIMG, [997, 998, 999])), iterations=2)
+    NotRingsEroded = scipy.ndimage.binary_erosion(numpy.logical_not(ismember(LabelFusionIMG, [159, 160, 999])), iterations=2)
     M = numpy.logical_and(M, NotRingsEroded)
     
     # remove hippocampus and amygdala
@@ -538,10 +547,32 @@ def main():
     outPropsDilated[scipy.ndimage.binary_dilation(ismember(LabelFusionIMG, [17, 18, 53, 54]))] = 0
     outPropsDilated[scipy.ndimage.binary_dilation(ismember(LabelFusionIMG, [4, 31, 43, 63]), iterations=3)] = 0
     #outIMG = numpy.logical_or(M, DrawEMIMG == 2)
-    segmentationGM = outPropsDilated > 0.5
+    segmentationGM = outPropsDilated >= ConnectedCompThreshold
     L, numlabels = scipy.ndimage.label(segmentationGM)
     H = numpy.bincount(L[L > 0])
     segmentationGM = ismember(L, numpy.where(H > 100)[0])
+
+    
+    RibbonWMLHDT = scipy.ndimage.distance_transform_cdt(RibbonIMG != 2)
+    RibbonWMRHDT = scipy.ndimage.distance_transform_cdt(RibbonIMG != 41)
+
+    CloserToWMLHDT = RibbonWMLHDT < RibbonWMRHDT
+
+    LHDrawEMDarkWMMask = numpy.logical_and(DrawEMIMG == 8, CloserToWMLHDT)
+    RHDrawEMDarkWMMask = numpy.logical_and(DrawEMIMG == 8, numpy.logical_not(CloserToWMLHDT))
+
+    LHBarrierIMG = numpy.logical_and(CloserToWMLHDT, DrawEMIMG == 3)
+    RHBarrierIMG = numpy.logical_and(numpy.logical_not(CloserToWMLHDT), DrawEMIMG == 3)
+
+    nDilate = int(numpy.round(15 / T2NII.header.get_zooms()[0]))
+
+    for i in range(nDilate):
+        LHDrawEMDarkWMMask = numpy.logical_and(scipy.ndimage.binary_dilation(LHDrawEMDarkWMMask), LHBarrierIMG)
+        RHDrawEMDarkWMMask = numpy.logical_and(scipy.ndimage.binary_dilation(RHDrawEMDarkWMMask), RHBarrierIMG)
+
+    segmentationGM[LHDrawEMDarkWMMask] = False
+    segmentationGM[RHDrawEMDarkWMMask] = False
+    segmentationGM[DrawEMIMG == 8] = False
 
     NewNII = nibabel.Nifti1Image(numpy.uint8(segmentationGM), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))

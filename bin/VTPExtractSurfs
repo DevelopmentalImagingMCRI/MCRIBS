@@ -25,23 +25,27 @@ inFileName = args[0]
 
 inFilePrefix = os.path.splitext(inFileName)[0]
 
-geometryNIIFile = None
+geometryIMGFileName = None
 
 verbose = False
 TKROnly = False
 for o, a in opts:
     if o == '--surf-volgeom':
-        geometryNIIFile = a
+        geometryIMGFileName = a
     if o == '--tkr-only':
         TKROnly = True
     if o == '-v':
         verbose = True
 
+
 if verbose == True:
     print(inFilePrefix)
 
 S = VTPUtils.readVTPSurf(inFileName)
-freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
-if TKROnly == False:
-   freesurfer.writeSurf(S, inFilePrefix + '_world.surf', fileFormat = 'binary', geometryNIIFile = None)
-    
+#print(S)
+if S is not None:
+    freesurfer.writeSurf(S, inFilePrefix + '_tkr.surf', geometryIMGFileName=geometryIMGFileName, convertToTKR=True)
+    if TKROnly == False:
+       freesurfer.writeSurf(S, inFilePrefix + '_world.surf', geometryIMGFileName=None)
+else:
+    print("Surface file not found: " + inFileName)

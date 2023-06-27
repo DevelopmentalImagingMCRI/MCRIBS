@@ -7,7 +7,7 @@ import os
 import freesurfer
 import nibabel
 
-import scipy.ndimage.morphology
+import scipy.ndimage
 
 if len(sys.argv) < 4:
     print("Incorrect number of arguments")
@@ -18,7 +18,7 @@ if len(sys.argv) < 4:
 inFileName = sys.argv[1]
 
 if not os.path.isfile(inFileName):
-    print("Input file not found")
+    print("Input file not found: " + inFileName)
     quit()
 
 Reader = vtk.vtkXMLPolyDataReader()
@@ -74,7 +74,7 @@ NewMask[(numpy.int64(numpy.floor(TV[0])),  numpy.int64(numpy.ceil(TV[1])),  nump
 NewMask[(numpy.int64( numpy.ceil(TV[0])),  numpy.int64(numpy.ceil(TV[1])),  numpy.int64(numpy.ceil(TV[2])))] = True
 
 # dilate
-NewMask = scipy.ndimage.morphology.binary_dilation(NewMask)
+NewMask = scipy.ndimage.binary_dilation(NewMask)
 
 WMGM = numpy.in1d(NewIMG, numpy.array([2, 3, 41, 42]))
 WMGM = numpy.reshape(WMGM, NewIMG.shape)
@@ -82,7 +82,7 @@ WMGM = numpy.reshape(WMGM, NewIMG.shape)
 NewIMG[numpy.logical_and(NewMask, numpy.logical_not(WMGM))] = ThalamusLabel
 
 CCSEGIMG = numpy.reshape(numpy.in1d(NewIMG, numpy.array([250, 251, 252, 253, 254, 255, 10])), NewIMG.shape)
-CCSEGIMG = scipy.ndimage.morphology.binary_dilation(CCSEGIMG, iterations = 1)
+CCSEGIMG = scipy.ndimage.binary_dilation(CCSEGIMG, iterations = 1)
 NewIMG[CCSEGIMG] = 255
 
 #replace brainstem with thalamus

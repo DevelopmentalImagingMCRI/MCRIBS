@@ -7,7 +7,7 @@ import nibabel
 import getopt
 import scipy.ndimage
 import freesurfer
-import scipy.ndimage.morphology
+import scipy.ndimage
 
 
 def ismember(A, B):
@@ -80,7 +80,7 @@ NewIMG[(numpy.int16( numpy.ceil(RHMidVox[0])), numpy.int16( numpy.ceil(RHMidVox[
 NotGM = numpy.logical_not(numpy.logical_or(ASEGIMG == 3, ASEGIMG == 42))
 NewIMG[NotGM] = 0
 
-DIndices = scipy.ndimage.morphology.distance_transform_edt(NewIMG == 0, sampling=ASEGMGZ.header.get_zooms(), return_distances=False, return_indices=True)
+DIndices = scipy.ndimage.distance_transform_edt(NewIMG == 0, sampling=ASEGMGZ.header.get_zooms(), return_distances=False, return_indices=True)
 
 NewIMG = NewIMG[(DIndices[0], DIndices[1], DIndices[2])]
 del DIndices

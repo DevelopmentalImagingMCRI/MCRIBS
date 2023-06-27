@@ -433,7 +433,9 @@ def recon_neonatal_cortex(config, section, config_vars,
                           verbose=0,
                           use_fast_collision=False,
                           join_tol=1,
-                          threads=0):
+                          threads=0,
+                          debug_white=False,
+                          debug_pial=False):
     """Reconstruct surfaces of neonatal cortex."""
     print("threads = " + str(threads))
     # working directory
@@ -635,7 +637,8 @@ def recon_neonatal_cortex(config, section, config_vars,
                                        subcortex_mask=deep_gray_matter_mask,
                                        cortical_hull_dmap=cortical_hull_dmap,
                                        ventricles_dmap=ventricles_dmap,
-                                       temp=temp_dir, check=check, use_fast_collision=use_fast_collision, opts=white_opts, threads = threads)
+                                       temp=temp_dir, check=check, use_fast_collision=use_fast_collision, opts=white_opts,
+                                       threads=threads, debug_white=debug_white)
 
             # remove initial surface mesh
             #if not with_cerebrum_mesh:
@@ -659,7 +662,7 @@ def recon_neonatal_cortex(config, section, config_vars,
                                                right_name=right_white_mesh,
                                                left_name=left_white_mesh,
                                                temp=temp_dir)
-
+        #quit()
         # reconstruct outer-cortical surface
         if recon_pial:
             require_white_matter_mask(config, section, config_vars, stack, verbose)
@@ -670,7 +673,8 @@ def recon_neonatal_cortex(config, section, config_vars,
                                       wm_mask=wm_mask, gm_mask=gm_mask, brain_mask=brain_mask,
                                       white_mesh=white_mesh, bs_cb_mesh=bs_cb_mesh_2,
                                       outside_white_mesh=pial_outside_white_surface,
-                                      temp=temp_dir, check=check, opts=pial_opts, threads = threads)
+                                      temp=temp_dir, check=check, opts=pial_opts, threads=threads,
+                                      debug_pial=debug_pial)
 
             # remove inner-cortical surface
             if not with_white_mesh:
@@ -840,6 +844,10 @@ parser.add_argument('-j', '-jointol', '--jointol', dest='join_tol', default=1, t
                     help='Join tolerance')
 parser.add_argument('-use-fast-collision', dest='fastcollision', action='store_true',
                     help='Use the fast collision test for white and pial surfaces')
+parser.add_argument('-debug-white', dest='debugwhite', action='store_true',
+                    help='Debug white surfaces')
+parser.add_argument('-debug-pial', dest='debugpial', action='store_true',
+                    help='Debug pial surfaces')
 parser.add_argument('-v', '-verbose', '--verbose', action='count', default=0,
                     help='Increase verbosity of output messages')
 parser.add_argument('-d', '-debug', '--debug', action='count', default=0,
@@ -962,8 +970,11 @@ for session in sessions:
                                   verbose=args.verbose,
                                   check=args.check,
                                   join_tol = args.join_tol,
-                                  use_fast_collision = args.fastcollision,
-                                  threads = int(args.threads))
+                                  use_fast_collision=args.fastcollision,
+                                  threads=int(args.threads),
+                                  debug_white=args.debugwhite,
+                                  debug_pial=args.debugpial
+                                  )
     except Exception as e:
         failed += 1
         if args.queue:

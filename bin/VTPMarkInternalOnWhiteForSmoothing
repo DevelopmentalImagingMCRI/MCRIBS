@@ -6,7 +6,6 @@ import sys
 import os
 import nibabel
 import getopt
-import scipy.ndimage.morphology
 
 # append python paths
 P = os.path.realpath(__file__)

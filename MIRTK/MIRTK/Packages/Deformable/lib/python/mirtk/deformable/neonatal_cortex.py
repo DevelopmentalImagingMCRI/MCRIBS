@@ -710,8 +710,8 @@ def deform_mesh(iname, oname=None, temp=None, opts={}, super_debug = True):
             if fname.startswith(fname_prefix):
                 try_remove(os.path.join(temp, fname))
         makedirs(oname)
-        if super_debug == True:
-            opts['debug-interval'] = 5
+        if super_debug:
+            opts['debug-interval'] = 2
             opts['debug'] = 2
         else:
             opts['debug-interval'] = 999 # prevent output files being made, don't need them
@@ -1406,7 +1406,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                         subcortex_labels =[], subcortex_mask =None,
                         ventricles_labels=[], ventricles_mask=None, ventricles_dmap=None,
                         cerebellum_labels=[], cerebellum_mask=None, cerebellum_dmap=None,
-                        temp=None, check=True, use_fast_collision=False, opts={}, threads = 0):
+                        temp=None, check=True, use_fast_collision=False, opts={}, threads=0, debug_white=False):
     """Reconstruct white surface based on WM segmentation and/or WM/cGM image edge distance forces.
 
     By default, the 'distance' weight of the WM segmentation boundary force is zero,
@@ -1670,7 +1670,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                 'min-edge-length',
                 'max-edge-length'
             ])
-        first_white_mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug = False))
+        first_white_mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug=debug_white))
 
         # select voxels that are in bright pericalcarine underneath the surface
         # select connected components of pericalcarine pos image to add to the wm-force image
@@ -1683,7 +1683,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
         subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'SelectBrightPericalcarineFromWhite'), subjectID])
 
         model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force_second.nii.gz'))
-        mesh = push_output(stack, deform_mesh(first_white_mesh, opts=model_opts, super_debug = False))
+        mesh = push_output(stack, deform_mesh(first_white_mesh, opts=model_opts, super_debug=debug_white))
 
         if bs_cb_mesh:
             run('extract-pointset-cells', args=[mesh, mesh], opts=[('where', region_id_array), ('ne', 7)])
@@ -1709,7 +1709,7 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
 def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                        bs_cb_mesh=None, brain_mask=None, remesh=0, outside_white_mesh=True,
                        region_id_array=_region_id_array, cortex_mask_array=_cortex_mask_array,
-                       temp=None, check=True, use_fast_collision=False, opts={}, threads = 0):
+                       temp=None, check=True, use_fast_collision=False, opts={}, threads=0, debug_pial=False):
     """Reconstruct pial surface based on cGM/CSF image edge distance forces.
 
     When the pial surface is not allowed to intersect the white surface mesh
@@ -1864,7 +1864,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                     'min-distance': .1,
                     'min-active': '10%',
                     'delta': .0001
-            }, super_debug = False))
+            }, super_debug = debug_pial))
             if debug == 0:
                 try_remove(init_mesh)
 
@@ -2030,7 +2030,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'min-edge-length',
                 'max-edge-length'
             ])
-        mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug = False))
+        mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug = debug_pial))
         extract_surface(mesh, name, array=region_id_array, labels=[-1, -2, -3, 3, 4, 5, 6])
 
     return name

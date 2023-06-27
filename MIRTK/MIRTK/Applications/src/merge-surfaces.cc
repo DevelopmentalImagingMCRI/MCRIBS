@@ -347,7 +347,7 @@ LabelBoundary(const GreyImage &labels, const UnorderedSet<int> &label_set1, cons
   l1 = begin;
 
   bool is_boundary_voxel;
-  ByteImage boundary_voxels(labels.Attributes());
+  GreyImage boundary_voxels(labels.Attributes());
   for (int vox = 0; vox < nvox; ++vox, ++l1) {
     if (label_set1.find(*l1) != label_set1.end()) {
       is_boundary_voxel = false;
@@ -366,11 +366,14 @@ LabelBoundary(const GreyImage &labels, const UnorderedSet<int> &label_set1, cons
     }
   }
 
-  ConnectedComponents<BytePixel> cc;
+  ConnectedComponents<GreyPixel> cc;
   cc.Input (&boundary_voxels);
   cc.Output(&boundary_voxels);
   cc.Run();
+  // char fnametmp[64];
+  // snprintf(fnametmp, 64, "debug_boundary_voxels.nii.gz");
 
+  // boundary_voxels.Write(fnametmp);
   vtkSmartPointer<vtkPoints> points;
   vtkSmartPointer<vtkCellArray> polys;
   points = vtkSmartPointer<vtkPoints>::New();
@@ -1177,6 +1180,10 @@ bool PrincipalDirections(vtkPointSet * const points, Vector3 dir[3], bool twod =
       covar[r][c] += p[r] * p[c];
     }
   }
+
+  covar[0][0] += 1e-6;
+  covar[1][1] += 1e-6;
+  covar[2][2] += 1e-6;
 
   Vector3       axis[3];
   Array<double> eigval(3);

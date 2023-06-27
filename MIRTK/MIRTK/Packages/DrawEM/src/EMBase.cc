@@ -265,7 +265,7 @@ void EMBase::MStep()
 	//superlabels
   if(_superlabels) {
 		for (k = 0; k < _number_of_tissues; k++) {
-      mi_num_super[_super[k]] +=  mi_num[k];
+      		mi_num_super[_super[k]] +=  mi_num[k];
 			denom_super[_super[k]] += denom[k];
 		}
 		for (k = 0; k < _number_of_tissues; k++) {
@@ -278,7 +278,7 @@ void EMBase::MStep()
 		if (denom[k] != 0) {
 			_mi[k] = mi_num[k] / denom[k];
 		} else {
-      std::cerr << "Division by zero while computing tissue mean!" << std::endl;
+      		std::cerr << "Division by zero while computing tissue mean!" << std::endl;
 			exit(1);
 		}
 	}

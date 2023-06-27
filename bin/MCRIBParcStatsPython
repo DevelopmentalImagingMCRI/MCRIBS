@@ -96,12 +96,13 @@ for Hemi in Hemis:
     outDF = outDF[outDF.StructName != 'ctx-' + Hemi + '-unknown']
     outDF = outDF[outDF.StructName != 'unknown']
 
-    #pd = pandas.DataFrame(columns = outDF.columns)
-    #pd['StructName'] = pandas.Series('Medial_Wall')
-    pd = dict.fromkeys(outDF.columns.names, numpy.nan)
+    pd = pandas.DataFrame.from_dict(dict.fromkeys(outDF.columns, [numpy.nan]))
 
-    pd['StructName'] = 'Medial_Wall'
-    outDF = outDF.append(pd, ignore_index = True)
+    pd['StructName'] = ['Medial_Wall']
+    outDF = pandas.concat((outDF, pd))
+    
+    #outDF = outDF.append(pd, ignore_index = True)
+    
     structsAndLabels = pandas.Series(index = Annot['colortable']['struct_names'], data = Annot['colortable']['labels'])
     #print(structsAndLabels)
     #print(outDF)
@@ -144,5 +145,4 @@ for Hemi in Hemis:
     #for curField in numericFields:
     #    outDF[curField] = outDF[curField].to_numeric()
     outDF = outDF.loc[outDF.NumVert > 0, :]
-    
     outDF.to_csv(os.path.join(SubjectsDir, SubjectID, 'stats', Hemi + "." + Atlas + ".stats"), index = False)
