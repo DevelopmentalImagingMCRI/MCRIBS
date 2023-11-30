@@ -1,0 +1,28 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+TISSUESEGDIR=TissueSegMCRIBS
+VOLGEOM=TissueSegMCRIBS/${SUBJID}/${SUBJID}_t2w_restore.nii.gz
+
+$MCRIBS_HOME/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh SurfReconDeformable/$SUBJID/temp/cerebrum-rh-3.vtp SurfReconDeformable/$SUBJID/temp/cerebrum-rh-3_eval.vtp -v -v -threads `nproc` -collisions 0
+
+VTPExtractAll --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/temp/cerebrum-rh-3_eval.vtp
+
+W=`PialDisplayCollisionVertices SurfReconDeformable/$SUBJID/temp/cerebrum-rh-3_eval.vtp`
+if [ ! -z "$W" ]
+then
+	W=":goto=$W"
+fi
+
+freeview \
+	-v ${TISSUESEGDIR}/$1/${1}_t2w_restore.nii.gz \
+	-v ${TISSUESEGDIR}/$1/${1}_labelfusion_dkt_edited.nii.gz:colormap=lut:opacity=0.3 \
+	-v SurfReconDeformable/$SUBJID/recon/regions.nii.gz \
+	-f SurfReconDeformable/$SUBJID/temp/cerebrum-rh-3_eval_tkr.surf:overlay=SurfReconDeformable/$SUBJID/temp/cerebrum-rh-3_eval.CollisionMask.curv:edgecolor=overlay$W 
