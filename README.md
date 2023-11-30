@@ -58,8 +58,8 @@ docker run \
 
 Where
 
-- <work dir> is the location of your base directory on the host, to be explained later.
-- <freesurfer license> is the location of the Freesurfer 7 license file on the host machine.
+- *work dir*: is the location of your base directory on the host, to be explained later.
+- *freesurfer license*: is the location of the Freesurfer 7 license file on the host machine.
 
 
 # Set up script
