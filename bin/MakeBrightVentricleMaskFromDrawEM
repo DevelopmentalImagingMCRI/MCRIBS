@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import getopt
+
+import scipy.ndimage
+import scipy.cluster.vq
+
+import Utils
+
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", ['largeventricles'])
+
+if len(args) != 1:
+        print("The number of arguments must be 1")
+        print(sys.argv[0] + " <subjid>")
+        exit()
+
+largeVentricles = False
+verbose = False
+for o, a in opts:
+        if o == '--largeventricles':
+                largeVentricles = True
+        if o == '-v':
+                verbose = True
+
+subjID = args[0]
+TissueSegDir = os.environ['TISSUESEGDIR']
+
+T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore.nii.gz"))
+T2IMG = T2NII.get_fdata()
+
+#DKTNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_skullstrip_reg.nii.gz"))
+#DKTIMG = numpy.int16(DKTNII.dataobj)
+
+DKTRingsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_with_latvent_rings_skullstrip_reg.nii.gz"))
+DKTRingsIMG = numpy.int16(DKTRingsNII.dataobj)
+
+DrawEMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_drawem_alberts_tissueseg.nii.gz"))
+DrawEMIMG = numpy.squeeze(numpy.uint8(DrawEMNII.dataobj))
+
+L, numLabels = scipy.ndimage.label(DrawEMIMG == 5)
+H = numpy.bincount(L[L > 0])
+
+LatVentMask = Utils.ismember(DKTRingsIMG, [4, 43, 31, 63])
+LabelsOverlapWithLatVentMask = L[LatVentMask]
+LabelsOverlapWithLatVentMask = numpy.unique(LabelsOverlapWithLatVentMask[LabelsOverlapWithLatVentMask > 0])
+
+#outIMG = numpy.logical_and(Utils.ismember(L, LabelsOverlapWithLatVentMask), numpy.logical_not(Utils.ismember(DKTRingsIMG, [999])))
+outIMG = numpy.logical_and(Utils.ismember(L, LabelsOverlapWithLatVentMask), DKTRingsIMG != 999)
+G = scipy.ndimage.gaussian_laplace(T2IMG, 2) 
+outIMG = numpy.logical_and(outIMG, G < 0)
+NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), T2NII.affine)
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans_class3.nii.gz"))
