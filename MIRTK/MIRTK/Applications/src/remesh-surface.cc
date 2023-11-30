@@ -59,6 +59,8 @@ void PrintHelp(const char *name)
   cout << "  -target <file>" << endl;
   cout << "      Find closest cell points on target surface and use these as new point locations." << endl;
   cout << "      (default: use points of input mesh)" << endl;
+  cout << "  -mask <string>" << endl;
+  cout << "      Name of point data to use for masking." << endl;
   cout << "  -edgelength <float>..." << endl;
   cout << "      Average edge length. (default: [0, inf)" << endl;
   cout << "  -min-edgelength <float>..." << endl;

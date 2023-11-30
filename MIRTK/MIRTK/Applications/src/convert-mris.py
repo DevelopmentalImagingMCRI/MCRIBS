@@ -60,7 +60,7 @@ def convert_mris(input_name, output_name):
   check_call(['mris_convert', input_name, temp_name])
   # get surface RAS translation
   out = check_output(["mris_info", input_name], stderr=STDOUT)
-  m = re.search("c_\(ras\)\s:\s\((-?\d+\.\d+),\s(-?\d+\.\d+),\s(-?\d+\.\d+)\)", out)
+  m = re.search("c_\(ras\)\s:\s\((-?\d+\.\d+),\s(-?\d+\.\d+),\s(-?\d+\.\d+)\)", out.decode('utf-8'))
   if m is None: raise RuntimeError('Could not find c_(ras) coordinates in mris_info output!')
   tx = float(m.group(1))
   ty = float(m.group(2))

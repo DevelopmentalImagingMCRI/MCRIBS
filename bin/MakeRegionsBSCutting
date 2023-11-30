@@ -16,8 +16,8 @@ def largestComponent(BW):
         H = numpy.bincount(L[L > 0])
         return (L == numpy.argmax(H))
 
-def ismember(A, B):
-    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+import Utils
+
 
 def dilateWithMaskBarrier(BW, M, nDilate = 20):
     """
@@ -27,7 +27,7 @@ def dilateWithMaskBarrier(BW, M, nDilate = 20):
     BWDilated = numpy.logical_and(scipy.ndimage.binary_dilation(BW, iterations = nDilate), M)
     L, numLabels = scipy.ndimage.label(BWDilated)
     labelsInOriginal = numpy.unique(L[BW])
-    return ismember(L, labelsInOriginal)
+    return Utils.ismember(L, labelsInOriginal)
 
 if len(sys.argv) < 2:
     print("Usage: " + sys.argv[0] + " <subject id>")
@@ -143,7 +143,7 @@ def main():
     # plane.Center(BoundaryPoints(regions, set1, set2).Centroid());
 
     BrainstemDilated = scipy.ndimage.binary_dilation(RegionsIMG == 170)
-    HemisDilated = scipy.ndimage.binary_dilation(ismember(RegionsIMG, [2, 41]))
+    HemisDilated = scipy.ndimage.binary_dilation(Utils.ismember(RegionsIMG, [2, 41]))
     BrainstemHemiBoundaryIMG = numpy.logical_and(BrainstemDilated, HemisDilated)
     BrainstemHemiBoundaryIDX = numpy.where(BrainstemHemiBoundaryIMG)
     BrainstemHemiBoundaryCoordsVox = numpy.vstack(BrainstemHemiBoundaryIDX)
@@ -172,7 +172,6 @@ def main():
         NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign > 0)] = 2
         NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign <= 0)] = 41
     
-    
     # replace CC with WM labels
     NewRegionsIMG[numpy.logical_and(MPlaneSign > 0, NewRegionsIMG == 192)] = 2
     NewRegionsIMG[numpy.logical_and(MPlaneSign <= 0, NewRegionsIMG == 192)] = 41
@@ -190,16 +189,16 @@ def main():
     
     LHWMToAdd = scipy.ndimage.binary_erosion(LHWMToAdd, iterations=n)
     RHWMToAdd = scipy.ndimage.binary_erosion(RHWMToAdd, iterations=n)
-    LHWMToAdd = numpy.logical_and(LHWMToAdd, ismember(NewRegionsIMG, [0, 24]))
-    RHWMToAdd = numpy.logical_and(RHWMToAdd, ismember(NewRegionsIMG, [0, 24]))
+    LHWMToAdd = numpy.logical_and(LHWMToAdd, Utils.ismember(NewRegionsIMG, [0, 24]))
+    RHWMToAdd = numpy.logical_and(RHWMToAdd, Utils.ismember(NewRegionsIMG, [0, 24]))
     NewRegionsIMG[LHWMToAdd] = 2
     NewRegionsIMG[RHWMToAdd] = 41
 
     T = numpy.zeros_like(NewRegionsIMG)
     T[LHWMToAdd] = 2
     T[RHWMToAdd] = 41
-    NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_toadd.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_toadd.nii.gz"))
     
     LHWMDilated = scipy.ndimage.binary_dilation(NewRegionsIMG == 2, iterations = 2)
     RHWMDilated = scipy.ndimage.binary_dilation(NewRegionsIMG == 41, iterations = 2)
@@ -229,10 +228,10 @@ def main():
     T[NewRegionsIMG == 43] = 2
     T[NewRegionsIMG == 31] = 2
 
-    T[ismember(NewRegionsIMG, [90, 91, 93, 70, 71, 72, 73, 74, 75, 76, 170])] = 4
-    T[ismember(NewRegionsIMG, [24, 258, 14, 15, 165])] = 0
+    T[Utils.ismember(NewRegionsIMG, [90, 91, 93, 70, 71, 72, 73, 74, 75, 76, 170])] = 4
+    T[Utils.ismember(NewRegionsIMG, [24, 258, 14, 15, 165])] = 0
     
-    T[NewRegionsIMG == 999] = 1 
+    T[NewRegionsIMG == 999] = 1
     
     LeftWMHoleFilled = scipy.ndimage.binary_fill_holes(T == 3)
     T[LeftWMHoleFilled] = 3
@@ -241,23 +240,25 @@ def main():
     
     NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut.nii.gz"))
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut.nii.gz"))
     
     # make the file cortical-hull-dmap.nii.gz
     #line 1835 in subdivide_brain_image.cc
 
-    InteriorMask = scipy.ndimage.binary_closing(ismember(T, [1, 2, 3]), iterations = 5)
+    InteriorMask = scipy.ndimage.binary_closing(Utils.ismember(T, [1, 2, 3]), iterations = 5)
     
     # make a cut through the middle
     LeftMPlaneDilated = scipy.ndimage.binary_dilation(MPlaneSign < 0, iterations = 2)
     RightMPlaneDilated = scipy.ndimage.binary_dilation(MPlaneSign > 0, iterations = 2)
     
     InteriorMask[numpy.logical_and(T == 1, numpy.logical_and(LeftMPlaneDilated, RightMPlaneDilated))] = False
-    NewNII = nibabel.Nifti1Image(numpy.uint8(InteriorMask), T2NII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interiormask.nii.gz"))
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(InteriorMask), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interiormask.nii.gz"))
     
     CorticalHullDMAP = scipy.ndimage.distance_transform_edt(InteriorMask)
     
     NewNII = nibabel.Nifti1Image(numpy.single(CorticalHullDMAP), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_corticalhulldmap.nii.gz"))
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_corticalhulldmap.nii.gz"))
 
     #NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3)), LabelFusionNII.affine)

@@ -1178,6 +1178,10 @@ bool PrincipalDirections(vtkPointSet * const points, Vector3 dir[3], bool twod =
     }
   }
 
+  covar[0][0] += 1e-6;
+  covar[1][1] += 1e-6;
+  covar[2][2] += 1e-6;
+
   Vector3       axis[3];
   Array<double> eigval(3);
   covar.EigenSolveSymmetric(eigval.data(), axis);

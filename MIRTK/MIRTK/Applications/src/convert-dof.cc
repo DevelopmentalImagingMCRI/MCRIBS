@@ -2705,6 +2705,7 @@ int main(int argc, char *argv[])
     case Format_MIRTK_BSplineSVFFD:
     case Format_MIRTK_BSplineTDFFD: {
       dof.reset(ReadMIRTK(input_name));
+      //std::cout << "here" << std::endl;
       if (format_in != Format_MIRTK && dof && dof->TypeOfClass() != ToMIRTKTransformationType(format_in)) {
         Warning("Type of input transformation differs from specified -input-format! Ignoring option.");
       }
@@ -2848,6 +2849,19 @@ int main(int argc, char *argv[])
 
     // Dense displacement field or stationary velocity field, respectively
     case Format_WorldDisplacement: {
+      //Matrix I = dof->GetGlobalTransform();
+      // auto mffd = dynamic_cast<MultiLevelFreeFormTransformation *>(dof.get());
+      // const HomogeneousTransformation *lin = dynamic_cast<const HomogeneousTransformation *>(dof.get());
+      // lin = mffd->GetGlobalTransformation();
+      //   Matrix m = lin->GetMatrix();
+
+      // m(0, 0) = 1; m(0, 1) = 0; m(0, 2) = 0; m(0, 3) = 0; 
+      // m(1, 0) = 0; m(1, 1) = 1; m(1, 2) = 0; m(1, 3) = 0; 
+      // m(2, 0) = 0; m(2, 1) = 0; m(2, 2) = 1; m(2, 3) = 0; 
+      // m(3, 0) = 0; m(3, 1) = 0; m(3, 2) = 0; m(3, 3) = 1; 
+      // mffd->GetGlobalTransformation()->PutMatrix(m);
+      // dof.reset(new MultiLevelFreeFormTransformation(*mffd));
+      //dof.GetGlobalTransformation()->PutMatrix
       if (output_name) {
         success = WriteWorldDisplacement(output_name, dof.get(), target_attr, ts);
       } else {
@@ -2855,6 +2869,17 @@ int main(int argc, char *argv[])
       }
     } break;
     case Format_VoxelDisplacement: {
+      // auto mffd = dynamic_cast<MultiLevelFreeFormTransformation *>(dof.get());
+      // const HomogeneousTransformation *lin = dynamic_cast<const HomogeneousTransformation *>(dof.get());
+      // lin = mffd->GetGlobalTransformation();
+      //   Matrix m = lin->GetMatrix();
+
+      // m(0, 0) = 1; m(0, 1) = 0; m(0, 2) = 0; m(0, 3) = 0; 
+      // m(1, 0) = 0; m(1, 1) = 1; m(1, 2) = 0; m(1, 3) = 0; 
+      // m(2, 0) = 0; m(2, 1) = 0; m(2, 2) = 1; m(2, 3) = 0; 
+      // m(3, 0) = 0; m(3, 1) = 0; m(3, 2) = 0; m(3, 3) = 1; 
+      // mffd->GetGlobalTransformation()->PutMatrix(m);
+      // dof.reset(new MultiLevelFreeFormTransformation(*mffd));
       if (output_name) {
         success = WriteVoxelDisplacement(output_name, dof.get(), target_attr, ts);
       } else {

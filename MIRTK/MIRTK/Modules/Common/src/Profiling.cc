@@ -94,6 +94,7 @@ void PrintElapsedTime(const char *section, double t, TimeUnit unit)
   const unsigned int section_width = 64;
   char section_buffer[section_width+1];
   char unit_buffer   [8];
+  /*printf("Elapsed time\n");*/
   snprintf(section_buffer, section_width+1, "%s:", section);
   if (debug_time_unit == TIME_IN_DEFAULT_UNIT) {
     if (unit == TIME_IN_MILLISECONDS) {

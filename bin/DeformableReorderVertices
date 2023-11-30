@@ -178,15 +178,36 @@ else:
     Pial5Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-5_world.surf'))
     Pial6Surf = freesurfer.readSurf(os.path.join(inDir, 'temp', 'pial-6_world.surf'))
 
-print("PialLHSurf verts: " + str(PialLHSurf['vertices'].shape))
-print("WhiteLHSurf verts: " + str(WhiteLHSurf['vertices'].shape))
-print("PialRHSurf verts: " + str(PialRHSurf['vertices'].shape))
-print("WhiteRHSurf verts: " + str(WhiteRHSurf['vertices'].shape))
+#print("PialLHSurf verts: " + str(PialLHSurf['vertices'].shape))
+#print("WhiteLHSurf verts: " + str(WhiteLHSurf['vertices'].shape))
+#print("PialRHSurf verts: " + str(PialRHSurf['vertices'].shape))
+#print("WhiteRHSurf verts: " + str(WhiteRHSurf['vertices'].shape))
 
-print("PialLHSurf faces: " + str(PialLHSurf['faces'].shape))
-print("WhiteLHSurf faces: " + str(WhiteLHSurf['faces'].shape))
-print("PialRHSurf faces: " + str(PialRHSurf['faces'].shape))
-print("WhiteRHSurf faces: " + str(WhiteRHSurf['faces'].shape))
+#print("PialLHSurf faces: " + str(PialLHSurf['faces'].shape))
+#print("WhiteLHSurf faces: " + str(WhiteLHSurf['faces'].shape))
+#print("PialRHSurf faces: " + str(PialRHSurf['faces'].shape))
+#print("WhiteRHSurf faces: " + str(WhiteRHSurf['faces'].shape))
+
+vertsDiffer = False
+if PialLHSurf['vertices'].shape[1] != WhiteLHSurf['vertices'].shape[1]:
+    print("LH vertices differ, writing")
+    vertsDiffer = True
+    
+if PialRHSurf['vertices'].shape[1] != WhiteRHSurf['vertices'].shape[1]:
+    print("RH vertices differ")
+    vertsDiffer = True
+
+if vertsDiffer:
+    quit()
+# if PialLHSurf['faces'].shape[1] != WhiteLHSurf['faces'].shape[1]:
+#     print("LH faces differ, writing")
+#     numpy.savetxt(os.path.join(inDir, 'meshes', 'white-lh-faces.csv'), WhiteLHSurf['faces'].T, fmt='%d', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
+#     numpy.savetxt(os.path.join(inDir, 'meshes', 'pial-lh-faces.csv'), PialLHSurf['faces'].T, fmt='%d', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
+
+# if PialRHSurf['faces'].shape[1] != WhiteRHSurf['faces'].shape[1]:
+#     print("RH faces differ, writing")
+#     numpy.savetxt(os.path.join(inDir, 'meshes', 'white-rh-faces.csv'), WhiteRHSurf['faces'].T, fmt='%d', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
+#     numpy.savetxt(os.path.join(inDir, 'meshes', 'pial-rh-faces.csv'), PialRHSurf['faces'].T, fmt='%d', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
 
 if WhiteInternalSurf is None:
     print("WhiteInternalSurf not found")
@@ -420,7 +441,7 @@ outS = replaceUnvisitedVerticesSmooth(outS, outLHMask)
 PialLHV = outS['vertices']
 
 #print("saving pials")
-freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+freesurfer.writeSurf(outS, os.path.join(outDir, 'lh.pial'), geometryIMGFileName=geometryNIIFile, convertToTKR=True)
 
 outS = dict()
 outS['faces'] = numpy.array(WhiteRHSurf['faces'])
@@ -439,7 +460,7 @@ outS = replaceUnvisitedVerticesSmooth(outS, outRHMask)
 
 PialRHV = outS['vertices']
 
-freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.pial'), fileFormat = 'binary', geometryNIIFile = geometryNIIFile)
+freesurfer.writeSurf(outS, os.path.join(outDir, 'rh.pial'), geometryIMGFileName=geometryNIIFile, convertToTKR=True)
 
 # def makeVTKPoints(inV):
     
