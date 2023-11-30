@@ -10,6 +10,14 @@ MIRTK was downloaded from https://github.com/BioMedIA/MIRTK. A customised versio
 
 # Installation
 
+Check the source code out by
+
+```
+git checkout https://github.com/DevelopmentalImagingMCRI/MCRIBS.git
+cd MCRIBS
+./build.sh
+```
+
 The script build.sh will build ITK, VTK and MIRTK. Install the following dependencies prior to running:
 
 - For VTK
@@ -27,22 +35,43 @@ In centos, do this:
 
 `yum install zlib-devel boost-devel mesa-libGLU-devel libXt-devel python-devel python3-devel tbb-devel eigen3-devel python-contextlib2 python3-contextlib2 python3-imageio python3-numpy python3-scipy python3-pandas python3-numexpr`
 
-The script build.sh will checkout VTK 8.1.0, ITK 5.0.1 and build it.
+The script build.sh will checkout VTK 9.3, ITK 5.3 and build it.
 
-# Setting up
+## Docker version
 
-Assuming you have just executed the `git checkout` command:
+Pull the latest docker image from Docker Hub with the command:
 
-`git checkout https://github.com/DevelopmentalImagingMCRI/MCRIBS.git`
+```
+docker pull developmentalimagingmcri/mcribs:latest
+```
 
-Then depending on the shell you are using source the configuration files as follows:
+Run the software using the following command:
+
+```
+docker run \
+  --rm \
+  -it \
+  --mount type=bind,source=<work dir>,target=/work \
+  --mount type=bind,source=<freesurfer license>,target=/opt/freesurfer-license.txt \
+  developmentalimagingmcri/mcribs:latest MCRIBReconAll ...
+```
+
+Where
+
+- <work dir> is the location of your base directory on the host, to be explained later.
+- <freesurfer license> is the location of the Freesurfer 7 license file on the host machine.
+
+
+# Set up script
+
+Depending on the shell you are using source the configuration files as follows:
 
 - Bash: `. MCRIBS/SetUpMCRIBS.sh`
 - TCSH shell: `source MCRIBS/SetUpMCRIBS.csh`
 
 The main script to run is MCRIBReconAll. To get usage run MCRIBReconAll --help
 
-## Set up
+## Set up your data
 
 Place your raw structural images, for subject `subjid` into subdirectories as follows:  
 
@@ -54,6 +83,7 @@ Place your raw structural images, for subject `subjid` into subdirectories as fo
 There is a wrapper script called `MCRIBReconAll` that runs the pipeline of segmentation, surface extraction. The synopsis of the command is:
 
 `MCRIBReconAll [processing directive] [options] <subject id>`
+
 
 ### Processing directives and options
 
@@ -90,26 +120,3 @@ The following shorthand options may be used:
 
 Other options:
 - -openmp, --openmp nthreads. Use nthreads for multithreading where possible.
-
-## dHCP interoperability
-
-### Import data
-
-This has recently changed, need to update the documentation here.
-
-### Export data
-
-MCRIB data may be exported back to dHCP format using the following command:
-
-`MCRIBDHCPExport <subj id> <dHCP dir>`
-
-The parameter `<subj id>` is the subject id of a subject that has been processed with MCRIBReconAll. The following files are currently converted:
-
- - ?h.white
- - ?h.inflated
- - ?h.pial
- - ?h.sphere
- - ?h.thickness
- - ?h.sulc
- - ?h.curv
- - ?h.aparc+DKTatlas.annot (DKT parcellation)

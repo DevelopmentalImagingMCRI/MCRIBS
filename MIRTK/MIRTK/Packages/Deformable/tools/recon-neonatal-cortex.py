@@ -433,7 +433,9 @@ def recon_neonatal_cortex(config, section, config_vars,
                           verbose=0,
                           use_fast_collision=False,
                           join_tol=1,
-                          threads=0):
+                          threads=0,
+                          debug_white=False,
+                          debug_pial=False):
     """Reconstruct surfaces of neonatal cortex."""
     print("threads = " + str(threads))
     # working directory
@@ -496,6 +498,8 @@ def recon_neonatal_cortex(config, section, config_vars,
         recon_bs_cb_mesh = ((with_bs_cb_mesh or (recon_cerebrum and bs_cb_mesh_1) or (recon_white and bs_cb_mesh_2)) and
                             (force or not os.path.isfile(bs_cb_mesh)))
 
+        #recon_brain = False
+        #recon_white = False
         # the surface reconstruction relies on a resampling of the intensity
         # images to the standard RAS space defined by the regions_mask / brain_mask
         if recon_brain or recon_bs_cb_mesh or recon_cerebrum or recon_white or recon_pial:
@@ -635,12 +639,14 @@ def recon_neonatal_cortex(config, section, config_vars,
                                        subcortex_mask=deep_gray_matter_mask,
                                        cortical_hull_dmap=cortical_hull_dmap,
                                        ventricles_dmap=ventricles_dmap,
-                                       temp=temp_dir, check=check, use_fast_collision=use_fast_collision, opts=white_opts, threads = threads)
+                                       temp=temp_dir, check=check, use_fast_collision=use_fast_collision, opts=white_opts, threads = threads,
+                                       debug_white=debug_white)
 
             # remove initial surface mesh
             #if not with_cerebrum_mesh:
             #    os.remove(cerebrum_mesh)
-
+        #quit()
+        
         # insert internal mesh and cut surface at medial plane
         if with_white_mesh:
             split_white = (cut and (force or not os.path.isfile(right_white_mesh) or not os.path.isfile(left_white_mesh)))
@@ -660,17 +666,60 @@ def recon_neonatal_cortex(config, section, config_vars,
                                                left_name=left_white_mesh,
                                                temp=temp_dir)
 
+        #if debug_white:
+        #    quit()
         # reconstruct outer-cortical surface
         if recon_pial:
             require_white_matter_mask(config, section, config_vars, stack, verbose)
             require_gray_matter_mask(config, section, config_vars, stack, verbose)
             if verbose > 0:
                 print("Reconstructing outer-cortical surface")
-            neoctx.recon_pial_surface(name=pial_mesh, t2w_image=t2w_image,
-                                      wm_mask=wm_mask, gm_mask=gm_mask, brain_mask=brain_mask,
-                                      white_mesh=white_mesh, bs_cb_mesh=bs_cb_mesh_2,
-                                      outside_white_mesh=pial_outside_white_surface,
-                                      temp=temp_dir, check=check, opts=pial_opts, threads = threads)
+            try:
+                neoctx.recon_pial_surface(name=pial_mesh, t2w_image=t2w_image,
+                                        wm_mask=wm_mask, gm_mask=gm_mask, brain_mask=brain_mask,
+                                        white_mesh=white_mesh, bs_cb_mesh=bs_cb_mesh_2,
+                                        outside_white_mesh=pial_outside_white_surface,
+                                        temp=temp_dir, check=check, opts=pial_opts, threads=threads,
+                                        debug_pial=debug_pial, debug_white=debug_white)
+
+            except Exception as e:
+                # rerun white generation with inward push forces, then rerun pial
+
+                neoctx.recon_white_surface_inwards_push(name=os.path.join(temp_dir, 'white-3.vtp'),
+                                       t1w_image=t1w_image, t2w_image=t2w_image,
+                                       wm_mask=wm_mask, gm_mask=gm_mask,
+                                       cortex_mesh=cerebrum_mesh, bs_cb_mesh=bs_cb_mesh_2,
+                                       subcortex_mask=deep_gray_matter_mask,
+                                       cortical_hull_dmap=cortical_hull_dmap,
+                                       ventricles_dmap=ventricles_dmap,
+                                       temp=temp_dir, check=check, use_fast_collision=use_fast_collision, opts=white_opts, threads = threads,
+                                       debug_white=debug_white)
+
+                # resplit
+                if with_white_mesh:
+                    split_white = (cut and (force or not os.path.isfile(right_white_mesh) or not os.path.isfile(left_white_mesh)))
+                    white_prefix, white_ext = os.path.splitext(white_mesh)
+                    white_plus_internal_mesh = white_prefix + '+' + internal_base + white_ext
+                    if (split_white or join_internal_mesh) and (force or not os.path.isfile(white_plus_internal_mesh)):
+                        if verbose > 0:
+                            print("Merging inner-cortical surface with internal mesh")
+                        neoctx.append_surfaces(white_plus_internal_mesh, surfaces=[white_mesh, internal_mesh], merge=True, tol=0)
+                        if not join_internal_mesh:
+                            neoctx.push_output(stack, white_plus_internal_mesh)
+                    if split_white:
+                        if verbose > 0:
+                            print("Cutting inner-cortical surface at medial cutting plane")
+                        neoctx.split_cortical_surfaces(joined_mesh=white_plus_internal_mesh,
+                                                    right_name=right_white_mesh,
+                                                    left_name=left_white_mesh,
+                                                    temp=temp_dir)
+                
+                neoctx.recon_pial_surface(name=pial_mesh, t2w_image=t2w_image,
+                                        wm_mask=wm_mask, gm_mask=gm_mask, brain_mask=brain_mask,
+                                        white_mesh=white_mesh, bs_cb_mesh=bs_cb_mesh_2,
+                                        outside_white_mesh=pial_outside_white_surface,
+                                        temp=temp_dir, check=check, opts=pial_opts, threads=threads,
+                                        debug_pial=debug_pial, debug_white=debug_white)
 
             # remove inner-cortical surface
             if not with_white_mesh:
@@ -844,6 +893,10 @@ parser.add_argument('-v', '-verbose', '--verbose', action='count', default=0,
                     help='Increase verbosity of output messages')
 parser.add_argument('-d', '-debug', '--debug', action='count', default=0,
                     help='Keep/write debug output in temp_dir')
+parser.add_argument('-debugwhite', '--debugwhite', action='store_true',
+                    help='Debug white surface')
+parser.add_argument('-debugpial', '--debugpial', action='store_true',
+                    help='Debug pial surface')
 parser.add_argument('-t', '-threads', '--threads', default=0,
                     help='No. of cores to use for multi-threading')
 parser.add_argument('-q', '-queue', '--queue', default='',
@@ -963,7 +1016,9 @@ for session in sessions:
                                   check=args.check,
                                   join_tol = args.join_tol,
                                   use_fast_collision = args.fastcollision,
-                                  threads = int(args.threads))
+                                  threads=int(args.threads),
+                                  debug_white=args.debugwhite,
+                                  debug_pial=args.debugpial)
     except Exception as e:
         failed += 1
         if args.queue:

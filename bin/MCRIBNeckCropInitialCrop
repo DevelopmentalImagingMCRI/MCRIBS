@@ -79,80 +79,11 @@ else:
         
         outputAffine = NIFTIOrientationTools.applyOrntToNIIAffine(inputNII, inputToRefTransformOrnt)
         
-        #IMGData = numpy.asarray(inputIMG.flatten())
+        #I = numpy.where(inputIMG > 0)
         
-        # clip at the 2% and 98% percentiles
-#        ind = IMGData.argsort()
-#        IMGData = IMGData[ind]
-#
-#        SecondPercentile = IMGData[int(numpy.floor(IMGData.size * 0.02))]
-#        NinetyEightPercentile = IMGData[int(numpy.floor(IMGData.size * 0.98))]
-#        IMGData[IMGData < SecondPercentile] = SecondPercentile
-#        IMGData[IMGData > NinetyEightPercentile] = NinetyEightPercentile
-#        
-#        #convert to floating point
-#        IMGData = IMGData.astype(numpy.double)
-#        # scale to 0 - 255
-#        IMGData = (IMGData - numpy.min(IMGData)) / (numpy.max(IMGData) - numpy.min(IMGData)) * 255
-#        # convert to uint8
-#        IMGData = IMGData.astype(numpy.uint8)
-#
-#        # threshold with otsu
-#        Thresh = otsu(IMGData)
-#        OtsuIMGData = numpy.array(inputIMG)
-#        OtsuIMGData[numpy.where(inputIMG < Thresh)] = 0
-#        OtsuIMGData[numpy.where(inputIMG >= Thresh)] = 1
-#        del IMGData
-#        #save otsu threshold
-#        inputNII.data = OtsuIMGData
-#        outNII = nibabel.Nifti1Image(OtsuIMGData, outputAffine)
-#        nibabel.save(outNII, os.path.join(OutputDir, sys.argv[1] + '_otsu.nii.gz'))
-#
-#        
-#        # retain the biggest conncted component
-#        L, NumLabels = scipy.ndimage.measurements.label(OtsuIMGData)
-#        del OtsuIMGData
-#        T = L.flatten()    
-#        # get areas of the labels
-#        hist, bin_edges = numpy.histogram(T[numpy.where(T > 0)], bins=numpy.arange(1, NumLabels + 1))
-#        MaxLabel = numpy.argmax(hist) + 1
-#        S = numpy.zeros(T.shape)
-#        S[numpy.where(T == MaxLabel)] = 1
-#        del T
-#        S = S.astype(numpy.int16)
-#        S.resize(inputIMG.shape)
-#        
-#        outNII = nibabel.Nifti1Image(inputIMG, outputAffine)
-#        nibabel.save(outNII, os.path.join(OutputDir, sys.argv[1] + '_inputimage.nii.gz'))
-#        outNII = nibabel.Nifti1Image(S, outputAffine)
-#        nibabel.save(outNII, os.path.join(OutputDir, sys.argv[1] + '_maxlabel.nii.gz'))
-#
-#        #When accessing NIfTI image data through NumPy arrays the order of the dimensions is reversed. If
-#        #the x, y, z, t dimensions of a NIfTI image are 64, 64, 32, 456 (as for example reported by nifti_tool),
-#        #the shape of the NumPy array (e.g. as returned by NiftiImage.data) will be: 456, 32, 64, 64.
-#        #This is done to be able to slice the data array much easier in the most common cases. For example,
-#        #if you are interested in a certain volume of a timeseries it is much easier to write data[2] instead of
-#        #    data[:,:,:,2], right?
-#
-#        # find the highest slice
-#        I = numpy.nonzero(S)[2]
-#        #del S
-#        MaxSlice = numpy.max(I)
-#        # go down 180mm from highest slice
-#        SliceDownTwentyCM = int(numpy.floor(MaxSlice - 180 / inputNII.header['pixdim'][3]))
-#        if SliceDownTwentyCM < 0:
-#            SliceDownTwentyCM = 0
-#        #print str(MaxSlice) + " " + str(SliceDownTwentyCM)
-#        # crop and save
-#        #boundingBox = list(inputNII.bbox)
-#        #boundingBox[0] = (SliceDownTwentyCM, boundingBox[0][1])
-#
-        I = numpy.where(inputIMG > 0)
+        #inputIMG = numpy.take(inputIMG, list(range(  numpy.min(I[0]), numpy.max(I[0]) + 1)), axis = 0)
+        #inputIMG = numpy.take(inputIMG, list(range(  numpy.min(I[1]), numpy.max(I[1]) + 1)), axis = 1)
+        # this bit doesnt modify the sform translation as it should, I'm going to outsource it to fslroi
         
-        inputIMG = numpy.take(inputIMG, list(range(  numpy.min(I[0]), numpy.max(I[0]) + 1)), axis = 0)
-        inputIMG = numpy.take(inputIMG, list(range(  numpy.min(I[1]), numpy.max(I[1]) + 1)), axis = 1)
-#        if NoZCropping == False:
- #           inputIMG = numpy.take(inputIMG, list(range(SliceDownTwentyCM, numpy.max(I[2]) + 1)), axis = 2)
-
         OutFileNII = nibabel.Nifti1Image(inputIMG, outputAffine)
         nibabel.save(OutFileNII, os.path.join(OutputDir, sys.argv[1] + '_maxlabel_cropped.nii.gz'))

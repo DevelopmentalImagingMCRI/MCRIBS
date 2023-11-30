@@ -43,6 +43,7 @@ import os
 import re
 import sys
 import subprocess
+import shutil
 
 from contextlib import contextmanager
 try:
@@ -1299,41 +1300,64 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
             surfaces = [right_mesh, left_mesh]
             if bs_cb_mesh and join_bs_cb:
                 surfaces.append(bs_cb_mesh)
-            merge_opts = {
-              'tolerance': join_tol,
-              'snap-tolerance': .1,
-              'smoothing-iterations': 10,
-              'smoothing-lambda': 0.1,
-              'smoothing-remesh-iterations': 3,
-            }
-            merge_opts.update(opts)
 
-            run('merge-surfaces', opts={'input': surfaces, 'output': joined, 'labels': regions, 'source-array': region_id_array_name, 'dividers': True, 'largest': True, 'verbose': 2, 'debug': 0, **merge_opts})
+            # loop through a few choices of join tolerance
+            join_tols = [join_tol, join_tol + 1, join_tol + 2]
 
-            if bs_cb_mesh and join_bs_cb:
+            for cur_join_tol_idx in range(len(join_tols)):
+                merge_opts = {
+                'tolerance': join_tols[cur_join_tol_idx],
+                'snap-tolerance': .1,
+                'smoothing-iterations': 10,
+                'smoothing-lambda': 0.1,
+                'smoothing-remesh-iterations': 3,
+                }
+                merge_opts.update(opts)
+                try:
+                    run('merge-surfaces', opts={'input': surfaces, 'output': joined, 'labels': regions, 'source-array': region_id_array_name, 'dividers': True, 'largest': True, 'verbose': 2, 'debug': 0, **merge_opts})
+                except Exception:
+                    if cur_join_tol_idx < len(join_tols) - 1:
+                        continue
+                    else:
+                        raise Exception('merge-surfaces failure')
+                if bs_cb_mesh and join_bs_cb:
 
-                run('calculate-element-wise', args=[joined], opts=[('cell-data', region_id_array_name),
-                                                                   ('map', (-1, -3), (-2, -1), (-3, -2), (3, 7)),
-                                                                   ('out', joined)])
-            del_mesh_attr(joined, pointdata=region_id_array_name)
-        # check topology of joined surface mesh
-        if check:
-            info = evaluate_surface(joined, mesh=True, topology=True)
-            num_boundaries = get_num_boundaries(info)
-            if num_boundaries != 0:
-                cleaned = push_output(stack, clean_cortical_surface(joined, **clean_kwargs))
-                info = evaluate_surface(cleaned, mesh=True, topology=True, intersections = True)
-                num_boundaries = get_num_boundaries(info)
-                if num_boundaries != 0:
-                    raise Exception('Merged surface is non-closed, no. of boundaries: {}'.format(num_boundaries))
-                joined = cleaned
-            euler = get_euler_characteristic(info)
-            if internal_mesh:
-                if bs_cb_mesh: expect_euler = 4
-                else:          expect_euler = 3
-            else:              expect_euler = 2
-            if euler != expect_euler:
-                raise Exception('Merged surface with dividers has unexpected Euler characteristic: {} (expected {})'.format(euler, expect_euler))
+                    run('calculate-element-wise', args=[joined], opts=[('cell-data', region_id_array_name),
+                                                                    ('map', (-1, -3), (-2, -1), (-3, -2), (3, 7)),
+                                                                    ('out', joined)])
+                del_mesh_attr(joined, pointdata=region_id_array_name)
+                
+                # check topology of joined surface mesh
+                if not check:
+                    break
+                else:
+                    info = evaluate_surface(joined, mesh=True, topology=True)
+                    num_boundaries = get_num_boundaries(info)
+                    if num_boundaries != 0:
+                        cleaned = push_output(stack, clean_cortical_surface(joined, **clean_kwargs))
+                        info = evaluate_surface(cleaned, mesh=True, topology=True, intersections = True)
+                        num_boundaries = get_num_boundaries(info)
+                        if num_boundaries != 0:
+                            if cur_join_tol_idx < len(join_tols) - 1:
+                                print("num_boundaries != 0, for join_tol = " + str(join_tols[cur_join_tol_idx]) + ", trying next join_tol")
+                                continue
+                            else:
+                                raise Exception('Merged surface is non-closed, no. of boundaries: {}'.format(num_boundaries))
+                        joined = cleaned
+                    euler = get_euler_characteristic(info)
+                    if internal_mesh:
+                        if bs_cb_mesh: expect_euler = 4
+                        else:          expect_euler = 3
+                    else:              expect_euler = 2
+                    if euler != expect_euler:
+                        if cur_join_tol_idx < len(join_tols) - 1:
+                            print("euler != expect_euler for join_tol = " + str(join_tols[cur_join_tol_idx]) + ", trying next join_tol")
+                            continue
+                        else:
+                            raise Exception('Merged surface with dividers has unexpected Euler characteristic: {} (expected {})'.format(euler, expect_euler))
+                    else:
+                        # join was successful
+                        break
         # ensure there are no self-intersections of the joined surface mesh
         #quit()
         checked = push_output(stack, nextname(joined))
@@ -1406,7 +1430,327 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                         subcortex_labels =[], subcortex_mask =None,
                         ventricles_labels=[], ventricles_mask=None, ventricles_dmap=None,
                         cerebellum_labels=[], cerebellum_mask=None, cerebellum_dmap=None,
-                        temp=None, check=True, use_fast_collision=False, opts={}, threads = 0):
+                        temp=None, check=True, use_fast_collision=False, opts={}, threads = 0,
+                        debug_white=False):
+    """Reconstruct white surface based on WM segmentation and/or WM/cGM image edge distance forces.
+
+    By default, the 'distance' weight of the WM segmentation boundary force is zero,
+    whereas the 'edge-distance' weight is one, i.e., the inner-cortical surface
+    is reconstructed based on image edge distance forces as external forces only.
+    These weights, and other deform_mesh options, can be overridden by specifying
+    other model parameter values using the opts dictionary.
+
+    This step refines the initial surface mesh. In areas where the image
+    edges are weak, no change of position should be enforced. Otherwise, move
+    the surface points a limited distance from their initial position to a
+    location along the normal direction where the image gradient is stronger.
+    The resulting surface should delinate the WM/cGM interface at least as
+    good as the initial surface mesh, but likely better in many places.
+
+    Attention: Order of arguments may differ from the order of parameter help below!
+               Pass parameter values as keyword argument, e.g., wm_mask='wm.nii.gz'.
+
+    Parameters
+    ----------
+    name : str
+        Path of output surface mesh file.
+    cortex_mesh : str
+        Path of initial cortical surface mesh file. This surface is reconstructed
+        from a given brain segmentation with possible errors such as in particular
+        CSF mislabelled as either WM or GM.
+    bs_cb_mesh : str, optional
+        Path of brainstem plus cerebellum mesh file.
+    cortex_mask_array : str
+        Name of cortex mask cell data array. Only nodes adjacent to only cortical
+        faces are deformed. Non-cortical surface nodes remain unchanged.
+    temp : str
+        Path of temporary working directory. Intermediate files are written to
+        this directory and deleted on exit unless the global `debug` flag is set.
+        When not specified, intermediate files are written to the same directory
+        as the output mesh file, i.e., the directory of `name`.
+    check : bool
+        Check final surface mesh for self-intersections and try to remove these.
+    opts : dict, optional
+        Override default deform_mesh options.
+
+    Parameters of WM boundary distance force
+    ----------------------------------------
+    wm_mask : str
+        Path of binary WM segmentation image file.
+
+    Parameters of image edge distance force
+    ---------------------------------------
+    t1w_image : str, optional
+        Path of T1-weighted intensity image file.
+    t2w_image : str
+        Path of T2-weighted intensity image file.
+    wm_mask : str
+        Path of binary WM segmentation image file.
+    gm_mask : str
+        Path of binary cGM segmentation image file.
+    segmentation : str, optional
+        Structural brain segmentation label image used to extract subcortical
+        structures, ventricles, and cerebellum when structure labels instead
+        of a pre-computed binary mask or structure distance image, respectively,
+        is given. Otherwise, this image path is unused.
+    subcortex_labels : int, list, optional
+        Labels of `segmentation` labels corresponding to subcortical structures.
+        Used to create a binary mask image when no `subcortex_mask` is given.
+    subcortex_mask : str, optional
+        Path of subcortical structures mask file. These structures are excluded
+        from the image foreground such that the image-based edge distance
+        force is not mislead by a WM/dGM edge of a subcortical structure.
+    ventricles_labels : int, list, optional
+        Labels of `segmentation` labels corresponding to lateral ventricles.
+        Used to create a binary mask image when no `ventricles_mask` is given.
+    ventricles_mask : str, optional
+        Path of binary mask image file of lateral ventricles.
+    ventricles_dmap : str, optional
+        Path of distance map computed from lateral ventricles segment.
+    cerebellum_labels : int, list, optional
+        Labels of `segmentation` labels corresponding to cerebellum.
+        Used to create a binary mask image when no `cerebellum_mask` is given.
+    cerebellum_mask : str, optional
+        Path of binary mask image file of cerebellum.
+    cerebellum_dmap : str, optional
+        Path of distance map computed from cerebellum segment.
+    cortical_hull_dmap : str, optional
+        Path of distance image from each voxel to the cortical hull with
+        positive values inside the cortical hull. This image is an optional
+        output of the `subdivide-brain-image` tool.
+
+    Returns
+    -------
+    path : str
+        Absolute path of output surface mesh file.
+
+    """
+
+    default_mask_distance_weight = 0.
+    default_edge_distance_weight = 1.
+
+    tempSplit = temp.split(os.sep)
+    subjectID = tempSplit[-2]
+    
+    use_mask_distance = float(opts.get('distance', default_mask_distance_weight)) > 0.
+    use_edge_distance = float(opts.get('edge-distance', default_edge_distance_weight)) > 0.
+    if not use_mask_distance and not use_edge_distance:
+        raise ValueError("Either intensity edge or segmentation boundary distance force required")
+
+    if debug > 0:
+        assert name, "Output file 'name' required"
+        assert cortex_mesh, "Initial cortical surface mesh required"
+        assert wm_mask, "White matter segmentation mask required"
+        if use_edge_distance:
+            assert t2w_image, "T2-weighted intensity image required"
+            assert gm_mask, "Gray matter segmentation mask required"
+
+    name = os.path.abspath(name)
+    (base, ext) = splitext(name)
+    if not ext:
+        ext  = '.vtp'
+        name = base + ext
+    if not temp:
+        temp = os.path.dirname(name)
+    else:
+        temp = os.path.abspath(temp)
+
+    opts = {k.replace('_', '-'): v for k, v in opts.items()}
+    opts = {k[1:] if k.startswith('-') else k: v for k, v in opts.items()}
+
+    with ExitStack() as stack:
+
+        init_mesh = push_output(stack, nextname(name, temp=temp))
+
+        # optionally, append brainstem plus cerebellum
+        if bs_cb_mesh:
+            append_surfaces(init_mesh, surfaces=[cortex_mesh, bs_cb_mesh], merge=False)
+            cortex_mesh = init_mesh
+
+        # initialize node status
+        status_array = 'InitialStatus'
+        run('copy-pointset-attributes', args=[cortex_mesh, cortex_mesh, init_mesh],
+            opts={'celldata-as-pointdata': [cortex_mask_array, status_array, 'other', 'binary'], 'unanimous': None})
+        run('erode-scalars', args=[init_mesh, init_mesh], opts={'array': status_array, 'iterations': 8})
+
+        # deform surface towards WM/cGM image edges and/or WM segmentation boundary
+        model_opts = {
+            'threads': threads,
+            'distance': default_mask_distance_weight,
+                'distance-measure': 'normal',
+                'distance-threshold': 2.,
+                'distance-max-depth': 5.,
+                'distance-hole-filling': False,
+                'distance-averaging': [4, 2, 1],
+            'edge-distance': default_edge_distance_weight,
+                'edge-distance-max-depth': 5.,
+                'edge-distance-median': 1,
+                'edge-distance-smoothing': 1,
+                'edge-distance-averaging': [4, 2, 1],
+            'curvature': 2.,
+            'gauss-curvature': .5,
+                'gauss-curvature-inside': 1.,
+                'gauss-curvature-outside': .5,
+                'gauss-curvature-minimum': .1,
+                'gauss-curvature-maximum': .2,
+            'repulsion': 4.,
+                'repulsion-distance': .5,
+                'repulsion-width': 1.,
+            'optimizer': 'EulerMethod',
+                'step': .2,
+                'steps': [50, 100],
+                'extrinsic-energy': True,
+                'epsilon': 1e-6,
+                'delta': .01,
+                'min-active': '1%',
+                'reset-status': True,
+                'non-self-intersection': True,
+                'adjacent-collision-test': False,
+                'fast-collision-test': use_fast_collision,
+                'min-width': .1,
+            'remesh': 1,
+                'min-edge-length': .5,
+                'max-edge-length': 1.,
+                'triangle-inversion': True
+        }
+        model_opts.update(opts)
+        if use_mask_distance:
+            #model_opts['implicit-surface'] = push_output(stack, calculate_distance_map(wm_mask, temp=temp))
+            model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force.nii.gz'))
+        else:
+            remove_keys(model_opts, [
+                'distance',
+                'distance-measure',
+                'distance-threshold',
+                'distance-max-depth',
+                'distance-hole-filling'
+            ])
+        if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'second_run')):
+        #    model_opts['distance'] = 5
+            model_opts['distance-max-depth'] = 10.
+            model_opts['edge-distance'] = 0.01
+            model_opts['distance-measure'] = 'minimum'
+            model_opts['distance-threshold'] = 10.
+            
+        if use_edge_distance:
+            model_opts['edge-distance-type'] = 'Neonatal T2-w WM/cGM'
+            model_opts['image'] = t2w_image
+            model_opts['wm-mask'] = wm_mask
+            model_opts['gm-mask'] = gm_mask
+            if t1w_image:
+                model_opts['t1w-image'] = t1w_image
+            if cortical_hull_dmap:
+                model_opts['inner-cortical-distance-image'] = cortical_hull_dmap
+            if (segmentation and ventricles_labels) or ventricles_mask or ventricles_dmap:
+                if not ventricles_dmap:
+                    if not ventricles_mask:
+                        ventricles_mask = os.path.join(temp, 'ventricles-mask.nii.gz')
+                        ventricles_mask = push_output(stack, binarize(name=ventricles_mask, segmentation=segmentation, labels=ventricles_labels))
+                    ventricles_dmap = push_output(stack, calculate_distance_map(ventricles_mask, temp=temp))
+                model_opts['ventricles-distance-image'] = ventricles_dmap
+                del model_opts['ventricles-distance-image']
+            if (segmentation and cerebellum_labels) or cerebellum_mask or cerebellum_dmap:
+                if not cerebellum_dmap:
+                    if not cerebellum_mask:
+                        cerebellum_mask = os.path.join(temp, 'cerebellum-mask.nii.gz')
+                        cerebellum_mask = push_output(stack, binarize(name=cerebellum_mask, segmentation=segmentation, labels=cerebellum_labels))
+                    cerebellum_dmap = push_output(stack, calculate_distance_map(cerebellum_mask, temp=temp))
+                model_opts['cerebellum-distance-image'] = cerebellum_dmap
+            if (segmentation and subcortex_labels) or subcortex_mask:
+                if not subcortex_mask:
+                    subcortex_mask = os.path.join(temp, 'subcortex-mask.nii.gz')
+                    subcortex_mask = push_output(stack, binarize(name=subcortex_mask, segmentation=segmentation, labels=subcortex_labels))
+                mask = os.path.join(temp, os.path.basename(base) + '-foreground.nii.gz')
+                model_opts['mask'] = push_output(stack, white_refinement_mask(mask, subcortex_mask))
+        else:
+            remove_keys(model_opts, [
+                'edge-distance',
+                'edge-distance-type',
+                'edge-distance-max-depth',
+                'edge-distance-median',
+                'edge-distance-smoothing',
+                'edge-distance-averaging'
+            ])
+        if float(model_opts['curvature']) <= 0.:
+            remove_keys(model_opts, [
+                'curvature'
+            ])
+        if float(model_opts['gauss-curvature']) <= 0.:
+            remove_keys(model_opts, [
+                'gauss-curvature',
+                'gauss-curvature-inside',
+                'gauss-curvature-outside',
+                'gauss-curvature-minimum',
+                'gauss-curvature-maximum',
+                'gauss-curvature-action',
+                'negative-gauss-curvature-action',
+                'positive-gauss-curvature-action'
+            ])
+        if float(model_opts['repulsion']) <= 0.:
+            remove_keys(model_opts, [
+                'repulsion',
+                'repulsion-distance',
+                'repulsion-width'
+            ])
+        if int(model_opts['remesh']) <= 0:
+            remove_keys(model_opts, [
+                'remesh',
+                'edge-length',
+                'min-edge-length',
+                'max-edge-length',
+                'triangle-inversion'
+            ])
+        elif 'edge-length' in model_opts:
+            remove_keys(model_opts, [
+                'min-edge-length',
+                'max-edge-length'
+            ])
+        #print(model_opts)
+        first_white_mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug=debug_white))
+
+        # select voxels that are in bright pericalcarine underneath the surface
+        # select connected components of pericalcarine pos image to add to the wm-force image
+        # rerun deform-mesh
+
+        # get the subject id from the temp directory
+        
+        # print("subjectID: " + subjectID)
+        subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformableSelectBrightPericalcarineFromWhite'), subjectID])
+
+        model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force_second.nii.gz'))
+        mesh = push_output(stack, deform_mesh(first_white_mesh, opts=model_opts, super_debug=debug_white))
+
+        if bs_cb_mesh:
+            run('extract-pointset-cells', args=[mesh, mesh], opts=[('where', region_id_array), ('ne', 7)])
+
+        # smooth white surface mesh
+        smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask=status_array))
+
+        # remove intersections if any
+        if check:
+            remove_intersections(smooth, oname=name, mask=status_array)
+
+        # write output mesh
+        #del_mesh_attr(smooth, pointdata='NonInternalMask')
+        del_mesh_attr(smooth, pointdata=status_array)
+
+
+        #$remesh_surface(smooth, name)
+        rename(smooth, name)
+
+    return name
+
+
+
+# ------------------------------------------------------------------------------
+def recon_white_surface_inwards_push(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_mesh=None,
+                        cortex_mask_array=_cortex_mask_array, region_id_array=_region_id_array,
+                        t1w_image=None, cortical_hull_dmap=None, segmentation=None,
+                        subcortex_labels =[], subcortex_mask =None,
+                        ventricles_labels=[], ventricles_mask=None, ventricles_dmap=None,
+                        cerebellum_labels=[], cerebellum_mask=None, cerebellum_dmap=None,
+                        temp=None, check=True, use_fast_collision=False, opts={}, threads = 0,
+                        debug_white=False):
     """Reconstruct white surface based on WM segmentation and/or WM/cGM image edge distance forces.
 
     By default, the 'distance' weight of the WM segmentation boundary force is zero,
@@ -1531,159 +1875,117 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
     opts = {k[1:] if k.startswith('-') else k: v for k, v in opts.items()}
 
     with ExitStack() as stack:
+        
+            # status_array = 'InitialStatus'
+            # # project the mask onto the white surface
+            # project_mask(os.path.join(temp, 'white-3.vtp'),
+            #             os.path.join(temp, 'white-4.vtp'),
+            #             os.path.join(temp, 'pial-5-collision.nii.gz'),
+            #             status_array,
+            #             dilation=2)
+            # #print("default_mask_distance_weight")
+            # #print(default_mask_distance_weight)
+            # model_opts = {
+            #         'threads': threads,
+            #         'distance': 1,
+            #             'distance-measure': 'minimum',
+            #             'distance-threshold': 2.,
+            #             'distance-max-depth': 5.,
+            #             'distance-hole-filling': False,
+            #             'distance-averaging': [4, 2, 1],
+            #         'edge-distance': 0,
+            #             'edge-distance-max-depth': 5.,
+            #             'edge-distance-median': 1,
+            #             'edge-distance-smoothing': 1,
+            #             'edge-distance-averaging': [4, 2, 1],
+            #         # 'curvature': 2,
+            #         # 'gauss-curvature': .5,
+            #         #     'gauss-curvature-inside': 1.,
+            #         #     'gauss-curvature-outside': .5,
+            #         #     'gauss-curvature-minimum': .1,
+            #         #     'gauss-curvature-maximum': .2,
+            #         'optimizer': 'EulerMethod',
+            #             'step': .2,
+            #             'steps': [50, 100],
+            #             'extrinsic-energy': True,
+            #             'epsilon': 1e-6,
+            #             'delta': .01,
+            #             'min-active': '0%',
+            #             'reset-status': True,
+            #             'non-self-intersection': False,
+            #             'adjacent-collision-test': True,
+            #             'fast-collision-test': False,
+            #             'min-width': .1,
+            #         'remesh': 1,
+            #             'min-edge-length': .5,
+            #             'max-edge-length': 1.,
+            #             'triangle-inversion': True
+            #     }
+            # model_opts.update(white_opts)
 
-        init_mesh = push_output(stack, nextname(name, temp=temp))
+            # model_opts['edge-distance-type'] = 'Neonatal T2-w WM/cGM'
+            # model_opts['image'] = t2w_image
+            # model_opts['wm-mask'] = wm_mask
+            # model_opts['gm-mask'] = gm_mask
+            # model_opts['implicit-surface'] = os.path.join(temp, 'wm_force_third.nii.gz')
+            # model_opts['edge-distance'] = 0
+            # print(model_opts)
+            # with ExitStack() as stack:
+            #     first_mesh = push_output(stack, deform_mesh(os.path.join(temp, 'white-4.vtp'), opts=model_opts, super_debug=debug_white))
+            #     quit()
+            #     model_opts = {
+            #         'threads': threads,
+            #         'distance': 1,
+            #             'distance-measure': 'normal',
+            #             'distance-threshold': 2.,
+            #             'distance-max-depth': 5.,
+            #             'distance-hole-filling': False,
+            #             'distance-averaging': [4, 2, 1],
+            #         'edge-distance': 0.1,
+            #             'edge-distance-max-depth': 5.,
+            #             'edge-distance-median': 1,
+            #             'edge-distance-smoothing': 1,
+            #             'edge-distance-averaging': [4, 2, 1],
+            #         'curvature': 2.,
+            #         'gauss-curvature': .5,
+            #             'gauss-curvature-inside': 1.,
+            #             'gauss-curvature-outside': .5,
+            #             'gauss-curvature-minimum': .1,
+            #             'gauss-curvature-maximum': .2,
+            #         'optimizer': 'EulerMethod',
+            #             'step': .2,
+            #             'steps': [50, 100],
+            #             'extrinsic-energy': True,
+            #             'epsilon': 1e-6,
+            #             'delta': .01,
+            #             'min-active': '0%',
+            #             'reset-status': True,
+            #             'non-self-intersection': True,
+            #             'adjacent-collision-test': False,
+            #             'fast-collision-test': False,
+            #             'min-width': .1,
+            #         'remesh': 1,
+            #             'min-edge-length': .5,
+            #             'max-edge-length': 1.,
+            #             'triangle-inversion': True
+            #     }
+            #     model_opts.update(white_opts)
 
-        # optionally, append brainstem plus cerebellum
-        if bs_cb_mesh:
-            append_surfaces(init_mesh, surfaces=[cortex_mesh, bs_cb_mesh], merge=False)
-            cortex_mesh = init_mesh
+            #     remove_keys(model_opts, [
+            #         'distance',
+            #         'distance-measure',
+            #         'distance-threshold',
+            #         'distance-max-depth',
+            #         'distance-hole-filling',
+            #         'implicit-surface'
+            #     ])
+            #     model_opts['edge-distance-type'] = 'Neonatal T2-w WM/cGM'
+            #     model_opts['image'] = t2w_image
+            #     model_opts['wm-mask'] = wm_mask
+            #     model_opts['gm-mask'] = gm_mask
+            #     model_opts['edge-distance'] = 1
+            #     second_mesh = push_output(stack, deform_mesh(first_mesh, opts=model_opts, super_debug=debug_white))
 
-        # initialize node status
-        status_array = 'InitialStatus'
-        run('copy-pointset-attributes', args=[cortex_mesh, cortex_mesh, init_mesh],
-            opts={'celldata-as-pointdata': [cortex_mask_array, status_array, 'other', 'binary'], 'unanimous': None})
-        run('erode-scalars', args=[init_mesh, init_mesh], opts={'array': status_array, 'iterations': 8})
-
-        # deform surface towards WM/cGM image edges and/or WM segmentation boundary
-        model_opts = {
-            'threads': threads,
-            'distance': default_mask_distance_weight,
-                'distance-measure': 'normal',
-                'distance-threshold': 2.,
-                'distance-max-depth': 5.,
-                'distance-hole-filling': False,
-                'distance-averaging': [4, 2, 1],
-            'edge-distance': default_edge_distance_weight,
-                'edge-distance-max-depth': 5.,
-                'edge-distance-median': 1,
-                'edge-distance-smoothing': 1,
-                'edge-distance-averaging': [4, 2, 1],
-            'curvature': 2.,
-            'gauss-curvature': .5,
-                'gauss-curvature-inside': 1.,
-                'gauss-curvature-outside': .5,
-                'gauss-curvature-minimum': .1,
-                'gauss-curvature-maximum': .2,
-            'repulsion': 4.,
-                'repulsion-distance': .5,
-                'repulsion-width': 1.,
-            'optimizer': 'EulerMethod',
-                'step': .2,
-                'steps': [50, 100],
-                'extrinsic-energy': True,
-                'epsilon': 1e-6,
-                'delta': .01,
-                'min-active': '1%',
-                'reset-status': True,
-                'non-self-intersection': True,
-                'adjacent-collision-test': False,
-                'fast-collision-test': use_fast_collision,
-                'min-width': .1,
-            'remesh': 1,
-                'min-edge-length': .5,
-                'max-edge-length': 1.,
-                'triangle-inversion': True
-        }
-        model_opts.update(opts)
-        if use_mask_distance:
-            #model_opts['implicit-surface'] = push_output(stack, calculate_distance_map(wm_mask, temp=temp))
-            model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force.nii.gz'))
-        else:
-            remove_keys(model_opts, [
-                'distance',
-                'distance-measure',
-                'distance-threshold',
-                'distance-max-depth',
-                'distance-hole-filling'
-            ])
-        if use_edge_distance:
-            model_opts['edge-distance-type'] = 'Neonatal T2-w WM/cGM'
-            model_opts['image'] = t2w_image
-            model_opts['wm-mask'] = wm_mask
-            model_opts['gm-mask'] = gm_mask
-            if t1w_image:
-                model_opts['t1w-image'] = t1w_image
-            if cortical_hull_dmap:
-                model_opts['inner-cortical-distance-image'] = cortical_hull_dmap
-            if (segmentation and ventricles_labels) or ventricles_mask or ventricles_dmap:
-                if not ventricles_dmap:
-                    if not ventricles_mask:
-                        ventricles_mask = os.path.join(temp, 'ventricles-mask.nii.gz')
-                        ventricles_mask = push_output(stack, binarize(name=ventricles_mask, segmentation=segmentation, labels=ventricles_labels))
-                    ventricles_dmap = push_output(stack, calculate_distance_map(ventricles_mask, temp=temp))
-                model_opts['ventricles-distance-image'] = ventricles_dmap
-                del model_opts['ventricles-distance-image']
-            if (segmentation and cerebellum_labels) or cerebellum_mask or cerebellum_dmap:
-                if not cerebellum_dmap:
-                    if not cerebellum_mask:
-                        cerebellum_mask = os.path.join(temp, 'cerebellum-mask.nii.gz')
-                        cerebellum_mask = push_output(stack, binarize(name=cerebellum_mask, segmentation=segmentation, labels=cerebellum_labels))
-                    cerebellum_dmap = push_output(stack, calculate_distance_map(cerebellum_mask, temp=temp))
-                model_opts['cerebellum-distance-image'] = cerebellum_dmap
-            if (segmentation and subcortex_labels) or subcortex_mask:
-                if not subcortex_mask:
-                    subcortex_mask = os.path.join(temp, 'subcortex-mask.nii.gz')
-                    subcortex_mask = push_output(stack, binarize(name=subcortex_mask, segmentation=segmentation, labels=subcortex_labels))
-                mask = os.path.join(temp, os.path.basename(base) + '-foreground.nii.gz')
-                model_opts['mask'] = push_output(stack, white_refinement_mask(mask, subcortex_mask))
-        else:
-            remove_keys(model_opts, [
-                'edge-distance',
-                'edge-distance-type',
-                'edge-distance-max-depth',
-                'edge-distance-median',
-                'edge-distance-smoothing',
-                'edge-distance-averaging'
-            ])
-        if float(model_opts['curvature']) <= 0.:
-            remove_keys(model_opts, [
-                'curvature'
-            ])
-        if float(model_opts['gauss-curvature']) <= 0.:
-            remove_keys(model_opts, [
-                'gauss-curvature',
-                'gauss-curvature-inside',
-                'gauss-curvature-outside',
-                'gauss-curvature-minimum',
-                'gauss-curvature-maximum',
-                'gauss-curvature-action',
-                'negative-gauss-curvature-action',
-                'positive-gauss-curvature-action'
-            ])
-        if float(model_opts['repulsion']) <= 0.:
-            remove_keys(model_opts, [
-                'repulsion',
-                'repulsion-distance',
-                'repulsion-width'
-            ])
-        if int(model_opts['remesh']) <= 0:
-            remove_keys(model_opts, [
-                'remesh',
-                'edge-length',
-                'min-edge-length',
-                'max-edge-length',
-                'triangle-inversion'
-            ])
-        elif 'edge-length' in model_opts:
-            remove_keys(model_opts, [
-                'min-edge-length',
-                'max-edge-length'
-            ])
-        first_white_mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug = False))
-
-        # select voxels that are in bright pericalcarine underneath the surface
-        # select connected components of pericalcarine pos image to add to the wm-force image
-        # rerun deform-mesh
-
-        # get the subject id from the temp directory
-        tempSplit = temp.split(os.sep);
-        subjectID = tempSplit[-2]
-        # print("subjectID: " + subjectID)
-        subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'SelectBrightPericalcarineFromWhite'), subjectID])
-
-        model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force_second.nii.gz'))
-        mesh = push_output(stack, deform_mesh(first_white_mesh, opts=model_opts, super_debug = False))
 
         if bs_cb_mesh:
             run('extract-pointset-cells', args=[mesh, mesh], opts=[('where', region_id_array), ('ne', 7)])
@@ -1705,11 +2007,14 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
 
     return name
 
+
+
 # ------------------------------------------------------------------------------
 def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                        bs_cb_mesh=None, brain_mask=None, remesh=0, outside_white_mesh=True,
                        region_id_array=_region_id_array, cortex_mask_array=_cortex_mask_array,
-                       temp=None, check=True, use_fast_collision=False, opts={}, threads = 0):
+                       temp=None, check=True, use_fast_collision=False, opts={}, threads=0,
+                       debug_pial=False, debug_white=False, white_opts={}):
     """Reconstruct pial surface based on cGM/CSF image edge distance forces.
 
     When the pial surface is not allowed to intersect the white surface mesh
@@ -1767,7 +2072,9 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
         Check topology and consistency of intermediate surface meshes (unused).
     opts : dict, optional
         Override default deform_mesh options.
-
+    white_opts : dict, options
+        White matter surface options, used if pial-5 has self-intersections.
+        
     Parameters of cGM boundary distance force
     -----------------------------------------
     gm_mask : str
@@ -1790,12 +2097,16 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
         Absolute path of output surface mesh file.
 
     """
-
+    
+    
     default_mask_distance_weight = 0.
     default_edge_distance_weight = 1.
 
     use_mask_distance = float(opts.get('distance', default_mask_distance_weight)) > 0.
     use_edge_distance = float(opts.get('edge-distance', default_edge_distance_weight)) > 0.
+
+    print("use_mask_distance: " + str(use_mask_distance))
+    print("use_edge_distance: " + str(use_edge_distance))
     if not use_mask_distance and not use_edge_distance:
         raise ValueError("Either intensity edge or segmentation boundary distance force required")
 
@@ -1819,6 +2130,11 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
     opts = {k.replace('_', '-'): v for k, v in opts.items()}
     opts = {k[1:] if k.startswith('-') else k: v for k, v in opts.items()}
 
+    # get the subject id from the temp directory
+    tempSplit = temp.split(os.sep)
+    subjectID = tempSplit[-2]
+    #evaluate_surface(os.path.join(temp, 'pial-5.vtp'), oname=os.path.join(temp, 'pial-5_eval.vtp'), mesh=False, topology=False, intersections=False, collisions=0, opts={})
+    
     with ExitStack() as stack:
 
         mask = push_output(stack, os.path.join(temp, os.path.basename(base) + '-foreground.nii.gz'))
@@ -1864,7 +2180,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                     'min-distance': .1,
                     'min-active': '10%',
                     'delta': .0001
-            }, super_debug = False))
+            }, super_debug=debug_pial))
             if debug == 0:
                 try_remove(init_mesh)
 
@@ -1896,12 +2212,51 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             if debug == 0:
                 try_remove(blended_mesh)
 
+            
             # resolve intersections between white and pial surface if any
             init_mesh = push_output(stack, nextname(cortex_mesh))
-            remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
-            #run('copy-pointset-attributes', args=[cortex_mesh, cortex_mesh, init_mesh], opts={'celldata-as-pointdata': cortex_mask_array, 'unanimous': None})
-            #remove_intersections(init_mesh, init_mesh, mask=cortex_mask_array)
-            #del_mesh_attr(init_mesh, pointdata=cortex_mask_array)
+            #remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
+            if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'second_run')):
+                remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
+            else:                
+                try:
+                    remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
+                    #raise ValueError('sidjfoisdfj')
+                except Exception:
+
+                    # THIS will run if an exception is raised
+                    subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformablePial5MakeIntersectionForceImage'), subjectID])
+                    if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'merge_required')):
+                        # delete all output in meshes
+                        try:
+                            os.makedirs(os.path.join('SurfReconDeformable', subjectID, 'meshes_orig'), exist_ok=True)
+                        except Exception:
+                            pass
+                        L = os.listdir(os.path.join('SurfReconDeformable', subjectID, 'meshes'))
+                        for curFile in L:
+                            shutil.move(os.path.join('SurfReconDeformable', subjectID, 'meshes', curFile),
+                                        os.path.join('SurfReconDeformable', subjectID, 'meshes_orig', curFile))
+                        L = os.listdir(os.path.join('SurfReconDeformable', subjectID, 'temp'))
+                        #print(L)
+                        #print(os.path.join('SurfReconDeformable', subjectID, 'temp'))
+                        try:
+                            os.makedirs(os.path.join('SurfReconDeformable', subjectID, 'temp_orig'), exist_ok=True)
+                        except Exception:
+                            pass
+                        for curFile in L:
+                            #print(curFile)
+                            if curFile.endswith('.vtp') or curFile.endswith('.surf') or curFile.endswith('.curv'):
+                                shutil.move(os.path.join('SurfReconDeformable', subjectID, 'temp', curFile), os.path.join('SurfReconDeformable', subjectID, 'temp_orig', curFile))
+                        quit()
+                    quit()
+            # if there are no merge forces then rerun the white matter surface generation
+            # if there are 
+
+            #     quit()
+            # # if there are outward merges required, then perform the first deformation, add the WM tissue found to the regions image and restart
+            # # if there are inward pushes required, just perform the deformations
+
+
             if debug == 0:
                 try_remove(cortex_mesh)
         else:
@@ -2030,7 +2385,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'min-edge-length',
                 'max-edge-length'
             ])
-        mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug = False))
+        mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug=debug_pial))
         extract_surface(mesh, name, array=region_id_array, labels=[-1, -2, -3, 3, 4, 5, 6])
 
     return name

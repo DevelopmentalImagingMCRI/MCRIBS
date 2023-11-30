@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+import VTPUtils
+import numpy
+import sys
+import os
+#import freesurfer
+import nibabel
+import getopt
+from collections import OrderedDict
+import numpy.linalg
+
+opts, args = getopt.getopt(sys.argv[1:], "vh", [])
+
+if len(args) != 3:
+    print("The number of arguments must be 3")
+    print(sys.argv[0] + " <vtp file> <vol geom mgh> <surface file>")
+    exit()
+
+numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
+
+inFileName = args[0]
+geometryIMGName = args[1]
+FSSurfName = args[2]
+
+S = VTPUtils.readVTPSurf(inFileName)
+geometryIMG = nibabel.load(geometryIMGName)
+
+if isinstance(geometryIMG, nibabel.nifti1.Nifti1Image):
+    RAS2VOX = numpy.linalg.inv(geometryIMG.affine)
+    ds = numpy.array(geometryIMG.header.get_zooms())
+    ns = numpy.array(geometryIMG.shape) * ds / 2.0
+    
+    VOX2RASTKR = numpy.array([
+        [-ds[0],      0,     0,  ns[0]],
+        [     0,      0, ds[2], -ns[2]],
+        [     0, -ds[1],     0,  ns[1]],
+    ])
+elif isinstance(geometryIMG, nibabel.freesurfer.mghformat.MGHImage):
+    RAS2VOX = geometryIMG.header.get_ras2vox()
+    VOX2RASTKR = geometryIMG.header.get_vox2ras_tkr()
+#inSurfV, inSurfF, inSurfVG = nibabel.freesurfer.io.read_geometry(InFSSurfName, read_metadata=True)
+
+#nibabel.freesurfer.io.write_geometry(filepath, coords, faces, create_stamp=None, volume_info=None)
+# volume_info must have
+volume_info = OrderedDict()
+# ‘head’ : array of int
+volume_info['head'] = numpy.array([2, 0, 20], dtype=numpy.int32)
+# ‘valid’ : str
+volume_info['valid'] = '1  # volume info valid'
+# ‘filename’ : str
+volume_info['filename'] = geometryIMGName
+# ‘volume’ : array of int, shape (3,)
+volume_info['volume'] = geometryIMG.shape
+# ‘voxelsize’ : array of float, shape (3,)
+volume_info['voxelsize'] = geometryIMG.header.get_zooms()
+
+# ‘xras’ : array of float, shape (3,)
+volume_info['xras'] = RAS2VOX[0:3, 0] * volume_info['voxelsize'][0]
+# ‘yras’ : array of float, shape (3,)
+volume_info['yras'] = RAS2VOX[0:3, 1] * volume_info['voxelsize'][1]
+# ‘zras’ : array of float, shape (3,)
+volume_info['zras'] = RAS2VOX[0:3, 2] * volume_info['voxelsize'][2]
+# ‘cras’ : array of float, shape (3,)
+volume_info['cras'] = numpy.array(numpy.matrix(numpy.vstack((volume_info['xras'], volume_info['yras'], volume_info['zras']))) * numpy.matrix((numpy.array(geometryIMG.shape) / 2 - RAS2VOX[0:3, 3]) * geometryIMG.header.get_zooms()).T).ravel()
+
+M = numpy.dot(VOX2RASTKR, RAS2VOX)
+outSurfV = numpy.dot(M[0:3, 0:3], S['vertices']) + numpy.atleast_2d(M[0:3, 3]).T
+nibabel.freesurfer.io.write_geometry(FSSurfName, outSurfV.T, S['faces'].T, volume_info=volume_info)

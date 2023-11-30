@@ -18,5 +18,5 @@ cd $SUBJECTS_DIR/$SUBJID/surf
 
 for HEMI in $HEMIS
 do
-	mris_register -curv ../surf/${HEMI}.sphere `dirname $0`/../lib/sphere_templates/${HEMI}.template${LEVEL}.tif ../surf/${HEMI}.sphere.reg$LEVEL
+	mris_register -curv ../surf/${HEMI}.sphere `dirname $0`/../lib/sphere_template/${HEMI}.template${LEVEL}.tif ../surf/${HEMI}.sphere.reg$LEVEL
 done

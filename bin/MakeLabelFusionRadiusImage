@@ -9,8 +9,8 @@ import scipy.ndimage
 #import pylab
 #import Otsu
 
-def ismember(A, B):
-    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+import Utils
+
 
 if len(sys.argv) < 2:
     print("Usage: " + sys.argv[0] + " <subject id>")
@@ -29,7 +29,7 @@ BrainMaskIMG = numpy.array(BrainMaskNII.dataobj) > 0
 GMMask = None
 for z in range(10):
     zStr = str(z + 1).zfill(2)
-    curNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'P' + zStr + '_dkt_antsinit_with_skull_label_to_' + subjID + '.nii.gz'))
+    curNII = nibabel.load(os.path.join(TissueSegDir, subjID, 'P' + zStr + '_dkt_with_skull_label_to_' + subjID + '.nii.gz'))
     curIMG = numpy.array(curNII.dataobj)
 
     curMask = numpy.logical_or(numpy.logical_and(curIMG >= 1000, curIMG <= 1036), numpy.logical_and(curIMG >= 2000, curIMG <= 2036))

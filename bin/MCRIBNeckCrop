@@ -18,6 +18,9 @@ else
 	mkdir -p $T2NECKCROPPEDISO
 	
 	MCRIBNeckCropInitialCrop $SUBJID -no-initial-crop
+	W=`fslstats $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz -w`
+	fslroi $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz $W
+
 	export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$OMP_NUM_THREADS
 	#antsRegistrationSyNQuick.sh -m $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz -p f -t a -d 3 -f $TEMPLATEDIR/Finaltemplate0.nii.gz -o $T2NECKCROPPEDISO/${1}_to_std_affine
 	antsRegistration --verbose 1 --dimensionality 3 --float 1 --collapse-output-transforms 1 \

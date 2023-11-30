@@ -15,7 +15,7 @@ import getopt
 # [newz, flipz]
 # each row, the index is the new column
 def applyOrntToNIIAffine(NII, ornt_transform):
-    NIIAffine = NII.get_affine()
+    NIIAffine = NII.affine
 
     # use fsl's method for
     # make a transformation affine matrix

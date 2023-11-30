@@ -19,8 +19,8 @@ import GraphUtils
 import freesurfer
 import VTPUtils
 
-def ismember(A, B):
-    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+import Utils
+
 
 if len(sys.argv) < 2:
     print("Usage: " + sys.argv[0] + " <subject id>")
@@ -39,14 +39,14 @@ except:
 T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
 T2IMG = T2NII.get_fdata()
 
-LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_dkt_antsinit_orig.nii.gz"))
+LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_orig.nii.gz"))
 LabelFusionIMG = numpy.int16(LabelFusionNII.get_fdata())
 
 #InternalVTP = VTPUtils.readVTPSurf(os.path.join('SurfReconDeformable', subjID, 'temp',
 
 #if not os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'):
 #    quit()
-#subprocess.call(['project-onto-surface', os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'), os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3-labelfusionimage_dkt.vtp'), '-labels', os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_dkt_antsinit_edited.nii.gz"), '-dilation-radius', str(1), '-fill', 'False', '-name', 'DKTLabels'])
+#subprocess.call(['project-onto-surface', os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'), os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3-labelfusion_dkt.vtp'), '-labels', os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"), '-dilation-radius', str(1), '-fill', 'False', '-name', 'DKTLabels'])
 
 VTPFileName = os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-2.vtp')
 
@@ -106,7 +106,7 @@ separatorIMG[( numpy.int32(numpy.ceil(separatorVox[0])),  numpy.int32(numpy.ceil
 
 separatorIMG = scipy.ndimage.binary_dilation(separatorIMG)
 # make a mask that fills in the CSF near the hippocampus, amygdala, brainstem, ventralDC
-fillMaskOrig = ismember(LabelFusionIMG, [17, 53, 170, 28, 60, 18, 54])
+fillMaskOrig = Utils.ismember(LabelFusionIMG, [17, 53, 170, 28, 60, 18, 54])
 
 GMWMMask = numpy.logical_or(numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035), numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035))
 GMWMMask = numpy.logical_or(GMWMMask, numpy.logical_or(LabelFusionIMG == 2, LabelFusionIMG == 41))
@@ -180,7 +180,7 @@ nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'cortex
 ##GMOtsuIMG = numpy.zeros(T2IMG.shape, dtype = numpy.uint8)
 ##GMOtsuIMG[GMSegIMG] = ROtsu + 1
 ##
-##GMOtsuIMGDilateMask = numpy.logical_and(numpy.logical_or(GMOtsuIMG == 3, GMOtsuIMG == 0), numpy.logical_not(ismember(LabelFusionIMG, [1035, 2035])))
+##GMOtsuIMGDilateMask = numpy.logical_and(numpy.logical_or(GMOtsuIMG == 3, GMOtsuIMG == 0), numpy.logical_not(Utils.ismember(LabelFusionIMG, [1035, 2035])))
 ##
 ##outMask = DarkWMIMG > 0.3
 ##

@@ -4,7 +4,6 @@ import numpy
 import sys
 import os
 import nibabel
-import scipy.ndimage.morphology
 
 if len(sys.argv) < 4:
     print("Incorrect number of arguments")

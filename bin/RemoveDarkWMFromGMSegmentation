@@ -9,8 +9,8 @@ import scipy.ndimage
 #import pylab
 import Otsu
 
-def ismember(A, B):
-    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+import Utils
+
 
 if len(sys.argv) < 2:
     print("Usage: " + sys.argv[0] + " <subject id>")
@@ -43,7 +43,7 @@ ROtsu = Otsu.robustOtsu(T2IMG[GMSegIMG], None, NumberClasses = 3)
 GMOtsuIMG = numpy.zeros(T2IMG.shape, dtype = numpy.uint8)
 GMOtsuIMG[GMSegIMG] = ROtsu + 1
 
-GMOtsuIMGDilateMask = numpy.logical_and(numpy.logical_or(GMOtsuIMG == 3, GMOtsuIMG == 0), numpy.logical_not(ismember(LabelFusionIMG, [1035, 2035])))
+GMOtsuIMGDilateMask = numpy.logical_and(numpy.logical_or(GMOtsuIMG == 3, GMOtsuIMG == 0), numpy.logical_not(Utils.ismember(LabelFusionIMG, [1035, 2035])))
 
 outMask = DarkWMIMG > 0.3
 

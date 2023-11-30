@@ -85,7 +85,7 @@ if Data.GetNumberOfPolys() > 0:
     #S['faces'] = [[int(D.GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
     #S['faces'] = numpy.stack(S['faces']).T
     S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(D))
-    print(str(Data.GetNumberOfPolys()) + " " + str(S['faces'].size))
+    #print(str(Data.GetNumberOfPolys()) + " " + str(S['faces'].size))
     if S['faces'].size == Data.GetNumberOfPolys() * 5:
         S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 5), 5)).T
         S['faces'] = S['faces'][2:]

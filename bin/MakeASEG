@@ -6,9 +6,10 @@ import os
 import nibabel
 import getopt
 import scipy.ndimage
+import freesurfer
+import scipy.ndimage
 
-def ismember(A, B):
-    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+import Utils
 
 #@profile
 opts, args = getopt.getopt(sys.argv[1:], "vh", [])
@@ -24,32 +25,32 @@ for o, a in opts:
 
 SubjId = args[0]
 
-RibbonNII = nibabel.load(os.path.join('freesurfer', SubjId, 'mri', 'ribbon.mgz'))
-RibbonIMG = numpy.int16(RibbonNII.get_fdata())
+ASEGPresurfMGZ = nibabel.load(os.path.join('freesurfer', SubjId, 'mri', 'aseg.presurf.mgz'))
+ASEGPresurfIMG = numpy.int16(ASEGPresurfMGZ.dataobj)
 
-ASEGPresurfNII = nibabel.load(os.path.join('freesurfer', SubjId, 'mri', 'aseg.presurf.mgz'))
-ASEGPresurfIMG = numpy.int16(ASEGPresurfNII.get_fdata())
+RibbonMGZ = nibabel.load(os.path.join('freesurfer', SubjId, 'mri', 'ribbon.mgz'))
+RibbonIMG = numpy.uint8(RibbonMGZ.dataobj)
 
-# search and replace
 ASEGIMG = numpy.array(ASEGPresurfIMG)
 
-# replace LH cortex, CSF with ribbon WM
-ASEGIMG[numpy.logical_and(RibbonIMG == 2, ismember(ASEGPresurfIMG, [0, 3, 165, 258, 24]))] = 2
-# replace RH cortex, CSF with ribbon WM
-ASEGIMG[numpy.logical_and(RibbonIMG == 41, ismember(ASEGPresurfIMG, [0, 42, 165, 258, 24]))] = 41
-
-# insert ribbon cortex
+# set cortex from the ribbon
 ASEGIMG[RibbonIMG == 3] = 3
 ASEGIMG[RibbonIMG == 42] = 42
 
-# replace cortex outside of ribbon with 0
-ASEGIMG[numpy.logical_and(RibbonIMG == 0, ismember(ASEGPresurfIMG, [2, 3, 41, 42]))] = 0
+# remove cortex and white matter labels outside the ribbon
+ASEGIMG[numpy.logical_and(Utils.ismember(ASEGIMG, [3, 42, 2, 41]), RibbonIMG == 0)] = 0
 
-# fill holes with CSF
-ASEGIMGMask = (ASEGIMG > 0)
-#ASEGIMGMaskFilled = scipy.ndimage.binary_fill_holes(ASEGIMGMask)
-ASEGIMGMaskFilled = scipy.ndimage.binary_closing(ASEGIMGMask, iterations = 5)
-ASEGIMG[numpy.logical_and(ASEGIMGMaskFilled, numpy.logical_not(ASEGIMGMask))] = 24
+# CSF and zero values closer to the cortex in the ribbon WM should be reset to WM
 
-NewASEGNII = nibabel.MGHImage(ASEGIMG, ASEGPresurfNII.affine, ASEGPresurfNII.header)
-nibabel.save(NewASEGNII, os.path.join('freesurfer', SubjId, 'mri', 'aseg.mgz'))
+DFromCortex = scipy.ndimage.distance_transform_edt(numpy.logical_not(Utils.ismember(ASEGIMG, [3, 42])))
+DFromSubcort = scipy.ndimage.distance_transform_edt(numpy.logical_not(Utils.ismember(ASEGIMG, [9, 48, 192, 17, 53])))
+
+RibbonWM = numpy.logical_or(RibbonIMG == 2, RibbonIMG == 41)
+
+WMToSet = numpy.logical_and(RibbonWM, DFromCortex < DFromSubcort)
+
+if numpy.any(WMToSet):
+    ASEGIMG[WMToSet] = RibbonIMG[WMToSet]
+
+ASEGMGZ = nibabel.MGHImage(ASEGIMG, ASEGPresurfMGZ.affine, ASEGPresurfMGZ.header)
+nibabel.save(ASEGMGZ, os.path.join('freesurfer', SubjId, 'mri', 'aseg.mgz'))

@@ -49,7 +49,7 @@ do
 	#mrisp_paint -a 2 /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/lh.template2.tif $CURHEMI.sphere.reg $CURHEMI.avg_curv
 	#mris_ca_label -t $FREESURFER_HOME/FreeSurferColorLUT.txt -aseg ../mri/aseg.internal.mgz $SUBJID $CURHEMI sphere.reg $SUBJECTS_DIR/sphere_template/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.annot
 	#mris_ca_label -aseg ../mri/aseg.internal.mgz $SUBJID $CURHEMI sphere.reg2 $SUBJECTS_DIR/sphere_template/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.annot
-		mris_ca_label -t `dirname $0`/../lib/${CURHEMI}.aparcLUT.txt  -aseg $ASEGIMAGE -L ../label/${CURHEMI}.cortex.label $SUBJID $CURHEMI sphere.reg2 `dirname $0`/../lib/sphere_templates/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.nomask.annot
+		mris_ca_label -t `dirname $0`/../lib/${CURHEMI}.aparcLUT.txt  -aseg $ASEGIMAGE -L ../label/${CURHEMI}.cortex.label $SUBJID $CURHEMI sphere.reg2 `dirname $0`/../lib/sphere_template/${CURHEMI}.${ATLAS}.gcs ../label/${CURHEMI}.${ATLAS}.auto.nomask.annot
 		cd $P
 		# don't do this if the data was originally dHCP
 		`dirname $0`/FSAnnotMaskCortexLabel $FSDIR/label/${CURHEMI}.${ATLAS}.auto.nomask.annot $FSDIR/label/${CURHEMI}.cortex.label $FSDIR/label/${CURHEMI}.${ATLAS}.annot

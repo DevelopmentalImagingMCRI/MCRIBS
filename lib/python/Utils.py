@@ -125,12 +125,15 @@ def mostCentralComponent(CCSeg):
         newCCSeg = numpy.array(CCSeg)
     return newCCSeg
 
-def ismember(a, b):
-    tf = numpy.in1d(a,b) # for newer versions of numpy
-    #f = numpy.array([i in b for i in a])
-    u = numpy.unique(a[tf])
-    index = numpy.array([(numpy.where(b == i))[0][-1] if t else 0 for i,t in zip(a,tf)])
-    return (tf, index)
+# import Utils
+#     tf = numpy.in1d(a,b) # for newer versions of numpy
+#     #f = numpy.array([i in b for i in a])
+#     u = numpy.unique(a[tf])
+#     index = numpy.array([(numpy.where(b == i))[0][-1] if t else 0 for i,t in zip(a,tf)])
+#     return (tf, index)
+
+def ismember(A, B):
+    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
 
 #function [F, HalfMaximum] = gaussian_fwhm2d(SIGMA)
 

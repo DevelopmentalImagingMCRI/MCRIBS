@@ -11,22 +11,28 @@
   4  Left-Lateral-Ventricle                120   18  134    0
   9  Left-Thalamus                           0  118   14    0
  11  Left-Caudate                          122  186  220    0
- 12  Left-Lentiform                        236   13  176    0
- 13  Left-Subthalamic-Nucleus               12   48  255    0
+ 12  Left-Putamen                          236   13  176    0
+ 13  Left-Pallidum                          12   48  255    0
+ 14  3rd-Ventricle                         204  182  142    0
+ 15  4th-Ventricle                          42  204  164    0
  17  Left-Hippocampus                      220  216   20    0
  18  Left-Amygdala                         103  255  255    0
  24  CSF                                    60   60   60    0
+ 28  Left-VentralDC                          165 42  42  0
  26  Left-Accumbens-area                   255  165    0    0 
+ 31  Left-choroid-plexus                     0   200 200 0
  41  Right-Cerebral-White-Matter           245  245  245    0
  42  Right-Cerebral-Cortex                 205   62   78    0
  43  Right-Lateral-Ventricle               120   18  134    0
  48  Right-Thalamus                          0  118   14    0
  50  Right-Caudate                         122  186  220    0
- 51  Right-Lentiform                       236   13  176    0
- 52  Right-Subthalamic-Nucleus              13   48  255    0
+ 51  Right-Putamen                         236   13  176    0
+ 52  Right-Pallidum                         13   48  255    0
  53  Right-Hippocampus                     220  216   20    0
  54  Right-Amygdala                        103  255  255    0
  58  Right-Accumbens-area                  255  165    0    0
+ 60  Right-VentralDC                         165 42  42  0
+ 63  Right-choroid-plexus                    0   200 221 0
  75  Cerebellar_vermis_superior_posterior  205   40  168    0
  76  Cerebellar_vermis_anterior            210  139    3    0
  90  Cerebellar_vermis_inferior_posterior  255   10  177    0

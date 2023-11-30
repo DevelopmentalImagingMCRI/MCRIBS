@@ -5,6 +5,7 @@ import numpy
 import sys
 import os
 import getopt
+import vtk.util.numpy_support
 
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
@@ -46,13 +47,25 @@ Vrts = Data.GetVerts()
 indices = [Vrts.GetData().GetValue(i) for i in range(1, Vrts.GetSize())]
 
 S = dict()
-S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
+S['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
+#S['vertices'] = [list(Data.GetPoint(point_id)) for point_id in range(Data.GetNumberOfPoints())]
 #print(S)
-S['vertices'] = numpy.stack(S['vertices']).T
+#S['vertices'] = numpy.stack(S['vertices']).T
 
 if Data.GetNumberOfPolys() > 0:
-    S['faces'] = [[int(Data.GetPolys().GetData().GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
-    S['faces'] = numpy.stack(S['faces']).T
+    S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPolys().GetData()))
+
+    if S['faces'].size == Data.GetNumberOfPolys() * 5:
+        S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 5), 5)).T
+        S['faces'] = S['faces'][2:]
+    else:
+        S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
+        S['faces'] = S['faces'][1:]
+
+
+#if Data.GetNumberOfPolys() > 0:
+#    S['faces'] = [[int(Data.GetPolys().GetData().GetValue(j)) for j in range(i*4 + 1, i*4 + 4)] for i in range(Data.GetPolys().GetNumberOfCells())]
+#    S['faces'] = numpy.stack(S['faces']).T
    
 print("Surface: " + inFileName)
 print("Vertices: " + str(S['vertices'].shape[1]))
