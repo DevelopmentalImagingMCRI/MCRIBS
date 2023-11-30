@@ -3,3 +3,4 @@ MIRTK/MIRTK-install
 ITK
 VTK
 *.pyc
+.vscode
