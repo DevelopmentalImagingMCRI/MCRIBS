@@ -67,11 +67,7 @@ def main():
     tissueSegArgGroup.add_argument('--gmsegcompthreshold', help = "Threshold for GM segmentation connected components (0, 1]", required = False, type = float, default = 0.2)
     tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM', 'MCRIBS'], default = 'MCRIBS')
     tissueSegArgGroup.add_argument('--parallel', help = "Training images -> Subject images in parallel", required = False, action = 'store_true')
-    tissueSegArgGroup.add_argument('--antsaffineinit', help = "Use antsAffineInitializer rather than COG, use if affine reg fails", required = False, action = 'store_true')
-    
-    tissueSegArgGroup.add_argument('--parallel', help = "Training images -> Subject images in parallel", required = False, action = 'store_true')
-    tissueSegArgGroup.add_argument('--antsaffineinit', help = "Use antsAffineInitializer rather than COG, use if affine reg fails", required = False, action = 'store_true')
-    
+
     tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 
     surfReconArgGroup = argParser.add_argument_group('surfrecon', 'Perform cortical surface extraction, depends --tissueseg')
@@ -82,15 +78,9 @@ def main():
     surfReconArgGroup.add_argument('--deformablefastcollision', help = "Use Deformable fast collision test", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--deformablenoensurepialoutside', help = "Dont ensure pial is outside white", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--deformablelargeclose', help = "Large close", required = False, action = 'store_true')
-    surfReconArgGroup.add_argument('--debugwhite', help = "Debug white surface", required = False, action = 'store_true')
-    surfReconArgGroup.add_argument('--debugpial', help = "Debug pial surface", required = False, action = 'store_true')
-
     surfReconArgGroup.add_argument('--cleansr', help = "Clean SurfReconDeformable before running", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugwhite', help = "Debug white surface", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugpial', help = "Debug pial surface", required = False, action = 'store_true')
-
-    surfReconArgGroup.add_argument('--cleansr', help = "Clean SurfReconDeformable before running", required = False, action = 'store_true')
-    #surfReconArgGroup.add_argument('--deformablet1only', help = "Use T1 only", required = False, action = 'store_true')
 
     inflateSphereArgGroup = argParser.add_argument_group('inflatesphere', 'Perform inflation, spherical mapping, curv, area, depends --surfrecon')
     inflateSphereArgGroup.add_argument('--inflatesphere', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -332,11 +322,6 @@ def main():
                     VTKMinorVersion = mat.group(2)
                 elif mat.group(1) == "BUILD":
                     VTKPatchVersion = mat.group(2)
-
-                    #SET(VTK_MAJOR_VERSION "8")
-                    #SET(VTK_MINOR_VERSION "1")
-                    #SET(VTK_BUILD_VERSION "2")
-
         FID.close()
 
         if not (VTKMajorVersion is None or VTKMinorVersion is None or VTKPatchVersion is None):
@@ -368,9 +353,6 @@ def main():
             print(" ".join(cmd))
             runCommand(cmd, log_file_name = logFileName)
         elif options.tissuesegmethod == 'MCRIBS':
-            cmd = ["MCRIBTissueSegMCRIBSANTSForRegister"]
-            cmd = ["MCRIBTissueSegMCRIBS"]
-            cmd = ["MCRIBTissueSegMCRIBSANTSForRegister"]
             cmd = ["MCRIBTissueSegMCRIBS"]
             if options.largeventricles:
                 cmd.append('-largeventricles')
@@ -387,12 +369,8 @@ def main():
                 
             cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
             cmd.append(options.subjectid)
-            cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
-            cmd.append(options.subjectid)
             if options.parallel:
                 cmd.append('-parallel')
-            if options.antsaffineinit:
-                cmd.append('-antsaffineinit')
                 
             cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
             cmd.append(options.subjectid)
@@ -422,13 +400,8 @@ def main():
         if options.debugpial:
             cmd.append('--debugpial')
         if options.cleansr:
-                cmd.append('--cleansr')
-        if options.debugwhite:
-            cmd.append('--debugwhite')
-        if options.debugpial:
-            cmd.append('--debugpial')
-        if options.cleansr:
-                cmd.append('--cleansr')
+            cmd.append('--cleansr')
+
         cmd.extend(['--jointhreshold', str(options.deformablejointhresh)])
         runCommand(cmd, log_file_name = logFileName)
         pass
