@@ -859,12 +859,13 @@ def main():
     NewLabelFusionIMG[numpy.logical_and(R, numpy.logical_not(CloserToWMLHDT))] = 41
     NewLabelFusionIMG[LabelFusionIMG == 28] = 2
     NewLabelFusionIMG[LabelFusionIMG == 60] = 41
-    # NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [4, 9, 28, 11, 12, 13, 17, 31, 18, 26])] = 2
-    # NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [51, 52, 43, 50, 60, 48, 54, 63, 53, 58])] = 41
+    
+    NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [4, 9, 28, 11, 12, 13, 17, 31, 18, 26])] = 2
+    NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [51, 52, 43, 50, 60, 48, 54, 63, 53, 58])] = 41
     #RHVoxelsToAdd = Utils.ismember(LabelFusionIMG, [51, 52, 50, 60, 48, 54, 53, 58])
 
-    NewLabelFusionIMG[LHVoxelsToAdd] = 2
-    NewLabelFusionIMG[RHVoxelsToAdd] = 41
+    #NewLabelFusionIMG[LHVoxelsToAdd] = 2
+    #NewLabelFusionIMG[RHVoxelsToAdd] = 41
 
     # NewNII = nibabel.Nifti1Image(NewLabelFusionIMG, LabelFusionNII.affine)
     # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusionimage_regions_new2.nii.gz"))
