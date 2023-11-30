@@ -152,6 +152,11 @@ def main():
     RibbonIMG = numpy.int16(LabelFusionNII.dataobj)
 
         
+
+    RibbonNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_ribbon_skullstrip_reg.nii.gz"))
+    RibbonIMG = numpy.int16(LabelFusionNII.dataobj)
+
+        
     #DarkWMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_dark_wm_prob_skullstrip_reg.nii.gz"))
     #DarkWMIMG = numpy.single(DarkWMNII.dataobj)
     
@@ -547,6 +552,7 @@ def main():
     outPropsDilated[scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [17, 18, 53, 54]))] = 0
     outPropsDilated[scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [4, 31, 43, 63]), iterations=3)] = 0
     #outIMG = numpy.logical_or(M, DrawEMIMG == 2)
+    segmentationGM = outPropsDilated >= ConnectedCompThreshold
     segmentationGM = outPropsDilated >= ConnectedCompThreshold
     L, numlabels = scipy.ndimage.label(segmentationGM)
     H = numpy.bincount(L[L > 0])

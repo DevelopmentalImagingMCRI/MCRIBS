@@ -49,6 +49,7 @@ def main():
     atlases = ['aparc', 'aparc+DKTatlas', 'aparc+DKTatlas.manual']
     defaultAtlas = atlases
     defaultAtlas = ['aparc+DKTatlas', 'aparc']
+    defaultAtlas = ['aparc+DKTatlas', 'aparc']
 
     argParser = argparse.ArgumentParser(description = "Performs MCRIB preprocessing and parcellation\n\nFor each <subject id>, input data are to be placed as follows:\n\tRawT2/<subject id>.nii.gz: Whole-brain T2-weighted image", usage = sys.argv[0] + " <processing directives> [processing options] <subject id>", formatter_class = argparse.RawTextHelpFormatter)
 
@@ -68,6 +69,9 @@ def main():
     tissueSegArgGroup.add_argument('--parallel', help = "Training images -> Subject images in parallel", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--antsaffineinit', help = "Use antsAffineInitializer rather than COG, use if affine reg fails", required = False, action = 'store_true')
     
+    tissueSegArgGroup.add_argument('--parallel', help = "Training images -> Subject images in parallel", required = False, action = 'store_true')
+    tissueSegArgGroup.add_argument('--antsaffineinit', help = "Use antsAffineInitializer rather than COG, use if affine reg fails", required = False, action = 'store_true')
+    
     tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 
     surfReconArgGroup = argParser.add_argument_group('surfrecon', 'Perform cortical surface extraction, depends --tissueseg')
@@ -78,6 +82,10 @@ def main():
     surfReconArgGroup.add_argument('--deformablefastcollision', help = "Use Deformable fast collision test", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--deformablenoensurepialoutside', help = "Dont ensure pial is outside white", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--deformablelargeclose', help = "Large close", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--debugwhite', help = "Debug white surface", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--debugpial', help = "Debug pial surface", required = False, action = 'store_true')
+
+    surfReconArgGroup.add_argument('--cleansr', help = "Clean SurfReconDeformable before running", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugwhite', help = "Debug white surface", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugpial', help = "Debug pial surface", required = False, action = 'store_true')
 
@@ -362,12 +370,23 @@ def main():
         elif options.tissuesegmethod == 'MCRIBS':
             cmd = ["MCRIBTissueSegMCRIBSANTSForRegister"]
             cmd = ["MCRIBTissueSegMCRIBS"]
+            cmd = ["MCRIBTissueSegMCRIBSANTSForRegister"]
+            cmd = ["MCRIBTissueSegMCRIBS"]
             if options.largeventricles:
                 cmd.append('-largeventricles')
             if options.nobspline:
                 cmd.append('-nobspline')
             if options.nowmlaplacianexpand:
                 cmd.append('-nowmlaplacianexpand')
+            cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
+            cmd.append(options.subjectid)
+            if options.parallel:
+                cmd.append('-parallel')
+            if options.antsaffineinit:
+                cmd.append('-antsaffineinit')
+                
+            cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
+            cmd.append(options.subjectid)
             cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
             cmd.append(options.subjectid)
             if options.parallel:
@@ -398,6 +417,12 @@ def main():
             cmd.append('--largeventricles')
         if options.nowmlaplacianexpand:
             cmd.append('--nowmlaplacianexpand')
+        if options.debugwhite:
+            cmd.append('--debugwhite')
+        if options.debugpial:
+            cmd.append('--debugpial')
+        if options.cleansr:
+                cmd.append('--cleansr')
         if options.debugwhite:
             cmd.append('--debugwhite')
         if options.debugpial:

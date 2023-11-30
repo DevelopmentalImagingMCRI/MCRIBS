@@ -889,6 +889,10 @@ parser.add_argument('-j', '-jointol', '--jointol', dest='join_tol', default=1, t
                     help='Join tolerance')
 parser.add_argument('-use-fast-collision', dest='fastcollision', action='store_true',
                     help='Use the fast collision test for white and pial surfaces')
+parser.add_argument('-debug-white', dest='debugwhite', action='store_true',
+                    help='Debug white surfaces')
+parser.add_argument('-debug-pial', dest='debugpial', action='store_true',
+                    help='Debug pial surfaces')
 parser.add_argument('-v', '-verbose', '--verbose', action='count', default=0,
                     help='Increase verbosity of output messages')
 parser.add_argument('-d', '-debug', '--debug', action='count', default=0,

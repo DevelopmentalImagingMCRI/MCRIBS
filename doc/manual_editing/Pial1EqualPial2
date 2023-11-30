@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+
+import vtk
+import numpy
+import sys
+import os
+import freesurfer
+import nibabel
+import getopt
+
+import VTPUtils
+
+numpy.set_printoptions(precision = 3, formatter = {'all':lambda x: "%.3f" % x})
+
+subjID = sys.argv[1]
+
+Pial1Surf = VTPUtils.readVTPSurf(os.path.join('SurfReconDeformable', subjID, 'temp', 'pial-1.vtp'))
+Pial2Surf = VTPUtils.readVTPSurf(os.path.join('SurfReconDeformable', subjID, 'temp', 'pial-2.vtp'))
+
+C = dict()
+C['values'] = numpy.all(Pial1Surf['vertices'] == Pial2Surf['vertices'], axis = 0)
+C['numVertices'] = Pial1Surf['vertices'].shape[1]
+C['numFaces'] = Pial1Surf['faces'].shape[1]
+
+freesurfer.writeCurv(C, os.path.join('SurfReconDeformable', subjID, 'temp', 'pial-1-equals-pial-2.curv'))
+#numpy.set_printoptions(precision=4, formatter={'float': '{: 0.3f}'.format})
+#freesurfer.writeSurf(S, sys.argv[3], fileFormat = 'binary', geometryNIIFile = sys.argv[2])
+##freesurfer.writeSurf(S, sys.argv[3] + ".nogeom", fileFormat = 'binary', geometryNIIFile = None)

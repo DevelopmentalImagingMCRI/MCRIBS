@@ -711,8 +711,8 @@ def deform_mesh(iname, oname=None, temp=None, opts={}, super_debug = True):
             if fname.startswith(fname_prefix):
                 try_remove(os.path.join(temp, fname))
         makedirs(oname)
-        if super_debug == True:
-            opts['debug-interval'] = 5
+        if super_debug:
+            opts['debug-interval'] = 2
             opts['debug'] = 2
         else:
             opts['debug-interval'] = 999 # prevent output files being made, don't need them
@@ -1705,7 +1705,6 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                 'min-edge-length',
                 'max-edge-length'
             ])
-        #print(model_opts)
         first_white_mesh = push_output(stack, deform_mesh(init_mesh, opts=model_opts, super_debug=debug_white))
 
         # select voxels that are in bright pericalcarine underneath the surface

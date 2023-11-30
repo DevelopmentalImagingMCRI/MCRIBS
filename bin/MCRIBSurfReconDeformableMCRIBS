@@ -29,6 +29,10 @@ DEBUGWHITE=
 DEBUGPIAL=
 
 CLEANSR=
+DEBUGWHITE=
+DEBUGPIAL=
+
+CLEANSR=
 while (( "$#" ))
 do
 	case $1 in
@@ -72,6 +76,11 @@ then
 	rm -fr SurfReconDeformable/${SUBJID}
 fi
 
+if [ "$CLEANSR" == "YES" ]
+then
+	rm -fr SurfReconDeformable/${SUBJID}
+fi
+
 if [ "$LARGECLOSE" == "YES" ]
 then
 	CONFIGFILE=`dirname $0`/../lib/Deformable/recon-neonatal-cortex-large.cfg
@@ -87,6 +96,10 @@ do
 	GMMATCH="$GMMATCH $j `expr $j + 1000`"
 done
 
+#mri_convert $TISSUESEGDIROrigSkullStripNoTentorumVent/$1/${1}_labelfusion_dkt.nii.gz freesurfer/$1/mri/aseg.presurf.mgz
+#mri_convert $TISSUESEGDIROrigSkullStripNoTentorumVent/$1/${1}_labelfusion_dkt.nii.gz freesurfer/${SUBJID}/mri/mcribs_dkt.nii.gz
+#mri_convert $TISSUESEGDIROrigSkullStripNoTentorumVent/$1/${1}_labelfusion_dkt.nii.gz freesurfer/$1/mri/aseg.presurf.mgz
+#mri_convert $TISSUESEGDIROrigSkullStripNoTentorumVent/$1/${1}_labelfusion_dkt.nii.gz freesurfer/${SUBJID}/mri/mcribs_dkt.nii.gz
 #mri_convert $TISSUESEGDIROrigSkullStripNoTentorumVent/$1/${1}_labelfusion_dkt.nii.gz freesurfer/$1/mri/aseg.presurf.mgz
 #mri_convert $TISSUESEGDIROrigSkullStripNoTentorumVent/$1/${1}_labelfusion_dkt.nii.gz freesurfer/${SUBJID}/mri/mcribs_dkt.nii.gz
 #mri_convert $TISSUESEGDIROrigSkullStripNoTentorumVent/$1/${1}_labelfusion_dkt.nii.gz freesurfer/$1/mri/aseg.presurf.mgz
@@ -119,10 +132,14 @@ T=`mktemp -d`
 
 # fslsplit $P/$TISSUESEGDIR/${SUBJID}/all_dkt_to_${SUBJID}.nii.gz tmp -t
 # fslsplit $P/$TISSUESEGDIR/${SUBJID}/all_dkt_to_${SUBJID}.nii.gz tmp -t
+# fslsplit $P/$TISSUESEGDIR/${SUBJID}/all_dkt_to_${SUBJID}.nii.gz tmp -t
+# fslsplit $P/$TISSUESEGDIR/${SUBJID}/all_dkt_to_${SUBJID}.nii.gz tmp -t
 # for z in `seq 0 9`
 # do
 # 	ZPADDED=$(printf "%04d" $z)
 # 	IPADDED=$(printf "%02d" `expr $z + 1`)
+# 	mv tmp${ZPADDED}.nii.gz $P/$TISSUESEGDIR/${SUBJID}/P${IPADDED}_dkt_with_skull_label_to_${SUBJID}.nii.gz
+# 	mv tmp${ZPADDED}.nii.gz $P/$TISSUESEGDIR/${SUBJID}/P${IPADDED}_dkt_with_skull_label_to_${SUBJID}.nii.gz
 # 	mv tmp${ZPADDED}.nii.gz $P/$TISSUESEGDIR/${SUBJID}/P${IPADDED}_dkt_with_skull_label_to_${SUBJID}.nii.gz
 # 	mv tmp${ZPADDED}.nii.gz $P/$TISSUESEGDIR/${SUBJID}/P${IPADDED}_dkt_with_skull_label_to_${SUBJID}.nii.gz
 # done
@@ -135,6 +152,7 @@ T=`mktemp -d`
 #PostProcessDKTLabelFusion $LARGEVENTRICLES $NOWMLAPLACIANEXPAND $SUBJID
 PostProcessDKTLabelFusion $LARGEVENTRICLES $SUBJID
 MakeRegionsBSCutting $SUBJID
+
 
 #rm -f ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon_midlinefill.nii.gz ${OUTPUTPREFIX}_majority_dkt_compositereg_ribbon.nii.gz
 FSToDrawEMLabels $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz TissueSeg/${SUBJID}_all_labels_manedit.nii.gz
@@ -150,15 +168,23 @@ mkdir -p SurfReconDeformable/${SUBJID}/temp SurfReconDeformable/${SUBJID}/meshes
 
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz --match 18 54 4 43 31 63 --noverbose --binval -1
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz --match 18 54 4 43 31 63 --noverbose --binval -1
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz --match 18 54 4 43 31 63 --noverbose --binval -1
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz --match 18 54 4 43 31 63 --noverbose --binval -1
 #
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm.nii.gz --match 2 41 --noverbose
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm.nii.gz --match 2 41 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm.nii.gz --match 2 41 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm.nii.gz --match 2 41 --noverbose
 #
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz --match 17 53 --noverbose --erode 1
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz --match 17 53 --noverbose --erode 1
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz --match 17 53 --noverbose --erode 1
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz --match 17 53 --noverbose --erode 1
 #fslmaths SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz -mul -1 -add SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
 #rm -f SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz
 #
+##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/pericalcarine.nii.gz --match 1021 2021 --dilate 2 --noverbose
+##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/pericalcarine.nii.gz --match 1021 2021 --dilate 2 --noverbose
 ##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/pericalcarine.nii.gz --match 1021 2021 --dilate 2 --noverbose
 ##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/pericalcarine.nii.gz --match 1021 2021 --dilate 2 --noverbose
 ##fslmaths SurfReconDeformable/${SUBJID}/temp/pericalcarine -mas SurfReconDeformable/${SUBJID}/temp/wm -bin SurfReconDeformable/${SUBJID}/temp/peri_wm.nii.gz
@@ -177,7 +203,13 @@ mkdir -p SurfReconDeformable/${SUBJID}/temp SurfReconDeformable/${SUBJID}/meshes
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/gm.nii.gz --match $GMMATCH --noverbose
 #mri_mask -transfer 1 SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_interhemispheric.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/gm.nii.gz --match $GMMATCH --noverbose
+#mri_mask -transfer 1 SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_interhemispheric.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/gm.nii.gz --match $GMMATCH --noverbose
+#mri_mask -transfer 1 SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_interhemispheric.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/gm.nii.gz --match $GMMATCH --noverbose
 #
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/cerebellum.nii.gz --match 91 93 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/cerebellum.nii.gz --match 91 93 --noverbose
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/cerebellum.nii.gz --match 91 93 --noverbose
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/cerebellum.nii.gz --match 91 93 --noverbose
 #
@@ -192,10 +224,16 @@ mkdir -p SurfReconDeformable/${SUBJID}/temp SurfReconDeformable/${SUBJID}/meshes
 #
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/cc_thalamus.nii.gz --match 192 9 48 --dilate 5 --erode 5 --noverbose
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/cc_thalamus.nii.gz --match 192 9 48 --dilate 5 --erode 5 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/cc_thalamus.nii.gz --match 192 9 48 --dilate 5 --erode 5 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/cc_thalamus.nii.gz --match 192 9 48 --dilate 5 --erode 5 --noverbose
 #fslmaths SurfReconDeformable/${SUBJID}/temp/cc_thalamus.nii.gz -mul -1 SurfReconDeformable/${SUBJID}/temp/cc_thalamus.nii.gz
 #fslmaths SurfReconDeformable/${SUBJID}/temp/wm_force -add SurfReconDeformable/${SUBJID}/temp/cc_thalamus.nii.gz -mul 2 SurfReconDeformable/${SUBJID}/temp/wm_force
 #rm -f SurfReconDeformable/${SUBJID}/temp/gm.nii.gz SurfReconDeformable/${SUBJID}/temp/wm.nii.gz SurfReconDeformable/${SUBJID}/temp/cc_thalamus.nii.gz $TISSUESEGDIR/${SUBJID}/${SUBJID}_brain_mask_inv.nii.gz $TISSUESEGDIR/${SUBJID}/${SUBJID}_brain_mask_dt.nii.gz
 #
+##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_ventgm.nii.gz --match 1021 2021 --noverbose --dilate 3
+##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_vent.nii.gz --match 4 43 --noverbose --dilate 3
+##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_ventgm.nii.gz --match 1021 2021 --noverbose --dilate 3
+##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_vent.nii.gz --match 4 43 --noverbose --dilate 3
 ##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_ventgm.nii.gz --match 1021 2021 --noverbose --dilate 3
 ##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_vent.nii.gz --match 4 43 --noverbose --dilate 3
 ##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_ventgm.nii.gz --match 1021 2021 --noverbose --dilate 3
@@ -207,20 +245,32 @@ mkdir -p SurfReconDeformable/${SUBJID}/temp SurfReconDeformable/${SUBJID}/meshes
 #
 ##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz --match 17 53 --noverbose
 ##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz --match 17 53 --noverbose
+##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz --match 17 53 --noverbose
+##MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz --match 17 53 --noverbose
 ##fslmaths SurfReconDeformable/${SUBJID}/temp/wm_force_hippo.nii.gz -mul -0.1 -add SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
 #
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm.nii.gz --match 2 41 --erode 1 --noverbose
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm.nii.gz --match 2 41 --erode 1 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm.nii.gz --match 2 41 --erode 1 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm.nii.gz --match 2 41 --erode 1 --noverbose
 #fslmaths SurfReconDeformable/${SUBJID}/temp/wm.nii.gz -mul -1 -add SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz --match 999 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz --match 999 --noverbose
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz --match 999 --noverbose
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz --match 999 --noverbose
 #mri_mask -transfer 1 SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
 #rm -f SurfReconDeformable/${SUBJID}/temp/wm.nii.gz
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz --match 998 --binval -1 --noverbose
 #MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz --match 998 --binval -1 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz --match 998 --binval -1 --noverbose
+#MRIBinarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz --o SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz --match 998 --binval -1 --noverbose
 #mri_mask -transfer -1 SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_bad.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
 #rm -f SurfReconDeformable/${SUBJID}/temp/wm.nii.gz
 #
+#mri_binarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz --o $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz --replace 998 1000 --noverbose
+##mri_convert $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz freesurfer/${SUBJID}/mri/aseg.presurf.mgz
+#mri_binarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz --o $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz --replace 998 1000 --noverbose
+##mri_convert $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz freesurfer/${SUBJID}/mri/aseg.presurf.mgz
 #mri_binarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz --o $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz --replace 998 1000 --noverbose
 ##mri_convert $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_dkt_edited.nii.gz freesurfer/${SUBJID}/mri/aseg.presurf.mgz
 #mri_binarize --i $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz --o $TISSUESEGDIR/${SUBJID}/${SUBJID}_labelfusion_regions.nii.gz --replace 998 1000 --noverbose
@@ -231,13 +281,29 @@ mkdir -p SurfReconDeformable/${SUBJID}/temp SurfReconDeformable/${SUBJID}/meshes
 #MRIBinarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz --o ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm.nii.gz --match 2 41 --noverbose
 #fslmaths ${OUTPUTPREFIX}_labelfusion_dkt.nii.gz -sub ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz -abs -bin ${OUTPUTPREFIX}_labelfusion_dkt_edited_changed.nii.gz
 #MRIBinarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz --o ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm.nii.gz --match 2 41 --noverbose
+#fslmaths ${OUTPUTPREFIX}_labelfusion_dkt.nii.gz -sub ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz -abs -bin ${OUTPUTPREFIX}_labelfusion_dkt_edited_changed.nii.gz
+#MRIBinarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz --o ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm.nii.gz --match 2 41 --noverbose
+#fslmaths ${OUTPUTPREFIX}_labelfusion_dkt.nii.gz -sub ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz -abs -bin ${OUTPUTPREFIX}_labelfusion_dkt_edited_changed.nii.gz
+#MRIBinarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz --o ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm.nii.gz --match 2 41 --noverbose
 #
+#fslmaths ${OUTPUTPREFIX}_labelfusion_dkt_edited_changed -mas ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset -odt char
+#fslmaths ${OUTPUTPREFIX}_labelfusion_dkt_edited_changed -mas ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset -odt char
 #fslmaths ${OUTPUTPREFIX}_labelfusion_dkt_edited_changed -mas ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset -odt char
 #fslmaths ${OUTPUTPREFIX}_labelfusion_dkt_edited_changed -mas ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset -odt char
 #
 #MRIBinarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz --o ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz --match 1 --binval -1 --erode 1
 #MRIBinarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz --o ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz --match 1 --binval -1 --erode 1
+#MRIBinarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz --o ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz --match 1 --binval -1 --erode 1
+#MRIBinarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz --o ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz --match 1 --binval -1 --erode 1
 #
+##fslmaths ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz -mul -1 ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz -odt short
+#mri_mask -transfer -1 SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
+##imrm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz
+##imrm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm.nii.gz
+##fslmaths ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz -mul -1 ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz -odt short
+#mri_mask -transfer -1 SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
+##imrm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz
+##imrm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm.nii.gz
 ##fslmaths ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz -mul -1 ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz -odt short
 #mri_mask -transfer -1 SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz SurfReconDeformable/${SUBJID}/temp/wm_force.nii.gz
 ##imrm ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm_toset.nii.gz

@@ -368,8 +368,7 @@ def writeSurf(surfStruct: dict, fileName: str, geometryIMGFileName=None, convert
         # ‘zras’ : array of float, shape (3,)
         volume_info['zras'] = RAS2VOX[0:3, 2] * volume_info['voxelsize'][2]
         # ‘cras’ : array of float, shape (3,)
-        #print(geometryIMG.header.get_zooms())
-        volume_info['cras'] = numpy.array(numpy.matrix(numpy.vstack((volume_info['xras'], volume_info['yras'], volume_info['zras']))) * numpy.matrix((numpy.array(geometryIMG.shape[:3]) / 2 - RAS2VOX[0:3, 3]) * geometryIMG.header.get_zooms()[:3]).T).ravel()
+        volume_info['cras'] = numpy.array(numpy.matrix(numpy.vstack((volume_info['xras'], volume_info['yras'], volume_info['zras']))) * numpy.matrix((numpy.array(geometryIMG.shape) / 2 - RAS2VOX[0:3, 3]) * geometryIMG.header.get_zooms()).T).ravel()
         if convertToTKR:
             M = numpy.dot(VOX2RASTKR, RAS2VOX)
             outSurfV = numpy.dot(M[0:3, 0:3], outSurfV) + numpy.atleast_2d(M[0:3, 3]).T

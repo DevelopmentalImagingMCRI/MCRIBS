@@ -1,0 +1,33 @@
+#!/bin/bash -x
+
+if [ -z "$1" ]
+then
+	echo "Usage: $0 <subject id>"
+	exit
+fi
+
+SUBJID=$1
+
+#if [ ! -f "surf_ensurepial/$SUBJID/temp/pial-5.CollisionMask.curv" -o ! -z "$2" ]
+#then
+#	./extract_all_vtp_indir.sh DrawEM/$SUBJID/T2/${SUBJID}.nii.gz surf_ensurepial/$SUBJID/temp
+#fi
+TISSUESEGDIR=TissueSegMCRIBS
+VOLGEOM=$TISSUESEGDIR/${SUBJID}/${SUBJID}_t2w_restore.nii.gz
+
+$MCRIBS_HOME/MIRTK/MIRTK-install/lib/tools/evaluate-surface-mesh SurfReconDeformable/$SUBJID/temp/pial-4.vtp SurfReconDeformable/$SUBJID/temp/pial-4_eval.vtp -v -v -threads `nproc` -collisions 0
+
+VTPExtractAll --surf-volgeom=$VOLGEOM SurfReconDeformable/$SUBJID/temp/pial-4_eval.vtp
+
+W=`PialDisplayCollisionVertices SurfReconDeformable/$SUBJID/temp/pial-4_eval.vtp`
+
+if [ ! -z "$W" ]
+then
+	W=":goto=$W"
+fi
+
+freeview \
+	-v $VOLGEOM \
+	-v ${TISSUESEGDIR}/$SUBJID/${SUBJID}_labelfusion_dkt_edited.nii.gz:colormap=lut:opacity=0.3 \
+	-v SurfReconDeformable/$SUBJID/recon/regions.nii.gz:colormap=lut:opacity=0.3 \
+	-f SurfReconDeformable/$SUBJID/temp/pial-4_eval_tkr.surf:curvature=SurfReconDeformable/$SUBJID/temp/pial-4_eval.CollisionMask.curv:edgecolor=overlay$W 
