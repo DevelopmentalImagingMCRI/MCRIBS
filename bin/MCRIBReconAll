@@ -49,7 +49,6 @@ def main():
     atlases = ['aparc', 'aparc+DKTatlas', 'aparc+DKTatlas.manual']
     defaultAtlas = atlases
     defaultAtlas = ['aparc+DKTatlas', 'aparc']
-    defaultAtlas = ['aparc+DKTatlas', 'aparc']
 
     argParser = argparse.ArgumentParser(description = "Performs MCRIB preprocessing and parcellation\n\nFor each <subject id>, input data are to be placed as follows:\n\tRawT2/<subject id>.nii.gz: Whole-brain T2-weighted image", usage = sys.argv[0] + " <processing directives> [processing options] <subject id>", formatter_class = argparse.RawTextHelpFormatter)
 
@@ -62,13 +61,13 @@ def main():
     tissueSegArgGroup.add_argument('--tissueseg', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--notissueseg', help = "DISABLE tissueseg", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--largeventricles', help = "Large ventricle options", required = False, action = 'store_true')
-    tissueSegArgGroup.add_argument('--nobspline', help = "Do not use B-Spline in registration step", required = False, action = 'store_true')
-    tissueSegArgGroup.add_argument('--nowmlaplacianexpand', help = "Do not expand WM segmentation using bright regions", required = False, action = 'store_true')
+    # tissueSegArgGroup.add_argument('--nobspline', help = "Do not use B-Spline in registration step", required = False, action = 'store_true')
+    # tissueSegArgGroup.add_argument('--nowmlaplacianexpand', help = "Do not expand WM segmentation using bright regions", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--gmsegcompthreshold', help = "Threshold for GM segmentation connected components (0, 1]", required = False, type = float, default = 0.2)
-    tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['DrawEM', 'MCRIBS'], default = 'MCRIBS')
+    tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['MCRIBS'], default = 'MCRIBS')
     tissueSegArgGroup.add_argument('--parallel', help = "Training images -> Subject images in parallel", required = False, action = 'store_true')
 
-    tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
+    # tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 
     surfReconArgGroup = argParser.add_argument_group('surfrecon', 'Perform cortical surface extraction, depends --tissueseg')
     surfReconArgGroup.add_argument('--surfrecon', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -348,11 +347,11 @@ def main():
 
 
     if (options.tissueseg == True or options.all == True) and not isFromDHCP and options.notissueseg == False:
-        if options.tissuesegmethod == 'DrawEM':
-            cmd = ["MCRIBTissueSegDrawEM", options.subjectid, str(options.subjectage)]
-            print(" ".join(cmd))
-            runCommand(cmd, log_file_name = logFileName)
-        elif options.tissuesegmethod == 'MCRIBS':
+        # if options.tissuesegmethod == 'DrawEM':
+        #     cmd = ["MCRIBTissueSegDrawEM", options.subjectid, str(options.subjectage)]
+        #     print(" ".join(cmd))
+        #     runCommand(cmd, log_file_name = logFileName)
+        if options.tissuesegmethod == 'MCRIBS':
             cmd = ["MCRIBTissueSegMCRIBS"]
             if options.largeventricles:
                 cmd.append('-largeventricles')

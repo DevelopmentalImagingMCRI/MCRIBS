@@ -1,16 +1,5 @@
-#!/bin/bash -x
-#SBATCH --job-name=surfrecon
-#SBATCH -n1
-#SBATCH -N1
-#SBATCH --time=24:00:00
-#SBATCH --mem=4GB
-#SBATCH --cpus-per-task=1
-#SBATCH --constraint=SouthLevel1
+#!/bin/bash
 
-#T=`tmpnam`
-
-#export FREESURFER_HOME=/usr/local/freesurfer-7.1.1
-#. $FREESURFER_HOME/SetUpFreeSurfer.sh
 export SUBJECTS_DIR=`pwd`/freesurfer
 
 if [ -z "$1" ]

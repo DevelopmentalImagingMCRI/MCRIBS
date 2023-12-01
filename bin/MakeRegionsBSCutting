@@ -54,6 +54,8 @@ def main():
 
     RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
     RegionsIMG = numpy.uint16(RegionsNII.get_fdata())
+    LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
+    LabelFusionIMG = numpy.int16(LabelFusionNII.dataobj)
 
     #BrightMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_dark_wm_bright_gm_to_remove.nii.gz"))
     #BrightMaskIMG = BrightMaskNII.get_fdata() > 0
@@ -237,9 +239,11 @@ def main():
     T[LeftWMHoleFilled] = 3
     RightWMHoleFilled = scipy.ndimage.binary_fill_holes(T == 2)
     T[RightWMHoleFilled] = 2
+
+    T[LabelFusionIMG == 254] = 3
+    T[LabelFusionIMG == 255] = 2
     
     NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut.nii.gz"))
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut.nii.gz"))
     
     # make the file cortical-hull-dmap.nii.gz
@@ -258,7 +262,6 @@ def main():
     CorticalHullDMAP = scipy.ndimage.distance_transform_edt(InteriorMask)
     
     NewNII = nibabel.Nifti1Image(numpy.single(CorticalHullDMAP), T2NII.affine)
-    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_corticalhulldmap.nii.gz"))
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_corticalhulldmap.nii.gz"))
 
     #NewNII = nibabel.Nifti1Image(numpy.single(numpy.mean(numpy.single(allDKTIMG == 1021), axis = 3)), LabelFusionNII.affine)

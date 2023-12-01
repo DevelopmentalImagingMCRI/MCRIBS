@@ -84,7 +84,6 @@ There is a wrapper script called `MCRIBReconAll` that runs the pipeline of segme
 
 `MCRIBReconAll [processing directive] [options] <subject id>`
 
-
 ### Processing directives and options
 
 - --neckcrop: Reorients T2 image to radiological orientation, axial slices, resamples to isotropic voxels. Input <RawT2/subjid.nii.gz> Output <T2NeckCroppedIsotropic/subjid.nii.gz>
@@ -92,8 +91,7 @@ There is a wrapper script called `MCRIBReconAll` that runs the pipeline of segme
   - --voxelsize VOXELSIZE: Voxel size to use for isotropic resampling. Use "volumepreserve" to preserve original voxel volume
 - --tissueseg: Tissue type segmentation, depends on --conform. Input <T2NeckCroppedIsotropic/subjid.nii.gz> Outputs <TissueSeg>
   - Options:
-  - --tissuesegmethod {DrawEM}: Specify tissue segmentation method, only DrawEM is supported
-  - --subjectage {28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44}: Subject age in weeks
+  -  --gmsegcompthreshold GMSEGCOMPTHRESHOLD: Threshold for GM segmentation connected components (0, 1]
 - --surfrecon: Cortical surface extraction, depends --tissueseg. Inputs <TissueSeg>, Outputs <SurfReconDeformable/subjid>
   - Options:
   - --surfreconmethod {Deformable}: Specify cortical surface extraction method
@@ -115,7 +113,7 @@ There is a wrapper script called `MCRIBReconAll` that runs the pipeline of segme
 
 The following shorthand options may be used:
 
-- --all: executes --conform, --tissueseg, --surfrecon, --inflatesphere, --surfreg, --surfvol, --cortribbon, --cortparc, --aparc2aseg, --apas2aseg, --cortthickness, --segstats, --parcstats
+- --all: executes --neckcrop, --tissueseg, --surfrecon, --inflatesphere, --surfreg, --surfvol, --cortribbon, --cortparc, --aparc2aseg, --apas2aseg, --cortthickness, --segstats, --parcstats
 - -autoreconaftersurf: executes all steps post surface extraction, i.e. --inflatesphere, --surfreg, --surfvol, --cortribbon, --cortparc, --aparc2aseg, --apas2aseg, --cortthickness, --segstats, --parcstats
 
 Other options:
