@@ -8,6 +8,8 @@ import scipy.ndimage
 import numpy.linalg
 import scipy.linalg
 
+import Utils
+
 def largestComponent(BW):
     if not numpy.any(BW):
         return BW
@@ -47,44 +49,61 @@ def main():
         print("Tissue segmentation directory not found")
         quit()
     T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore.nii.gz"))
-    T2IMG = numpy.single(T2NII.get_fdata())
+    T2IMG = numpy.single(T2NII.dataobj)
 
     #RibbonMidlineFillNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_compositereg_ribbon_midlinefill.nii.gz"))
     #RibbonMidlineFillIMG = RibbonMidlineFillNII.get_fdata() > 0
 
     RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
-    RegionsIMG = numpy.uint16(RegionsNII.get_fdata())
+    RegionsIMG = numpy.uint16(RegionsNII.dataobj)
+    
     LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
     LabelFusionIMG = numpy.int16(LabelFusionNII.dataobj)
+
+    WMIslandsLHNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_WMIslandsLH.nii.gz"))
+    WMIslandsLHIMG = numpy.int8(WMIslandsLHNII.dataobj) > 0
+
+    WMIslandsRHNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_WMIslandsRH.nii.gz"))
+    WMIslandsRHIMG = numpy.int8(WMIslandsRHNII.dataobj) > 0
 
     #BrightMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_dark_wm_bright_gm_to_remove.nii.gz"))
     #BrightMaskIMG = BrightMaskNII.get_fdata() > 0
 
     #Atropos3NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_majority_gm_segmentation.nii.gz"))
     #Atropos3IMG = numpy.uint8(Atropos3NII.get_fdata())
-    RegionsWMLHDilated = scipy.ndimage.binary_dilation(RegionsIMG == 2)
-    RegionsWMRHDilated = scipy.ndimage.binary_dilation(RegionsIMG == 41)
+    #RegionsWMLHDilated = scipy.ndimage.binary_dilation(RegionsIMG == 2)
+    #RegionsWMRHDilated = scipy.ndimage.binary_dilation(RegionsIMG == 41)
 
-    RegionsWMBorderIMG = largestComponent(numpy.logical_and(RegionsWMLHDilated, RegionsWMRHDilated))
+    #RegionsWMBorderIMG = largestComponent(numpy.logical_and(RegionsWMLHDilated, RegionsWMRHDilated))
 
-    # find LH and RH WM border voxels that arent next to GM voxels or the other hemisphere WM
-    LHWMBorderVoxels = numpy.logical_and(numpy.logical_not(scipy.ndimage.binary_erosion(RegionsIMG == 2)), RegionsIMG == 2)
-    RHWMBorderVoxels = numpy.logical_and(numpy.logical_not(scipy.ndimage.binary_erosion(RegionsIMG == 41)), RegionsIMG == 41)
-
-    GMMask = numpy.logical_or(numpy.logical_and(RegionsIMG >= 1000, RegionsIMG <= 1035), numpy.logical_and(RegionsIMG >= 1000, RegionsIMG <= 1035))
-    GMMaskDilated = scipy.ndimage.binary_dilation(GMMask)
+    # use cortical markers for lining up the separating plane
+    RegionsWMBorderIMG = numpy.logical_and(
+        scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [ 2, 1023])),
+        scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [41, 2023]))
+    )
     
-    LHWMBorderVoxels = numpy.logical_and(LHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
-    LHWMBorderVoxels = numpy.logical_and(LHWMBorderVoxels, numpy.logical_not(RegionsWMRHDilated))
-    RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
-    RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(RegionsWMLHDilated))
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(RegionsWMBorderIMG), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_RegionsWMBorderIMG.nii.gz"))
+    
+    # THIS METHOD IS SENSITIVE SOMETIMES TO ODD PLACEMENT OF THALAMUS BOUNDARIES
+    # find LH and RH WM border voxels that arent next to GM voxels or the other hemisphere WM
+    # LHWMBorderVoxels = numpy.logical_and(numpy.logical_not(scipy.ndimage.binary_erosion(RegionsIMG == 2)), RegionsIMG == 2)
+    # RHWMBorderVoxels = numpy.logical_and(numpy.logical_not(scipy.ndimage.binary_erosion(RegionsIMG == 41)), RegionsIMG == 41)
+
+    # GMMask = numpy.logical_or(numpy.logical_and(RegionsIMG >= 1000, RegionsIMG <= 1035), numpy.logical_and(RegionsIMG >= 2000, RegionsIMG <= 2035))
+    # GMMaskDilated = scipy.ndimage.binary_dilation(GMMask)
+    
+    # LHWMBorderVoxels = numpy.logical_and(LHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
+    # LHWMBorderVoxels = numpy.logical_and(LHWMBorderVoxels, numpy.logical_not(RegionsWMRHDilated))
+    # RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(GMMaskDilated))
+    # RHWMBorderVoxels = numpy.logical_and(RHWMBorderVoxels, numpy.logical_not(RegionsWMLHDilated))
     
     RegionsWMBorderIDX = numpy.where(RegionsWMBorderIMG)
     RegionsWMBorderCoordsVox = numpy.vstack(RegionsWMBorderIDX)
     del RegionsWMBorderIDX
 
     VoxToWorld = T2NII.affine
-    WorldToVox = scipy.linalg.inv(VoxToWorld)
+    #WorldToVox = scipy.linalg.inv(VoxToWorld)
 
     RegionsWMBorderCoordsWorld = VoxToWorld[0:3, 0:3] * numpy.matrix(RegionsWMBorderCoordsVox) + numpy.atleast_2d(VoxToWorld[0:3, 3]).T
     del RegionsWMBorderCoordsVox
@@ -162,18 +181,29 @@ def main():
     # replace voxels in the brainstem on the side of the plane that has fewer brainstem labels
     NegMask = numpy.logical_and(BrainstemHemiBoundaryPlaneM < 0, RegionsIMG == 170)
     PosMask = numpy.logical_and(BrainstemHemiBoundaryPlaneM >= 0, RegionsIMG == 170)
-    del BrainstemHemiBoundaryPlaneM
+    
+    ThirdVentricleDilated = scipy.ndimage.binary_dilation(LabelFusionIMG == 14, iterations=2)
+    FourthVentricleDilated = scipy.ndimage.binary_dilation(LabelFusionIMG == 15, iterations=2)
+
     NumNeg = numpy.count_nonzero(NegMask)
     NumPos = numpy.count_nonzero(PosMask)
     NewRegionsIMG = numpy.array(RegionsIMG)
 
-    if NumPos < NumNeg:
-        NewRegionsIMG[numpy.logical_and(PosMask, MPlaneSign > 0)] = 2
-        NewRegionsIMG[numpy.logical_and(PosMask, MPlaneSign <= 0)] = 41
-    else:
-        NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign > 0)] = 2
-        NewRegionsIMG[numpy.logical_and(NegMask, MPlaneSign <= 0)] = 41
+    # I want the put the positive sign of BrainstemHemiBoundaryPlaneM to the superior side, so
+
+    if NumPos >= NumNeg:
+        BrainstemHemiBoundaryPlaneM = -BrainstemHemiBoundaryPlaneM
     
+    NewRegionsIMG[numpy.logical_and(numpy.logical_and(BrainstemHemiBoundaryPlaneM >= 0, RegionsIMG == 170), MPlaneSign > 0)] = 2
+    NewRegionsIMG[numpy.logical_and(numpy.logical_and(BrainstemHemiBoundaryPlaneM >= 0, RegionsIMG == 170), MPlaneSign <= 0)] = 41
+
+    NewRegionsIMG[numpy.logical_and(numpy.logical_and(BrainstemHemiBoundaryPlaneM >= 0, ThirdVentricleDilated), MPlaneSign > 0)] = 2
+    NewRegionsIMG[numpy.logical_and(numpy.logical_and(BrainstemHemiBoundaryPlaneM >= 0, ThirdVentricleDilated), MPlaneSign <= 0)] = 41
+    NewRegionsIMG[numpy.logical_and(numpy.logical_and(BrainstemHemiBoundaryPlaneM >= 0, FourthVentricleDilated), MPlaneSign > 0)] = 2
+    NewRegionsIMG[numpy.logical_and(numpy.logical_and(BrainstemHemiBoundaryPlaneM >= 0, FourthVentricleDilated), MPlaneSign <= 0)] = 41
+
+    NewRegionsIMG[numpy.logical_and(LabelFusionIMG == 170, BrainstemHemiBoundaryPlaneM < 0)] = 170
+
     # replace CC with WM labels
     NewRegionsIMG[numpy.logical_and(MPlaneSign > 0, NewRegionsIMG == 192)] = 2
     NewRegionsIMG[numpy.logical_and(MPlaneSign <= 0, NewRegionsIMG == 192)] = 41
@@ -181,6 +211,7 @@ def main():
     # do a closing on the WM labels to smooth out near the boundary in the middle    
     LHWMToAdd = NewRegionsIMG == 2
     RHWMToAdd = NewRegionsIMG == 41
+    
     BGIMG = NewRegionsIMG < 1000
 
     n = 5
@@ -215,51 +246,57 @@ def main():
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_beforechange.nii.gz"))
     
     # change from freesurfer labels regions values
-    T = numpy.array(NewRegionsIMG)
+    ReconRegionsIMG = numpy.array(NewRegionsIMG)
 
     # all GM become 1
-    T[numpy.logical_and(NewRegionsIMG >= 1000, NewRegionsIMG <= 1035)] = 1
-    T[numpy.logical_and(NewRegionsIMG >= 2000, NewRegionsIMG <= 2035)] = 1
-    T[NewRegionsIMG == 3] = 1
-    T[NewRegionsIMG == 42] = 1
+    ReconRegionsIMG[numpy.logical_and(NewRegionsIMG >= 1000, NewRegionsIMG <= 1035)] = 1
+    ReconRegionsIMG[numpy.logical_and(NewRegionsIMG >= 2000, NewRegionsIMG <= 2035)] = 1
+    ReconRegionsIMG[NewRegionsIMG == 3] = 1
+    ReconRegionsIMG[NewRegionsIMG == 42] = 1
     
-    T[NewRegionsIMG == 2] = 3
-    T[NewRegionsIMG == 41] = 2
+    ReconRegionsIMG[NewRegionsIMG == 2] = 3
+    ReconRegionsIMG[NewRegionsIMG == 41] = 2
     
-    T[NewRegionsIMG == 4] = 3
-    T[NewRegionsIMG == 43] = 2
-    T[NewRegionsIMG == 31] = 2
+    ReconRegionsIMG[NewRegionsIMG == 4] = 3
+    ReconRegionsIMG[NewRegionsIMG == 43] = 2
+    ReconRegionsIMG[NewRegionsIMG == 31] = 2
 
-    T[Utils.ismember(NewRegionsIMG, [90, 91, 93, 70, 71, 72, 73, 74, 75, 76, 170])] = 4
-    T[Utils.ismember(NewRegionsIMG, [24, 258, 14, 15, 165])] = 0
+    ReconRegionsIMG[Utils.ismember(NewRegionsIMG, [90, 91, 93, 70, 71, 72, 73, 74, 75, 76, 170, 15])] = 4
+    ReconRegionsIMG[Utils.ismember(NewRegionsIMG, [24, 258, 165])] = 0
     
-    T[NewRegionsIMG == 999] = 1
-    
-    LeftWMHoleFilled = scipy.ndimage.binary_fill_holes(T == 3)
-    T[LeftWMHoleFilled] = 3
-    RightWMHoleFilled = scipy.ndimage.binary_fill_holes(T == 2)
-    T[RightWMHoleFilled] = 2
+    LeftWMHoleFilled = scipy.ndimage.binary_fill_holes(ReconRegionsIMG == 3)
+    ReconRegionsIMG[LeftWMHoleFilled] = 3
+    RightWMHoleFilled = scipy.ndimage.binary_fill_holes(ReconRegionsIMG == 2)
+    ReconRegionsIMG[RightWMHoleFilled] = 2
 
-    T[LabelFusionIMG == 254] = 3
-    T[LabelFusionIMG == 255] = 2
-    
-    NewNII = nibabel.Nifti1Image(numpy.uint8(T), T2NII.affine)
+    ReconRegionsIMG[LabelFusionIMG == 254] = 3
+    ReconRegionsIMG[LabelFusionIMG == 255] = 2
+    ReconRegionsIMG[numpy.logical_or(LabelFusionIMG == 999, RegionsIMG == 999)] = 0
+
+    # add these to the white matter label but remove them from the force images
+    ReconRegionsIMG[WMIslandsRHIMG] = 2
+    ReconRegionsIMG[WMIslandsLHIMG] = 3
+
+    NewNII = nibabel.Nifti1Image(numpy.uint8(ReconRegionsIMG), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut.nii.gz"))
+    
+    NewNII = nibabel.Nifti1Image(numpy.uint8(ReconRegionsIMG), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut_orig.nii.gz"))
     
     # make the file cortical-hull-dmap.nii.gz
     #line 1835 in subdivide_brain_image.cc
 
-    InteriorMask = scipy.ndimage.binary_closing(Utils.ismember(T, [1, 2, 3]), iterations = 5)
+    InteriorMask = scipy.ndimage.binary_closing(Utils.ismember(ReconRegionsIMG, [1, 2, 3]), iterations = 5)
     
     # make a cut through the middle
     LeftMPlaneDilated = scipy.ndimage.binary_dilation(MPlaneSign < 0, iterations = 2)
     RightMPlaneDilated = scipy.ndimage.binary_dilation(MPlaneSign > 0, iterations = 2)
     
-    InteriorMask[numpy.logical_and(T == 1, numpy.logical_and(LeftMPlaneDilated, RightMPlaneDilated))] = False
+    InteriorMask[numpy.logical_and(ReconRegionsIMG == 1, numpy.logical_and(LeftMPlaneDilated, RightMPlaneDilated))] = False
     #NewNII = nibabel.Nifti1Image(numpy.uint8(InteriorMask), T2NII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interiormask.nii.gz"))
     
-    CorticalHullDMAP = scipy.ndimage.distance_transform_edt(InteriorMask)
+    CorticalHullDMAP = scipy.ndimage.distance_transform_edt(InteriorMask, sampling=RegionsNII.header.get_zooms())
     
     NewNII = nibabel.Nifti1Image(numpy.single(CorticalHullDMAP), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_corticalhulldmap.nii.gz"))

@@ -42,6 +42,7 @@ T2IMG = T2NII.get_fdata()
 LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_orig.nii.gz"))
 LabelFusionIMG = numpy.int16(LabelFusionNII.get_fdata())
 
+#print("MakeCortexMaskDilatedDKT")
 #InternalVTP = VTPUtils.readVTPSurf(os.path.join('SurfReconDeformable', subjID, 'temp',
 
 #if not os.path.join('SurfReconDeformable', subjID, 'temp', 'cerebrum-3.vtp'):

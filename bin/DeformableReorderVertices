@@ -11,6 +11,7 @@ import getopt
 import VTPUtils
 import GraphUtils
 
+
 opts, args = getopt.getopt(sys.argv[1:], "vh", ['surf-volgeom='])
 
 if len(args) != 2:
@@ -190,7 +191,7 @@ else:
 
 vertsDiffer = False
 if PialLHSurf['vertices'].shape[1] != WhiteLHSurf['vertices'].shape[1]:
-    print("LH vertices differ, writing")
+    print("LH vertices differ")
     vertsDiffer = True
     
 if PialRHSurf['vertices'].shape[1] != WhiteRHSurf['vertices'].shape[1]:

@@ -123,9 +123,9 @@ RHCortexMask = numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG < 2036)
 
 outMaskIMG = numpy.logical_and(scipy.ndimage.binary_dilation(numpy.logical_and(pericalcarineSeedIMG, pericalcarineMaskIMG), iterations = 4), pericalcarineMaskIMG)
 
-midLineMask = scipy.ndimage.binary_dilation(numpy.logical_and(scipy.ndimage.binary_dilation(LHCortexMask, iterations = 2), scipy.ndimage.binary_dilation(RHCortexMask, iterations = 2)), iterations = 4)
+#midLineMask = scipy.ndimage.binary_dilation(numpy.logical_and(scipy.ndimage.binary_dilation(LHCortexMask, iterations = 2), scipy.ndimage.binary_dilation(RHCortexMask, iterations = 2)), iterations = 4)
 
-outMaskIMG = numpy.logical_and(outMaskIMG, numpy.logical_not(midLineMask))
+#outMaskIMG = numpy.logical_and(outMaskIMG, numpy.logical_not(midLineMask))
 
 #NewNII = nibabel.Nifti1Image(numpy.uint8(outMaskIMG), T2NII.affine)
 #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_pericalcarine_white_mask.nii.gz"))

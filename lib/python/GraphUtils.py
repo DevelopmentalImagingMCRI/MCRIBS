@@ -77,6 +77,18 @@ def getVertexNeighbours(S):
 
 
 def vertexFaceIDX(F):
+    """_summary_
+
+    Parameters
+    ----------
+    F : numpy.ndarray
+        Face array, each column is an index vector into the array of vertices.
+
+    Returns
+    -------
+    list
+        Each element f[I] contains a list of face indices that vertex I belongs to.
+    """    
     numVertices = numpy.max(F) + 1
 
     vertexFaceIDX = list()
@@ -117,14 +129,32 @@ def surfaceAreasNormals(S):
     vertexNormals = vertexNormals / numpy.atleast_2d(numpy.sqrt(numpy.sum(vertexNormals * vertexNormals, axis = 1))).T
     return (faceNormals, faceAreas, vertexNormals, vertexAreas)
 
-def connectedComponents(S, Mask):
+def connectedComponents(S, Mask=None):
+    """Label vertices of a surface into connected components.
+
+    Parameters
+    ----------
+    S : dict
+        Surface data, must contain 'vertices' and 'faces'
+    Mask : numpy.ndarray, optional
+        Only process vertices that are True, by default None
+
+    Returns
+    -------
+    numpy.ndarray
+        Labels for each vertex according to their connected component.
+    """    
     Neighbours = getVertexNeighbours(S)
 
     ConnIDX = numpy.zeros(Mask.size, dtype = numpy.int32)
     CurConnLabel = 1
 
     while True:
-        Unvisited = numpy.where(numpy.logical_and(ConnIDX == 0, Mask))[0]
+        if Mask is not None:
+            Unvisited = numpy.where(numpy.logical_and(ConnIDX == 0, Mask))[0]
+        else:
+            Unvisited = numpy.where(ConnIDX == 0)[0]
+
         if Unvisited.size == 0:
             break
 
@@ -134,7 +164,11 @@ def connectedComponents(S, Mask):
         while True:
             CurNeighbours = [Neighbours[x] for x in CurVertices]
             CurNeighbours = numpy.unique(numpy.concatenate(CurNeighbours))
-            I = numpy.logical_and(Mask[CurNeighbours], ConnIDX[CurNeighbours] == 0)
+            if Mask is not None:
+               I = numpy.logical_and(Mask[CurNeighbours], ConnIDX[CurNeighbours] == 0)
+            else:
+               I = (ConnIDX[CurNeighbours] == 0)
+
             if numpy.all(I == False):
                 break
             ConnIDX[CurNeighbours[I]] = CurConnLabel

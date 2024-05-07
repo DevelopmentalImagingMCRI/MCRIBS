@@ -781,7 +781,7 @@ int vtkPolyDataToImageStencil::RequestData(
   // this->ThreadedExecute(data, extent, 0);
   
   vtkSMPTools::Initialize();
-  vtkSMPTools::SetBackend("TBB");
+  //vtkSMPTools::SetBackend("STDThread");
   //std::cout << vtkSMPTools::GetEstimatedNumberOfThreads() << std::endl;
   vtkSMPTools::For(extent[4], extent[5] + 1, 1, worker );
 

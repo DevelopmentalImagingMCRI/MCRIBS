@@ -9,21 +9,34 @@ fi
 SUBJID=$1
 
 TISSUESEGDIR=TissueSegMCRIBS
-VOLGEOM=${TISSUESEGDIR}/$1/${1}_labelfusion_dkt_antsinit.nii.gz
+VOLGEOM=${TISSUESEGDIR}/$1/${1}_labelfusion_dkt.nii.gz
 
-fslmaths ${TISSUESEGDIR}/$1/${1}_labelfusion_dkt_antsinit.nii.gz -sub ${TISSUESEGDIR}/$1/${1}_labelfusion_dkt_edited.nii.gz -abs -bin ${TISSUESEGDIR}/$1/${1}_edits -odt char
+fslmaths ${TISSUESEGDIR}/$1/${1}_labelfusion_dkt.nii.gz -sub ${TISSUESEGDIR}/$1/${1}_labelfusion_dkt_edited.nii.gz -abs -bin ${TISSUESEGDIR}/$1/${1}_edits -odt char
 cluster -t 1 -i ${TISSUESEGDIR}/$1/${1}_edits -o ${TISSUESEGDIR}/$1/${1}_edits_clusters --no_table
 imrm ${TISSUESEGDIR}/$1/${1}_edits
-VTPExtractSurfs --surf-volgeom=${VOLGEOM} SurfReconDeformable/$1/temp/white-1.vtp
-VTPExtractSurfs --surf-volgeom=${VOLGEOM} SurfReconDeformable/$1/temp/white-2.vtp
+VTPExtractSurfs --surf-volgeom=${VOLGEOM} SurfReconDeformable/$1/temp/white-1.vtp &
+VTPExtractSurfs --surf-volgeom=${VOLGEOM} SurfReconDeformable/$1/temp/white-2.vtp &
+VTPExtractSurfs --surf-volgeom=${VOLGEOM} SurfReconDeformable/$1/temp/white-3.vtp &
+VTPExtractSurfs --surf-volgeom=${VOLGEOM} SurfReconDeformable/$1/temp/pial-2.vtp &
+
+wait;
 
 freeview \
 	-v ${TISSUESEGDIR}/$1/${1}_t2w_restore.nii.gz:grayscale=0,1200 \
+	-v ${TISSUESEGDIR}/$1/${1}_drawem_alberts_tissueseg.nii.gz:colormap=lut:opacity=0.3:visible=0 \
 	-v ${TISSUESEGDIR}/$1/${1}_labelfusion_dkt_edited.nii.gz:colormap=lut:opacity=0.3:visible=0 \
+	-v ${TISSUESEGDIR}/$1/${1}_labelfusion_regions.nii.gz:colormap=lut:opacity=0.3:visible=0 \
+	-v ${TISSUESEGDIR}/$1/${1}_segmentation_gm.nii.gz:colormap=lut:opacity=0.3:visible=0 \
 	-v ${TISSUESEGDIR}/$1/${1}_edits_clusters.nii.gz:colormap=lut:lut=$FREESURFER/DefectLUT.txt:opacity=0.2:visible=1 \
+	-v SurfReconDeformable/$1/recon/regions.nii.gz:colormap=lut:opacity=0.3:visible=0 \
+	-v SurfReconDeformable/$1/temp/wm_force.nii.gz:colormap=heat:opacity=0.3:visible=0 \
+	-v SurfReconDeformable/$1/temp/wm_force_second.nii.gz:colormap=heat:opacity=0.3:visible=0 \
+	-v SurfReconDeformable/$1/temp/pial_force.nii.gz:colormap=heat:opacity=0.3:visible=0 \
 	-f freesurfer/$1/surf/lh.white:edgecolor=yellow \
 	-f freesurfer/$1/surf/rh.white:edgecolor=yellow \
 	-f freesurfer/$1/surf/lh.pial:edgecolor=red \
 	-f freesurfer/$1/surf/rh.pial:edgecolor=red \
+	-f SurfReconDeformable/$1/temp/pial-2_tkr.surf:edgecolor=green:visible=0 \
 	-f SurfReconDeformable/$1/temp/white-1_tkr.surf:edgecolor=green:visible=0 \
-	-f SurfReconDeformable/$1/temp/white-2_tkr.surf:edgecolor=green:visible=1
+	-f SurfReconDeformable/$1/temp/white-2_tkr.surf:edgecolor=magenta:visible=0 \
+	-f SurfReconDeformable/$1/temp/white-3_tkr.surf:edgecolor=blue:visible=0

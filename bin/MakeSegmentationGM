@@ -113,20 +113,34 @@ def gaussianSecondDerivMax1d(SIGMA, spacing=1):
 
 def main():
         
-    opts, args = getopt.getopt(sys.argv[1:], '', [])
+
 
     try:
         TissueSegDir = os.environ['TISSUESEGDIR']
     except Exception:
         TissueSegDir = 'TissueSegMCRIBS'
 
-    subjID = args[0]
     
     try:
-        ConnectedCompThreshold = float(args[1])
-    except ValueError:
-        ConnectedCompThreshold = 0.2
+        opts, args = getopt.getopt(sys.argv[1:], "c:", ["nodilatedarkwm"])
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print(err)  # will print something like "option -a not recognized"
+        #usage()
+        sys.exit(2)
+    
+    subjID = args[0]
+    noDilateDarkWM = False
 
+    ConnectedCompThreshold = 0.2
+    for o, a in opts:
+        if o == '--nodilatedarkwm':
+            noDilateDarkWM = True
+        elif o == '-c':
+            ConnectedCompThreshold = float(a)
+        else:
+            assert False, "unhandled option"
+    
     if not os.path.isdir(os.path.join(TissueSegDir, subjID)):
         print("Tissue segmentation directory not found")
         quit()
@@ -150,12 +164,6 @@ def main():
 
     RibbonNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_ribbon_skullstrip_reg.nii.gz"))
     RibbonIMG = numpy.int16(LabelFusionNII.dataobj)
-
-        
-
-    RibbonNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_ribbon_skullstrip_reg.nii.gz"))
-    RibbonIMG = numpy.int16(LabelFusionNII.dataobj)
-
         
     #DarkWMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_dark_wm_prob_skullstrip_reg.nii.gz"))
     #DarkWMIMG = numpy.single(DarkWMNII.dataobj)
@@ -338,13 +346,14 @@ def main():
         # add any positive L values to the component
         oldCurIMG = numpy.array(curIMG)
         curIMG = numpy.logical_and(scipy.ndimage.binary_dilation(curIMG, iterations = 2), backgroundIMG)
-        M = numpy.logical_and(curIMG, LPos)
-        if numpy.any(M):
-            outGMToAdd[M] = 1
-            curIMG = numpy.logical_and(curIMG, numpy.logical_not(M))
+        CandidateDark = numpy.logical_and(curIMG, LPos)
+        if numpy.any(CandidateDark):
+            outGMToAdd[CandidateDark] = 1
+            curIMG = numpy.logical_and(curIMG, numpy.logical_not(CandidateDark))
         if numpy.array_equal(curIMG, oldCurIMG):
             break
     
+
     curIMG = numpy.logical_and(scipy.ndimage.binary_dilation(DrawEMIMGWM), DrawEMIMG == 6)
     if numpy.any(curIMG):
         outGMToAdd = numpy.logical_or(outGMToAdd, numpy.logical_and(scipy.ndimage.binary_dilation(curIMG), numpy.logical_not(DrawEMIMGWM)))
@@ -352,47 +361,100 @@ def main():
     # V = varianceFilter(T2IMGWMFilled, 11)
     # add GM near the cerebellum
     
-    #M = numpy.logical_and(numpy.logical_and(Utils.ismember(DrawEMIMG, [2, 3, 8]), LPos), DarkWMIMG <= 0.3)
-    M = numpy.logical_and(Utils.ismember(DrawEMIMG, [2, 3, 8]), LPos)
+    #CandidateDark = numpy.logical_and(numpy.logical_and(Utils.ismember(DrawEMIMG, [2, 3, 8]), LPos), DarkWMIMG <= 0.3)
+    CandidateDark = numpy.logical_and(Utils.ismember(DrawEMIMG, [2, 3, 5, 8]), LPos)
+    # add dark stripes in the ventricles
+    CandidateDark = numpy.logical_or(CandidateDark, numpy.logical_and(DrawEMIMG == 2, Utils.ismember(LabelFusionIMG, [4, 43])))
+    #CandidateDark = numpy.logical_or(CandidateDark, numpy.logical_and(DrawEMIMG == 2, numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035)))
+    #CandidateDark = numpy.logical_or(CandidateDark, numpy.logical_and(DrawEMIMG == 2, numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035)))
 
-    NotRingsEroded = scipy.ndimage.binary_erosion(numpy.logical_not(Utils.ismember(LabelFusionIMG, [159, 160, 999])), iterations=2)
-    M = numpy.logical_and(M, NotRingsEroded)
-    
+    # NotRingsEroded = scipy.ndimage.binary_erosion(numpy.logical_not(Utils.ismember(LabelFusionIMG, [159, 160, 999])), iterations=2)
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(CandidateDark), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_M_before_not_rings.nii.gz"))
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(LPos), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_LPos.nii.gz"))
+
     # remove hippocampus and amygdala
-    M = numpy.logical_and(M, numpy.logical_not(Utils.ismember(LabelFusionIMG, [17, 18, 53, 54])))
+    CandidateDark = numpy.logical_and(CandidateDark, numpy.logical_not(Utils.ismember(LabelFusionIMG, [17, 18, 53, 54])))
 
     # firstly to a 2-class separation which should
     # brightest class will be GM near CSF at the edge of the brain
     # second class will be GM
     
-    #C, Classes = scipy.cluster.vq.kmeans2(V[M], 2)
+    #C, Classes = scipy.cluster.vq.kmeans2(V[CandidateDark], 2)
     
     # 3 class K-means on variance in the mask
     
     #C = numpy.zeros(T2IMG.shape, dtype=numpy.uint8)
-    #C[M] = numpy.uint8(Classes)
+    #C[CandidateDark] = numpy.uint8(Classes)
     
     #D, Classes2 = scipy.cluster.vq.kmeans2(V[C == 1], 2)
     #D = numpy.zeros(T2IMG.shape, dtype=numpy.uint8)
     #D[C == 1] = numpy.uint8(Classes2)
     
     
-    M = largestComponent(M)
-    M[DrawEMIMG == 2] = False
-    # H, binEdges = numpy.histogram(V[M], bins=100)
+    CandidateDark = largestComponent(CandidateDark)
+    CandidateDark[DrawEMIMG == 2] = False
+
+    # H, binEdges = numpy.histogram(V[CandidateDark], bins=100)
     # I = numpy.argmax(H)
     # HMode = (binEdges[I] + binEdges[I + 1]) / 2
-    # MLow = numpy.logical_and(numpy.logicalHigh_and(V < HMode, M), numpy.logical_not(T2CannyIMG))
-    #MHigh = numpy.logical_and(numpy.logical_and(V > HMode, M), numpy.logical_not(scipy.ndimage.binary_closing(T2CannyIMG)))
+    # MLow = numpy.logical_and(numpy.logicalHigh_and(V < HMode, CandidateDark), numpy.logical_not(T2CannyIMG))
+    #MHigh = numpy.logical_and(numpy.logical_and(V > HMode, CandidateDark), numpy.logical_not(scipy.ndimage.binary_closing(T2CannyIMG)))
 
     CannyDilated = scipy.ndimage.binary_dilation(T2CannyIMG)
-    MHigh = numpy.logical_and(M, numpy.logical_not(CannyDilated))
+    MHigh = numpy.logical_and(CandidateDark, numpy.logical_not(CannyDilated))
+    
+    # remove the 
+    
     #MHigh = scipy.ndimage.binary_erosion(MHigh)
-    M = numpy.logical_and(M, numpy.logical_not(T2CannyIMG))
+    CandidateDark = numpy.logical_and(CandidateDark, numpy.logical_not(T2CannyIMG))
+
+
+    ChoroidSE = numpy.zeros((3, 3, 3))
+    ChoroidSE[:, 0, :] = 1
+    ChoroidSE[:, 1, :] = 1
+
+    ReconMarker = Utils.ismember(LabelFusionIMG, [31, 63])
+    # DrawEMIMG == 5 is the DrawEM ventricle label
     
+    ReconMask = numpy.logical_or(ReconMarker, numpy.logical_and(numpy.logical_not(LPos), DrawEMIMG == 5))
+    ChoroidsRecon = skimage.morphology.reconstruction(numpy.uint8(ReconMarker), numpy.uint8(ReconMask), selem=ChoroidSE)
+    
+    NewNII = nibabel.Nifti1Image(numpy.uint8(ChoroidsRecon), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_ChoroidsRecon.nii.gz"))
+
+    ChoroidsReconDilatedBarrier = scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [4, 43, 31, 63, 159, 160]))
+    
+    ChoroidsReconDilatedBarrier = numpy.logical_and(ChoroidsReconDilatedBarrier, DrawEMIMG != 2)
+    ChoroidsReconDilatedBarrier = numpy.logical_and(ChoroidsReconDilatedBarrier, numpy.logical_not(numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1035)))
+    ChoroidsReconDilatedBarrier = numpy.logical_and(ChoroidsReconDilatedBarrier, numpy.logical_not(numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035)))
+    ChoroidsReconDilatedBarrier = numpy.logical_and(ChoroidsReconDilatedBarrier, numpy.logical_not(scipy.ndimage.binary_closing(CandidateDark)))
+    
+    # restore the choroids
+    ChoroidsReconDilatedBarrier = numpy.logical_or(ChoroidsReconDilatedBarrier, scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [31, 63, 159, 160])))
+    #ChoroidsReconDilatedBarrier = numpy.logical_or(ChoroidsReconDilatedBarrier, numpy.logical_and(DrawEMIMG == 2, numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2035)))
+    # dilate the recon'd Choroids without going into the existing GM for a few iterations
+    ChoroidsReconDilated = numpy.array(ChoroidsRecon)
+
+    #ChoroidsReconDilatedBarrier = numpy.logical_or(scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [4, 43, 31, 63])), numpy.logical_not(CandidateDarkBarrier))
+    #ChoroidsReconDilatedBarrier = numpy.logical_or(ChoroidsReconDilatedBarrier, Utils.ismember(LabelFusionIMG, [159, 160]))
+    for z in range(8):
+        ChoroidsReconDilated = numpy.logical_and(ChoroidsReconDilatedBarrier, scipy.ndimage.binary_dilation(ChoroidsReconDilated))
+    
+    NewNII = nibabel.Nifti1Image(numpy.uint8(CandidateDark), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_CandidateDark.nii.gz"))
+    
+    NewNII = nibabel.Nifti1Image(numpy.uint8(ChoroidsReconDilatedBarrier), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_ChoroidsReconDilatedBarrier.nii.gz"))
+    del ChoroidsReconDilatedBarrier
+    NewNII = nibabel.Nifti1Image(numpy.uint8(ChoroidsReconDilated), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_ChoroidsReconDilated.nii.gz"))
+
+    MHigh = numpy.logical_and(MHigh, numpy.logical_not(ChoroidsReconDilated))
+
     MHighLabels, numMHighLabels = scipy.ndimage.label(MHigh)
-    
-    
+   
     #NewNII = nibabel.Nifti1Image(numpy.int32(MHighLabels), T2NII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MHighLabels.nii.gz"))
     # MLowLabels, numMHighLabels = scipy.ndimage.label(MLow)
@@ -403,7 +465,10 @@ def main():
     MHighI = (MHighI[0][I], MHighI[1][I], MHighI[2][I])
     MHighLabelBoundaries = numpy.concatenate((numpy.array([0]), numpy.where(numpy.diff(MHighLabelsSorted) != 0)[0] + 1, numpy.array([MHighLabelsSorted.size])))
 
-    outToRemove = numpy.zeros(T2IMG.shape, dtype=numpy.bool_)
+    NewNII = nibabel.Nifti1Image(numpy.int16(MHighLabels), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MHighLabels.nii.gz"))
+
+    #outToRemove = numpy.zeros(T2IMG.shape, dtype=numpy.bool_)
     outProps = numpy.zeros(T2IMG.shape, dtype=numpy.single)
     DrawEMGMDilated = scipy.ndimage.binary_dilation(DrawEMIMG == 2, iterations = 1)
     for z in range(1, MHighLabelBoundaries.size):
@@ -460,7 +525,7 @@ def main():
     
     # maybe instead of selecting a binary weight by the number of voxels in the label that are connected to the GM
 
-    #M = numpy.logical_and(M, numpy.logical_not(outToRemove))
+    #CandidateDark = numpy.logical_and(CandidateDark, numpy.logical_not(outToRemove))
     
     # MLowI = numpy.where(MLow)
     
@@ -523,16 +588,28 @@ def main():
     #     #else:
     #     #    outToRemove[LIDX] = 2
     
-    #M = numpy.logical_and(M, numpy.logical_not(MLow))
+    #CandidateDark = numpy.logical_and(CandidateDark, numpy.logical_not(MLow))
 
-    M = numpy.logical_or(M, DrawEMIMG == 2)
+    CandidateDark = numpy.logical_or(CandidateDark, DrawEMIMG == 2)
     # retain large components
-    MLabels, numLabels = scipy.ndimage.label(M)
+    MLabels, numLabels = scipy.ndimage.label(CandidateDark)
 
     H = numpy.bincount(MLabels[MLabels > 0])
-    M = Utils.ismember(MLabels, numpy.where(H > 1000)[0])
+    CandidateDark = Utils.ismember(MLabels, numpy.where(H > 1000)[0])
 
-    #M2 = numpy.logical_or(numpy.logical_and(M, numpy.logical_not(MM)), DrawEMIMG == 2)
+    # idea: dilate the choroid label into bright regions posterior
+    # use that to prevent removing GM due to misregistration of the ventricles
+    # #ChoroidSE[:, :, 1] = 1
+    # # this mask dilates posterior
+    # ChoroidsDilated = scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [31, 63]), structure=ChoroidSE)
+
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(ChoroidsDilated), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_ChoroidsDilated.nii.gz"))
+    
+
+
+
+    #M2 = numpy.logical_or(numpy.logical_and(CandidateDark, numpy.logical_not(MM)), DrawEMIMG == 2)
     #M3 = numpy.logical_and(numpy.logical_not(M2), Utils.ismember(DrawEMIMG, [3, 8]))
     
     # for each component removed by numpy.logical_not(scipy.ndimage.binary_closing(M3, iterations=2)
@@ -540,8 +617,12 @@ def main():
 
     #T = numpy.logical_not(scipy.ndimage.binary_closing(M3, iterations=2))
     #M4 = largestComponent(numpy.logical_and(M2, T))
-
-    outIMG = numpy.logical_or(M, numpy.logical_or(outGMToAdd, DrawEMIMG == 2))
+    
+    
+    outIMG = numpy.logical_or(CandidateDark, numpy.logical_or(outGMToAdd, DrawEMIMG == 2))
+    outIMG = numpy.logical_and(outIMG, numpy.logical_not(ChoroidsReconDilated))
+    NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_outIMG.nii.gz"))
 
     # dilate the proportions
     outPropsDilated = scipy.ndimage.grey_dilation(outProps, size=3)
@@ -550,35 +631,60 @@ def main():
     outPropsDilated[numpy.logical_not(outPropsDilatedPos)] = outIMG[numpy.logical_not(outPropsDilatedPos)]
     # remove hippocampus and amygdala
     outPropsDilated[scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [17, 18, 53, 54]))] = 0
-    outPropsDilated[scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [4, 31, 43, 63]), iterations=3)] = 0
-    #outIMG = numpy.logical_or(M, DrawEMIMG == 2)
+
+    NewNII = nibabel.Nifti1Image(numpy.single(outPropsDilated), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_outpropsdilated_beforevent.nii.gz"))
+
+    
+
+
+    # prevent removal of dilation posterior of 
+    #outPropsDilated[scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [4, 31, 43, 63]), iterations=3)] = 0
+
+    # restore 
+
+    #outIMG = numpy.logical_or(CandidateDark, DrawEMIMG == 2)
     segmentationGM = outPropsDilated >= ConnectedCompThreshold
     segmentationGM = outPropsDilated >= ConnectedCompThreshold
     L, numlabels = scipy.ndimage.label(segmentationGM)
     H = numpy.bincount(L[L > 0])
     segmentationGM = Utils.ismember(L, numpy.where(H > 100)[0])
 
+    # if not noDilateDarkWM:
+    #     RibbonWMLHDT = scipy.ndimage.distance_transform_cdt(RibbonIMG != 2)
+    #     RibbonWMRHDT = scipy.ndimage.distance_transform_cdt(RibbonIMG != 41)
+
+    #     CloserToWMLHDT = RibbonWMLHDT < RibbonWMRHDT
+
+    #     LHDrawEMDarkWMMask = numpy.logical_and(DrawEMIMG == 8, CloserToWMLHDT)
+    #     RHDrawEMDarkWMMask = numpy.logical_and(DrawEMIMG == 8, numpy.logical_not(CloserToWMLHDT))
+
+    #     LHBarrierIMG = numpy.logical_and(CloserToWMLHDT, DrawEMIMG == 3)
+    #     RHBarrierIMG = numpy.logical_and(numpy.logical_not(CloserToWMLHDT), DrawEMIMG == 3)
+
+    #     nDilate = int(numpy.round(15 / T2NII.header.get_zooms()[0]))
+
+    #     for i in range(nDilate):
+    #         LHDrawEMDarkWMMask = numpy.logical_and(scipy.ndimage.binary_dilation(LHDrawEMDarkWMMask), LHBarrierIMG)
+    #         RHDrawEMDarkWMMask = numpy.logical_and(scipy.ndimage.binary_dilation(RHDrawEMDarkWMMask), RHBarrierIMG)
+
+    #     segmentationGM[LHDrawEMDarkWMMask] = False
+    #     segmentationGM[RHDrawEMDarkWMMask] = False
     
-    RibbonWMLHDT = scipy.ndimage.distance_transform_cdt(RibbonIMG != 2)
-    RibbonWMRHDT = scipy.ndimage.distance_transform_cdt(RibbonIMG != 41)
-
-    CloserToWMLHDT = RibbonWMLHDT < RibbonWMRHDT
-
-    LHDrawEMDarkWMMask = numpy.logical_and(DrawEMIMG == 8, CloserToWMLHDT)
-    RHDrawEMDarkWMMask = numpy.logical_and(DrawEMIMG == 8, numpy.logical_not(CloserToWMLHDT))
-
-    LHBarrierIMG = numpy.logical_and(CloserToWMLHDT, DrawEMIMG == 3)
-    RHBarrierIMG = numpy.logical_and(numpy.logical_not(CloserToWMLHDT), DrawEMIMG == 3)
-
-    nDilate = int(numpy.round(15 / T2NII.header.get_zooms()[0]))
-
-    for i in range(nDilate):
-        LHDrawEMDarkWMMask = numpy.logical_and(scipy.ndimage.binary_dilation(LHDrawEMDarkWMMask), LHBarrierIMG)
-        RHDrawEMDarkWMMask = numpy.logical_and(scipy.ndimage.binary_dilation(RHDrawEMDarkWMMask), RHBarrierIMG)
-
-    segmentationGM[LHDrawEMDarkWMMask] = False
-    segmentationGM[RHDrawEMDarkWMMask] = False
     segmentationGM[DrawEMIMG == 8] = False
+
+    # remove GM near the hippocampus ventricles
+    HippoDilatedVents = numpy.logical_and(
+        Utils.ismember(LabelFusionIMG, [4, 43]),
+        scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [17, 53]), iterations=10)
+    )
+
+    HippoDilatedVentsDarkRemove = numpy.logical_and(
+        Utils.ismember(LabelFusionIMG, [159, 160]),
+        scipy.ndimage.binary_dilation(HippoDilatedVents, iterations=10)
+    )
+
+    segmentationGM[scipy.ndimage.binary_dilation(HippoDilatedVentsDarkRemove)] = False
 
     NewNII = nibabel.Nifti1Image(numpy.uint8(segmentationGM), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
@@ -593,7 +699,7 @@ def main():
 
     #NewNII = nibabel.Nifti1Image(CannyIMG, T2NII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_CannyIMG.nii.gz"))
-    #NewNII = nibabel.Nifti1Image(numpy.uint8(M), T2NII.affine)
+    #NewNII = nibabel.Nifti1Image(numpy.uint8(CandidateDark), T2NII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_init2.nii.gz"))
 
     #NewNII = nibabel.Nifti1Image(numpy.uint8(numpy.logical_and(numpy.logical_not(M4), T)), T2NII.affine)
@@ -603,7 +709,7 @@ def main():
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_Lap.nii.gz"))
 #    NewNII = nibabel.Nifti1Image(numpy.single(V), T2NII.affine)
 #    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_V.nii.gz"))
-#    NewNII = nibabel.Nifti1Image(numpy.uint8(M), T2NII.affine)
+#    NewNII = nibabel.Nifti1Image(numpy.uint8(CandidateDark), T2NII.affine)
 #    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_M.nii.gz"))
     # NewNII = nibabel.Nifti1Image(numpy.uint8(MM), T2NII.affine)
     # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MM.nii.gz"))

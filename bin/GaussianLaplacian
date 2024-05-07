@@ -10,8 +10,8 @@ import skimage.morphology
 
 opts, args = getopt.getopt(sys.argv[1:], 's:')
 
-def ismember(A, B):
-    return numpy.reshape(numpy.in1d(A.ravel(), numpy.array(B)), A.shape)
+import Utils
+
 
 sigma = 1
 

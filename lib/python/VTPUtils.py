@@ -16,6 +16,58 @@ import vtk.util.numpy_support
 #     return VRegionId
 
 
+def readVTPAll(inFileName: str) -> dict:
+    """Read a VTP surface file along with all cell and point data arrays
+
+    Parameters
+    ----------
+    inFileName : str
+        VTP file name.
+
+    Returns
+    -------
+    dict
+        `vertices` and `faces`.
+    """
+    if not os.path.isfile(inFileName):
+        print("File Not Found: " + inFileName)
+        return None
+    Reader = vtk.vtkXMLPolyDataReader()
+    Reader.SetFileName(inFileName)
+    Reader.Update()
+
+    Data = Reader.GetOutput()
+    Vrts = Data.GetVerts()
+
+    S = dict()
+    S['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
+    if Data.GetNumberOfPolys() > 0:
+        S['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPolys().GetData()))
+        
+        if S['faces'].size == Data.GetNumberOfPolys() * 5:
+            S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 5), 5)).T
+            S['faces'] = S['faces'][2:]
+        else:
+            S['faces'] = numpy.reshape(S['faces'], (int(S['faces'].size / 4), 4)).T
+            S['faces'] = S['faces'][1:]
+    
+    pointData = Data.GetPointData()
+    S['pointData'] = dict()
+
+    for arrayIDX in range(pointData.GetNumberOfArrays()):
+        curArrayName = pointData.GetArrayName(arrayIDX)
+        curArrayName = curArrayName.replace(" ", "_")
+        S['pointData'][curArrayName] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(pointData.GetArray(arrayIDX)))
+    
+    cellData = Data.GetCellData()
+    S['cellData'] = dict()
+
+    for arrayIDX in range(cellData.GetNumberOfArrays()):
+        curArrayName = cellData.GetArrayName(arrayIDX)
+        curArrayName = curArrayName.replace(" ", "_")
+        S['cellData'][curArrayName] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(cellData.GetArray(arrayIDX)))
+    return S
+
 def readVTPSurf(inFileName: str) -> dict:
     """Read a VTP surface file.
 

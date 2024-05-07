@@ -65,7 +65,9 @@ def main():
     # tissueSegArgGroup.add_argument('--nowmlaplacianexpand', help = "Do not expand WM segmentation using bright regions", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--gmsegcompthreshold', help = "Threshold for GM segmentation connected components (0, 1]", required = False, type = float, default = 0.2)
     tissueSegArgGroup.add_argument('--tissuesegmethod', help = "Specify tissue segmentation method", required = False, choices = ['MCRIBS'], default = 'MCRIBS')
+    tissueSegArgGroup.add_argument('--nodilatedarkwm', help = "Do not dilate dark WM, used if fundi are missing from GM seg", required = False, action = 'store_true')
     tissueSegArgGroup.add_argument('--parallel', help = "Training images -> Subject images in parallel", required = False, action = 'store_true')
+    tissueSegArgGroup.add_argument('--stopaftergmseg', help = "Stop after segmentation_gm generation", required = False, action = 'store_true')
 
     # tissueSegArgGroup.add_argument('--subjectage', help = "Subject age in weeks", required = False, choices = numpy.arange(28, 45), default = 40, type = int)
 
@@ -78,6 +80,7 @@ def main():
     surfReconArgGroup.add_argument('--deformablenoensurepialoutside', help = "Dont ensure pial is outside white", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--deformablelargeclose', help = "Large close", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--cleansr', help = "Clean SurfReconDeformable before running", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--cleanpial', help = "Clean only pial from SurfReconDeformable before running", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugwhite', help = "Debug white surface", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugpial', help = "Debug pial surface", required = False, action = 'store_true')
 
@@ -355,24 +358,19 @@ def main():
             cmd = ["MCRIBTissueSegMCRIBS"]
             if options.largeventricles:
                 cmd.append('-largeventricles')
-            if options.nobspline:
-                cmd.append('-nobspline')
-            if options.nowmlaplacianexpand:
-                cmd.append('-nowmlaplacianexpand')
-            cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
-            cmd.append(options.subjectid)
-            if options.parallel:
-                cmd.append('-parallel')
-            if options.antsaffineinit:
-                cmd.append('-antsaffineinit')
-                
+            if options.nodilatedarkwm:
+                cmd.append('-nodilatedarkwm')
+            if options.stopaftergmseg:
+                cmd.append('-stopaftergmseg')
+            # if options.nobspline:
+            #     cmd.append('-nobspline')
+            # if options.nowmlaplacianexpand:
+            #     cmd.append('-nowmlaplacianexpand')
             cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
             cmd.append(options.subjectid)
             if options.parallel:
                 cmd.append('-parallel')
                 
-            cmd.extend(['-gmsegcompthreshold', str(options.gmsegcompthreshold)])
-            cmd.append(options.subjectid)
             print(" ".join(cmd))
 
             runCommand(cmd, log_file_name = logFileName)
@@ -392,14 +390,16 @@ def main():
             cmd.append('--largeclose')
         if options.largeventricles:
             cmd.append('--largeventricles')
-        if options.nowmlaplacianexpand:
-            cmd.append('--nowmlaplacianexpand')
+        # if options.nowmlaplacianexpand:
+        #     cmd.append('--nowmlaplacianexpand')
         if options.debugwhite:
             cmd.append('--debugwhite')
         if options.debugpial:
             cmd.append('--debugpial')
         if options.cleansr:
             cmd.append('--cleansr')
+        if options.cleanpial:
+            cmd.append('--cleanpial')
 
         cmd.extend(['--jointhreshold', str(options.deformablejointhresh)])
         runCommand(cmd, log_file_name = logFileName)

@@ -144,7 +144,6 @@ outIMG[outMask] = K + 1
 #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans.nii.gz"))
 outIMG = (outIMG == 3)
 
-
 HippoClosed = scipy.ndimage.binary_closing(Utils.ismember(DKTIMG, [17, 53]), iterations = 3)
 
 T = numpy.logical_or(HippoClosed, AmygDilatedMask)
@@ -175,7 +174,8 @@ else:
     #NewNII = nibabel.Nifti1Image(numpy.int16(T), DKTNII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_L.nii.gz"))
 
+
 outIMG = numpy.logical_and(outIMG, numpy.logical_not(Utils.ismember(DKTRingsIMG, [999, 14, 28, 60])))
 
 NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), DKTNII.affine)
-nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans_class3.nii.gz"))
+nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_latvent_centre.nii.gz"))

@@ -6,6 +6,7 @@ import os
 import nibabel
 import scipy.ndimage
 import numpy.linalg
+import skimage.segmentation
 
 def largestComponent(BW):
     if not numpy.any(BW):
@@ -48,49 +49,41 @@ def main():
     
     T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore.nii.gz"))
     T2IMG = numpy.single(T2NII.dataobj)
-    T2IMG = numpy.single(T2NII.dataobj)
     
-    LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt.nii.gz"))
-    LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt.nii.gz"))
-    LabelFusionIMG = numpy.uint16(LabelFusionNII.get_fdata())
     LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt.nii.gz"))
     LabelFusionIMG = numpy.uint16(LabelFusionNII.dataobj)
 
     LabelFusionEditedNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
     LabelFusionEditedIMG = numpy.uint16(LabelFusionEditedNII.dataobj)
-    LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt.nii.gz"))
-    LabelFusionIMG = numpy.uint16(LabelFusionNII.dataobj)
-
-    LabelFusionEditedNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
-    LabelFusionEditedIMG = numpy.uint16(LabelFusionEditedNII.dataobj)
-
-    LabelFusionEditedNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
-    LabelFusionEditedNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"))
-    LabelFusionEditedIMG = numpy.uint16(LabelFusionEditedNII.get_fdata())
     
     RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
-    RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
-    RegionsIMG = numpy.uint16(RegionsNII.get_fdata())
+    RegionsIMG = numpy.uint16(RegionsNII.dataobj)
+
     SegmentationGMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
     SegmentationGMIMG = numpy.array(SegmentationGMNII.dataobj) > 0
 
-    #RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
-    #RegionsIMG = numpy.uint16(RegionsNII.dataobj)
-    SegmentationGMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
-    SegmentationGMIMG = numpy.array(SegmentationGMNII.dataobj) > 0
+    DrawEMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_drawem_alberts_tissueseg.nii.gz"))
+    DrawEMIMG = numpy.squeeze(numpy.uint8(DrawEMNII.dataobj))
+
+    WMIslandsLHNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_WMIslandsLH.nii.gz"))
+    WMIslandsLHIMG = numpy.int8(WMIslandsLHNII.dataobj) > 0
+
+    WMIslandsRHNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_WMIslandsRH.nii.gz"))
+    WMIslandsRHIMG = numpy.int8(WMIslandsRHNII.dataobj) > 0
+    
+    OutputRegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut.nii.gz"))
+    OutputRegionsIMG = numpy.int8(OutputRegionsNII.dataobj)
 
     #RegionsNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"))
     #RegionsIMG = numpy.uint16(RegionsNII.dataobj)
     
-    InterhemisphericNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interhemispheric.nii.gz"))
-    InterhemisphericNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interhemispheric.nii.gz"))
-    InterhemisphericIMG = (InterhemisphericNII.get_fdata()) > 0
+    # InterhemisphericNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interhemispheric.nii.gz"))
+    # InterhemisphericNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interhemispheric.nii.gz"))
+    # InterhemisphericIMG = (InterhemisphericNII.get_fdata()) > 0
     
     BrainMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
     BrainMaskIMG = numpy.array(BrainMaskNII.dataobj) > 0
-    BrainMaskNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_brain_mask.nii.gz"))
-    BrainMaskIMG = numpy.array(BrainMaskNII.dataobj) > 0
-
+    
     WMForceIMG = numpy.zeros(T2IMG.shape, dtype = numpy.single)
     PialForceIMG = numpy.zeros(T2IMG.shape, dtype = numpy.single)
     
@@ -103,8 +96,7 @@ def main():
     LabelFusionEditedIMGGM = numpy.logical_or(numpy.logical_and(LabelFusionEditedIMG >= 1000, LabelFusionEditedIMG <= 1035), numpy.logical_and(LabelFusionEditedIMG >= 2000, LabelFusionEditedIMG <= 2035))
 
     WMForceIMG[numpy.logical_and(T, numpy.logical_not(LabelFusionEditedIMGGM))] = -1
-    WMForceIMG[numpy.logical_and(T, numpy.logical_not(LabelFusionEditedIMGGM))] = -1
-    
+        
     #LabelFusionEditedIMGWMMask = numpy.logical_and(LabelFusionEditedIMG == 2, LabelFusionEditedIMG == 41)
     #LabelFusionEditedIMGWMMask = numpy.logical_and(LabelFusionEditedIMG == 2, LabelFusionEditedIMG == 41)
     
@@ -112,22 +104,69 @@ def main():
     WMForceIMG[scipy.ndimage.binary_erosion(Utils.ismember(LabelFusionEditedIMG, [17, 53]))] = -1
     
     # WM FORCE: set interhemispheric to restrict (1)
-    WMForceIMG[InterhemisphericIMG] = 1
+    #WMForceIMG[InterhemisphericIMG] = 1
     
+
+    # LHGMMaskIMG = numpy.logical_and(LabelFusionEditedIMG >= 1000, LabelFusionEditedIMG <= 1035)
+    # RHGMMaskIMG = numpy.logical_and(LabelFusionEditedIMG >= 2000, LabelFusionEditedIMG <= 2035)
+    
+    # LHGMMaskIMGDT = scipy.ndimage.distance_transform_edt(numpy.logical_not(LHGMMaskIMG), sampling=LabelFusionEditedNII.header.get_zooms())
+    # RHGMMaskIMGDT = scipy.ndimage.distance_transform_edt(numpy.logical_not(RHGMMaskIMG), sampling=LabelFusionEditedNII.header.get_zooms())
+
+    # LHGMMaskIMG = numpy.logical_and(RHGMMaskIMGDT < 3, LHGMMaskIMG)
+    # RHGMMaskIMG = numpy.logical_and(LHGMMaskIMGDT < 3, RHGMMaskIMG)
+    
+    # WMForceIMG[LHGMMaskIMG] = 1
+    # WMForceIMG[RHGMMaskIMG] = 1
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(LHGMMaskIMG), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force_lh_mask.nii.gz'))
+
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(RHGMMaskIMG), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force_Rh_mask.nii.gz'))
+
+    #WMForceRHGMMaskIMG
+    # DilatedLHGMMaskIMG = scipy.ndimage.binary_dilation(LHGMMaskIMG, iterations=2)
+    # DilatedRHGMMaskIMG = scipy.ndimage.binary_dilation(RHGMMaskIMG, iterations=2)
+    # DrawEMCSFMask = DrawEMIMG == 1
+
+    # nDilate = 10
+    # for z in range(nDilate):
+    #     DilatedLHGMMaskIMG = numpy.logical_and(scipy.ndimage.binary_dilation(DilatedLHGMMaskIMG), DrawEMCSFMask)
+    #     DilatedRHGMMaskIMG = numpy.logical_and(scipy.ndimage.binary_dilation(DilatedRHGMMaskIMG), DrawEMCSFMask)
+
+    # InterhemisphereMask = numpy.logical_and(DilatedLHGMMaskIMG, DilatedRHGMMaskIMG)
+    
+    # NewLabelFusionIMG[InterhemisphereMask] = 24
+    
+    # restrict external DrawEM
+    PialForceIMG[DrawEMIMG == 4] = 1
+    PialForceIMG[DrawEMIMG == 1] = 1
+    
+    
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(InterhemisphereMask), LabelFusionNII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interhemispheric.nii.gz"))
+    
+
     # make BrainMask distance transform, distance from BrainMask+cerebellum edge
     # make BrainMask distance transform, distance from BrainMask+cerebellum edge
     
     BrainMaskCerebellumDTMask = numpy.logical_and(BrainMaskIMG, numpy.logical_not(Utils.ismember(LabelFusionEditedIMG, [91, 93, 70, 71, 72, 73, 74, 75, 76])))
-    BrainMaskCerebellumDT = scipy.ndimage.distance_transform_edt(BrainMaskCerebellumDTMask, sampling = T2NII.header.get_zooms())
+    BrainMaskCerebellumDT = scipy.ndimage.distance_transform_edt(BrainMaskCerebellumDTMask, sampling=T2NII.header.get_zooms())
     
     #LabelFusionEditedIMGGM = numpy.logical_or(numpy.logical_and(LabelFusionEditedIMG >= 1000, LabelFusionEditedIMG <= 1035), numpy.logical_and(LabelFusionEditedIMG >= 2000, LabelFusionEditedIMG <= 2035))
 
     # WM FORCE: add voxels that are near the edge of the BrainMaskCerebellumDT to restrict at 0.5
-    WMForceIMG[numpy.logical_and(numpy.logical_and(BrainMaskCerebellumDT < 4, BrainMaskCerebellumDTMask), LabelFusionEditedIMGGM)] = 1
+    # this needs to mask out locally bright pixels
+    L = scipy.ndimage.gaussian_laplace(T2IMG, sigma=1)
+    WMForceIMG[numpy.logical_and(numpy.logical_and(numpy.logical_and(BrainMaskCerebellumDT < 4, BrainMaskCerebellumDTMask), LabelFusionEditedIMGGM), L > 0)] = 1
+    
+    
+    # NewNII = nibabel.Nifti1Image(numpy.single(L), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'L.nii.gz'))
+
     
     # PIAL FORCE: add voxels that are near the edge of the brain in the GM mask to expand 
     PialForceIMG[numpy.logical_and(BrainMaskCerebellumDT < 4, LabelFusionEditedIMGGM)] = -1
-    
     PialForceIMG[numpy.logical_not(BrainMaskCerebellumDTMask)] = 1
 
     del LabelFusionEditedIMGGM
@@ -161,11 +200,13 @@ def main():
     L, numLabels = scipy.ndimage.label(T)
     S = numpy.logical_and(L == numpy.argmax(numpy.bincount(L[L > 0])), LabelFusionEditedIMG == 2)
     WMForceIMG[scipy.ndimage.binary_erosion(S)] = -1
+    
     # WM FORCE: set edited WM = 999 to restrict (1)
     WMForceIMG[LabelFusionEditedIMG == 999] = 1
     # WM FORCE: set edited WM = 998 to expand (-1)
     WMForceIMG[LabelFusionEditedIMG == 998] = -1
     
+
     # WM FORCE: make sure wm_force is negative in edited WM voxels
     WMForceIMG[scipy.ndimage.binary_erosion(numpy.logical_and(LabelFusionEditedIMG != LabelFusionIMG, Utils.ismember(LabelFusionEditedIMG, [2, 41])))] = -1
     WMForceIMG[LabelFusionEditedIMG == 254] = -1
@@ -185,14 +226,85 @@ def main():
     #periMask = scipy.ndimage.binary_closing(periMask, iterations=4)
     WMForceIMG[periMask] = 1
     
+    DrawEMExclusionPial = scipy.ndimage.binary_closing(DrawEMIMG == 4, iterations=5)
+    PialForceIMG[DrawEMExclusionPial] = 3
+
     #NewNII = nibabel.Nifti1Image(numpy.uint8(periMask), T2NII.affine)
     #nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_perimask.nii.gz'))
+
+    LHWMHolesFilledAdded = numpy.logical_and(scipy.ndimage.binary_fill_holes(OutputRegionsIMG == 3), OutputRegionsIMG != 3)
+    RHWMHolesFilledAdded = numpy.logical_and(scipy.ndimage.binary_fill_holes(OutputRegionsIMG == 2), OutputRegionsIMG != 2)
+
+    WMForceIMG[numpy.logical_and(WMIslandsLHIMG, numpy.logical_not(LHWMHolesFilledAdded))] = 0
+    WMForceIMG[LHWMHolesFilledAdded] = -1
+    WMForceIMG[numpy.logical_and(WMIslandsRHIMG, numpy.logical_not(RHWMHolesFilledAdded))] = 0
+    WMForceIMG[RHWMHolesFilledAdded] = -1
+
+    # do the interhemispheric mask 
+    LHMarker = numpy.logical_or(OutputRegionsIMG == 3, numpy.logical_and(LabelFusionEditedIMG >= 1000, LabelFusionEditedIMG < 2000))
+    RHMarker = numpy.logical_or(OutputRegionsIMG == 2, numpy.logical_and(LabelFusionEditedIMG >= 2000, LabelFusionEditedIMG < 3000))
+
+    markers = numpy.zeros_like(LabelFusionIMG, dtype=numpy.uint8)
+    markers[LHMarker] = 1
+    markers[RHMarker] = 2
+
+    DBoth = scipy.ndimage.distance_transform_edt(numpy.logical_not(numpy.logical_or(LHMarker, RHMarker)), sampling=LabelFusionNII.header.get_zooms()[0:3])
+    #DLH = scipy.ndimage.distance_transform_edt(numpy.logical_not(LHMarker), sampling=LabelFusionNII.header.get_zooms()[0:3])
+    #DRH = scipy.ndimage.distance_transform_edt(numpy.logical_not(RHMarker), sampling=LabelFusionNII.header.get_zooms()[0:3])
+
+    labels = skimage.segmentation.watershed(DBoth, markers, watershed_line=True)
+
+    BorderMask = numpy.logical_or(
+        numpy.logical_and(scipy.ndimage.binary_dilation(labels == 1), scipy.ndimage.binary_dilation(labels == 2)),
+        labels == 0
+    )
     
+    DFromBorder = scipy.ndimage.distance_transform_edt(numpy.logical_not(BorderMask), sampling=LabelFusionNII.header.get_zooms()[0:3])
+    #NewNII = nibabel.Nifti1Image(numpy.single(DBoth), T2NII.affine)
+    #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_D.nii.gz"))
+ 
+    DistThresh = 3
+
+    InterhemisphericMask = DFromBorder < DistThresh
+
+    # I want the force to go from 1 -> 0 at DFromBorder 0 -> DistThresh
+    #DistForce = 1 - DFromBorder / DistThresh
+    
+    WMForceIMG[InterhemisphericMask] = 1 - DFromBorder[InterhemisphericMask] / DistThresh
+
+    WMForceIMG[LabelFusionEditedIMG == 254] = -1
+    WMForceIMG[LabelFusionEditedIMG == 255] = -1
+
+    WMForceIMG[LabelFusionEditedIMG == 999] = 1
+
     NewNII = nibabel.Nifti1Image(numpy.single(WMForceIMG), T2NII.affine)
     nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'))
     NewNII = nibabel.Nifti1Image(numpy.single(PialForceIMG), T2NII.affine)
     nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'pial_force.nii.gz'))
 
+    # make T2 image with cerebellum and surrounding CSF blacked out
+    T = scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionEditedIMG, [91, 93]), iterations=10)
+    CerebellumBlackOutMask = numpy.logical_or(Utils.ismember(LabelFusionEditedIMG, [91, 93]), numpy.logical_and(DrawEMIMG == 1, T))
+    T2MaskedIMG = numpy.array(T2IMG)
+    T2MaskedIMG[CerebellumBlackOutMask] = 0
+    NewNII = nibabel.Nifti1Image(numpy.single(T2MaskedIMG), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_cerebellum_blacked.nii.gz"))
+
+    # revise the regions image to get rid of WM near the midline
+
+    GMSuperClosed = scipy.ndimage.binary_closing(numpy.logical_and(LabelFusionEditedIMG >= 1000, LabelFusionEditedIMG <= 2036), iterations=5)
+
+    RefinedOutputRegionsIMG = numpy.array(OutputRegionsIMG)
+
+    M = numpy.logical_and(InterhemisphericMask, GMSuperClosed)
+    M = numpy.logical_and(M, Utils.ismember(OutputRegionsIMG, [2, 3]))
+    M = numpy.logical_and(M, numpy.logical_not(Utils.ismember(LabelFusionEditedIMG, [254, 255])))
+                          
+    RefinedOutputRegionsIMG[M] = 0
+    del M
+    
+    NewNII = nibabel.Nifti1Image(numpy.uint8(RefinedOutputRegionsIMG), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions_brainstem_cut.nii.gz")) 
 
 if __name__ == "__main__":
     main()
