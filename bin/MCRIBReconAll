@@ -83,6 +83,7 @@ def main():
     surfReconArgGroup.add_argument('--cleanpial', help = "Clean only pial from SurfReconDeformable before running", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugwhite', help = "Debug white surface", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugpial', help = "Debug pial surface", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--debugcerebrum', help = "Debug cerebrum surfaces", required = False, action = 'store_true')
 
     inflateSphereArgGroup = argParser.add_argument_group('inflatesphere', 'Perform inflation, spherical mapping, curv, area, depends --surfrecon')
     inflateSphereArgGroup.add_argument('--inflatesphere', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -396,6 +397,8 @@ def main():
             cmd.append('--debugwhite')
         if options.debugpial:
             cmd.append('--debugpial')
+        if options.debugcerebrum:
+            cmd.append('--debugcerebrum')
         if options.cleansr:
             cmd.append('--cleansr')
         if options.cleanpial:

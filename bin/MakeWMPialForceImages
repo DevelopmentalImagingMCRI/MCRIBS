@@ -252,7 +252,7 @@ def main():
     #DLH = scipy.ndimage.distance_transform_edt(numpy.logical_not(LHMarker), sampling=LabelFusionNII.header.get_zooms()[0:3])
     #DRH = scipy.ndimage.distance_transform_edt(numpy.logical_not(RHMarker), sampling=LabelFusionNII.header.get_zooms()[0:3])
 
-    labels = skimage.segmentation.watershed(DBoth, markers, watershed_line=True)
+    labels = skimage.segmentation.watershed(DBoth, markers, watershed_line=True)         
 
     BorderMask = numpy.logical_or(
         numpy.logical_and(scipy.ndimage.binary_dilation(labels == 1), scipy.ndimage.binary_dilation(labels == 2)),

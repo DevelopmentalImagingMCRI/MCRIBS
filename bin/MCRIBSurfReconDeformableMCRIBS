@@ -16,6 +16,7 @@ LARGEVENTRICLES=
 NOWMLAPLACIANEXPAND=
 DEBUGWHITE=
 DEBUGPIAL=
+DEBUGCEREBRUM=
 CLEANSR=
 CLEANPIAL=
 
@@ -42,6 +43,9 @@ do
 		;;
 		--cleanpial)
 			CLEANPIAL=YES
+		;;
+		--debugcerebrum)
+			DEBUGCEREBRUM=--debugcerebrum
 		;;
 		--debugwhite)
 			DEBUGWHITE=--debugwhite
@@ -373,7 +377,7 @@ rm -f ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm.nii.gz
 
 if [ ! -f "SurfReconDeformable/${SUBJID}/temp/first_run_done" ]
 then
-	recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $JOINTHRESHOLD $USEFASTCOLLISION $DEBUGWHITE $DEBUGPIAL 2>&1 | tee -a logs/$SUBJID.log
+	recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $JOINTHRESHOLD $USEFASTCOLLISION $DEBUGCEREBRUM $DEBUGWHITE $DEBUGPIAL 2>&1 | tee -a logs/$SUBJID.log
 # else
 # 	# temporary 
 # 	mri_convert -rl SurfReconDeformable/${SUBJID}/recon/regions.nii.gz -rt nearest -ns 1 -odt int ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz SurfReconDeformable/${SUBJID}/recon/labelfusion_dkt_edited.nii.gz
@@ -383,8 +387,21 @@ then
 # 	# second run, refinement of the WM surface
 # 	recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $JOINTHRESHOLD $USEFASTCOLLISION $DEBUGWHITE $DEBUGPIAL 2>&1 | tee -a logs/$SUBJID.log
 fi
-recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $JOINTHRESHOLD $USEFASTCOLLISION $DEBUGWHITE $DEBUGPIAL 2>&1 | tee -a logs/$SUBJID.log
-exit
+
+# mri_binarize --i ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz --o ${OUTPUTPREFIX}_wm_closed.nii.gz --match 2 41 254 255 --dilate 1 --erode 1
+
+# N4BiasFieldCorrection -d 3 -i ${OUTPUTPREFIX}_t2w_restore.nii.gz -x ${OUTPUTPREFIX}_brain_mask.nii.gz -w ${OUTPUTPREFIX}_wm_closed.nii.gz -s 2 -b [26,3] -v -o ${OUTPUTPREFIX}_wm_corrected.nii.gz
+
+# mri_convert -rl SurfReconDeformable/${SUBJID}/recon/regions.nii.gz -ns 1 -odt float ${OUTPUTPREFIX}_wm_corrected.nii.gz SurfReconDeformable/${SUBJID}/temp/t2w-image-wmcorrected.nii.gz
+if [ ! -f "SurfReconDeformable/${SUBJID}/temp/first_run_done" ]
+then
+	echo "Error occured in first run"
+	exit
+fi
+MakePialForceSecond $SUBJID
+
+recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $JOINTHRESHOLD $USEFASTCOLLISION $DEBUGCEREBRUM $DEBUGWHITE $DEBUGPIAL 2>&1 | tee -a logs/$SUBJID.log
+
 if [ -f "SurfReconDeformable/${SUBJID}/temp/white_rerun_required" ]
 then
 	echo "White rerun required, rerunning"
@@ -458,18 +475,18 @@ then
 		do
 			
 			#`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
-			`dirname $0`/VTPExtractSurfs --tkr-only --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
+			$MCRIBS_HOME/VTK/VTK-install/bin/vtkpython $MCRIBS_HOME/bin/VTPExtractSurfs --tkr-only --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID/meshes/$SURF-$HEMI.vtp
 			#rm -f $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_world.surf
 			mv $OUTDIR/$SUBJID/meshes/${SURF}-${HEMI}_tkr.surf freesurfer/$SUBJID/surf/$HEMI.$SURF
 
 		done
 		#`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-${HEMI}.vtp freesurfer/$SUBJID/surf/$HEMI.white freesurfer/$SUBJID/label/$HEMI.cortex.label
-		`dirname $0`/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-${HEMI}.vtp freesurfer/$SUBJID/surf/$HEMI.white freesurfer/$SUBJID/label/$HEMI.cortex.label
+		$MCRIBS_HOME/VTK/VTK-install/bin/vtkpython $MCRIBS_HOME/bin/VTPCortexMaskToLabel SurfReconDeformable/$SUBJID/meshes/white-${HEMI}.vtp freesurfer/$SUBJID/surf/$HEMI.white freesurfer/$SUBJID/label/$HEMI.cortex.label
 	done
 
 	# make the pial surfaces by reordering the pial vertices in the VTP files
 	#`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/DeformableReorderVertices --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
-	`dirname $0`/DeformableReorderVertices --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
+	$MCRIBS_HOME/VTK/VTK-install/bin/vtkpython $MCRIBS_HOME/bin/DeformableReorderVertices --surf-volgeom=$VOLGEOM $OUTDIR/$SUBJID freesurfer/$SUBJID/surf
 
 	# cleanup
 	#rm -f $OUTDIR/$SUBJID/temp/*hull* $OUTDIR/$SUBJID/temp/wm.nii.gz $OUTDIR/$SUBJID/temp/*iso*.vtp $OUTDIR/$SUBJID/temp/*mask*.nii.gz $OUTDIR/$SUBJID/temp/*dmap*.nii.gz $OUTDIR/$SUBJID/temp/*mask*.nii.gz

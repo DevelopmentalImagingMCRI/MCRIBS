@@ -44,7 +44,7 @@ then
 	# 	--metric Demons[ $VENTIMAGE,$TEMPLATEDIR/P${i}_dkt_latvent.nii.gz,0.2 ] \
 	# 	--convergence [ 70x20,1e-6,80 ] --shrink-factors 2x1 --smoothing-sigmas 0x0vox --masks ${P}/${OUTPUTPREFIX}_reg_mask.nii.gz \
 	# 	--output ${P}/${OUTPUTPREFIX}_to_P${i}_reg
-    DOINTERVALVOLUMES=YES
+    DOINTERVALVOLUMES=NO
 
     if [ "$DOINTERVALVOLUMES" == "YES" ]
     then

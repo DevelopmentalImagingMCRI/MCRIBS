@@ -53,5 +53,6 @@ LabelsOverlapWithLatVentMask = numpy.unique(LabelsOverlapWithLatVentMask[LabelsO
 outIMG = numpy.logical_and(Utils.ismember(L, LabelsOverlapWithLatVentMask), DKTRingsIMG != 999)
 G = scipy.ndimage.gaussian_laplace(T2IMG, 2) 
 outIMG = numpy.logical_and(outIMG, G < 0)
+
 NewNII = nibabel.Nifti1Image(numpy.uint8(outIMG), T2NII.affine)
 nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_brightmask_kmeans_class3.nii.gz"))

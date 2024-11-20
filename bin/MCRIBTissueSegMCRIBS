@@ -546,27 +546,33 @@ MakeSeptumMasks $SUBJID
 
 # use drawem GM/WM tissue labels as masks
 # register to ANTs template for hemisphere separation
-if [ ! -f "${OUTPUTPREFIX}_drawem_alberts_tissueseg.nii.gz" ]
-then
 # 	# drawem tissue segmentation
 # 	register ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz $DRAWEMALBERTSTEMPLATE -dofout ${OUTPUTPREFIX}_template_dof.gz -parin $DRAWEMDIR/parameters/ireg.cfg -threads $OMP_NUM_THREADS -v 0
 # 	transform-image $DRAWEMALBERTSTEMPLATE ${OUTPUTPREFIX}_template_register.nii.gz -dofin ${OUTPUTPREFIX}_template_dof.gz -target ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz -interp Linear
-    
-    structures="csf gm wm outlier ventricles cerebstem dgm hwm lwm"
-    for str in ${structures}
-    do
-        strnum=$(($strnum+1))
- 		# warped tissue map in subject native space
-        strems=${OUTPUTPREFIX}_${str}_tissueprob.nii.gz
-#trems=${OUTPUTPREFIX}_${str}_tissueprob_register.nii.gz
-#transform-image $DRAWEMDIR/atlases/non-rigid-v2/atlas-9/structure$strnum/40.nii.gz $strems -dofin ${OUTPUTPREFIX}_template_dof.gz -target ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz -interp Linear
-        antsApplyTransforms -v -d 3 --input $DRAWEMDIR/atlases/non-rigid-v2/atlas-9/structure$strnum/40.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz \
-            --transform ${OUTPUTPREFIX}_alberts_to_native_skullstrip_reg1Warp.nii.gz \
-            --transform [${OUTPUTPREFIX}_alberts_to_native_skullstrip_reg0GenericAffine.mat,0] \
-            --output-data-type float \
-            --output $strems
-        emsstructures="$emsstructures $strems"
-    done
+
+
+if [ ! -f "${OUTPUTPREFIX}_drawem_alberts_tissueseg.nii.gz" ]
+then
+	emsstructures=
+	structures="csf gm wm outlier ventricles cerebstem dgm hwm lwm"
+	for str in ${structures}
+	do
+		strnum=$(($strnum+1))
+		# warped tissue map in subject native space
+		strems=${OUTPUTPREFIX}_${str}_tissueprob.nii.gz
+	#trems=${OUTPUTPREFIX}_${str}_tissueprob_register.nii.gz
+	#transform-image $DRAWEMDIR/atlases/non-rigid-v2/atlas-9/structure$strnum/40.nii.gz $strems -dofin ${OUTPUTPREFIX}_template_dof.gz -target ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz -interp Linear
+		antsApplyTransforms -v -d 3 \
+			--float 1 \
+			--input $DRAWEMDIR/atlases/non-rigid-v2/atlas-9/structure$strnum/40.nii.gz \
+			--reference-image ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz \
+			--transform ${OUTPUTPREFIX}_alberts_to_native_skullstrip_reg1Warp.nii.gz \
+			--transform [${OUTPUTPREFIX}_alberts_to_native_skullstrip_reg0GenericAffine.mat,0] \
+			--output-data-type float \
+			--output $strems
+		emsstructures="$emsstructures $strems"
+	done
+
 
     draw-em ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz 9 $emsstructures ${OUTPUTPREFIX}_drawem_alberts_tissueseg.nii.gz -padding 0 -mask ${OUTPUTPREFIX}_brain_mask.nii.gz -mrf $DRAWEMDIR/parameters/conn_tissues_ven_cstem_dgm_hwm_lwm.mrf -tissues 1 3 1 0 1 1 3 2 7 8 -hui -relaxtimes 2
 # 	draw-em ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz 9 $emsstructures ${OUTPUTPREFIX}_drawem_alberts_tissueseg_register.nii.gz -padding 0 -mrf $DRAWEMDIR/parameters/conn_tissues_ven_cstem_dgm_hwm_lwm.mrf -tissues 1 3 1 0 1 1 3 2 7 8 -hui -relaxtimes 2
@@ -597,17 +603,42 @@ fi
 
 MakeKMeans34Class $SUBJID
 
+# transform the drawem probability maps as needed
+
+emsstructures=
+structures="csf gm wm outlier ventricles cerebstem dgm hwm lwm"
+for str in ${structures}
+do
+	strnum=$(($strnum+1))
+	# warped tissue map in subject native space
+	strems=${OUTPUTPREFIX}_${str}_tissueprob.nii.gz
+#trems=${OUTPUTPREFIX}_${str}_tissueprob_register.nii.gz
+#transform-image $DRAWEMDIR/atlases/non-rigid-v2/atlas-9/structure$strnum/40.nii.gz $strems -dofin ${OUTPUTPREFIX}_template_dof.gz -target ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz -interp Linear
+	antsApplyTransforms -v -d 3 \
+		--float 1 \
+		--input $DRAWEMDIR/atlases/non-rigid-v2/atlas-9/structure$strnum/40.nii.gz \
+		--reference-image ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz \
+		--transform ${OUTPUTPREFIX}_alberts_to_native_skullstrip_reg1Warp.nii.gz \
+		--transform [${OUTPUTPREFIX}_alberts_to_native_skullstrip_reg0GenericAffine.mat,0] \
+		--output-data-type float \
+		--output $strems
+	emsstructures="$emsstructures $strems"
+done
+
+
 ImageMath 3 ${OUTPUTPREFIX}_t2w_restore_brain_dn_canny.nii.gz Canny ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz 0.5 0.05 0.5
+ThresholdImage 3 ${OUTPUTPREFIX}_t2w_restore_brain_dn.nii.gz ${OUTPUTPREFIX}_t2w_restore_brain_dn_kmeans5.nii.gz Kmeans 5 ${OUTPUTPREFIX}_brain_mask.nii.gz
 MakeSegmentationGM -c $GMSEGCOMPTHRESHOLD $NODILATEDARKWM $SUBJID
+
+rm -f $emsstructures
 #SeparateGMSegHemis $SUBJID
-rm -f ${OUTPUTPREFIX}_t2w_restore_brain_dn_canny.nii.gz
+#rm -f ${OUTPUTPREFIX}_t2w_restore_brain_dn_canny.nii.gz
 
 if [ "$STOPAFTERGMSEG" == "YES" ]
 then
     echo "Stopping after GM seg per option"
     exit
 fi
-
 
 MRIBinarize --i ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg.nii.gz --o ${OUTPUTPREFIX}_majority_dkt_skullstrip_reg_cc.nii.gz --match 192 --noverbose
 

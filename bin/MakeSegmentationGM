@@ -162,12 +162,20 @@ def main():
     LabelFusionNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_with_latvent_rings_skullstrip_reg.nii.gz"))
     LabelFusionIMG = numpy.int16(LabelFusionNII.dataobj)
 
-    RibbonNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_ribbon_skullstrip_reg.nii.gz"))
-    RibbonIMG = numpy.int16(LabelFusionNII.dataobj)
-        
+    #RibbonNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_ribbon_skullstrip_reg.nii.gz"))
+    #RibbonIMG = numpy.int16(RibbonNII.dataobj)
+    
+    CerebstemProbNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_cerebstem_tissueprob.nii.gz"))
+    CerebstemProbIMG = CerebstemProbNII.get_fdata()
+
+    GMProbNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_gm_tissueprob.nii.gz"))
+    GMProbIMG = GMProbNII.get_fdata()
+    
+    WMProbNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_wm_tissueprob.nii.gz"))
+    WMProbIMG = WMProbNII.get_fdata()
+    
     #DarkWMNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_dark_wm_prob_skullstrip_reg.nii.gz"))
     #DarkWMIMG = numpy.single(DarkWMNII.dataobj)
-    
     
     BrainMaskEroded = scipy.ndimage.binary_erosion(BrainMaskIMG, iterations=1)
 
@@ -635,9 +643,6 @@ def main():
     NewNII = nibabel.Nifti1Image(numpy.single(outPropsDilated), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_outpropsdilated_beforevent.nii.gz"))
 
-    
-
-
     # prevent removal of dilation posterior of 
     #outPropsDilated[scipy.ndimage.binary_dilation(Utils.ismember(LabelFusionIMG, [4, 31, 43, 63]), iterations=3)] = 0
 
@@ -685,9 +690,53 @@ def main():
     )
 
     segmentationGM[scipy.ndimage.binary_dilation(HippoDilatedVentsDarkRemove)] = False
+    
+    # rejoin parts of the "background" class of DrawEM
+    ErodedDrawEMOutlierClassIMG = numpy.logical_and(scipy.ndimage.binary_erosion(BrainMaskIMG, iterations=2), DrawEMIMG == 4)
+    segmentationGMMean = numpy.mean(T2IMG[segmentationGM])
+    segmentationGMVar = numpy.var(T2IMG[segmentationGM])
+    #print(segmentationGMMean)
+    #print(segmentationGMVar)
+
+    # filter out actual background in the tentorum and CSF
+    VV = numpy.abs(T2IMG[ErodedDrawEMOutlierClassIMG] - segmentationGMMean) < 2 * numpy.sqrt(segmentationGMVar)
+    ErodedDrawEMOutlierClassIMGFiltered = numpy.zeros_like(segmentationGM)
+    ErodedDrawEMOutlierClassIMGFiltered[ErodedDrawEMOutlierClassIMG] = VV
+    del VV
+
+    # NewNII = nibabel.Nifti1Image(numpy.uint8(NewIMG), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_outlier_filtered.nii.gz"))
+
+    # identify components that are bordering existing GM
+    L, numLabels = scipy.ndimage.label(ErodedDrawEMOutlierClassIMGFiltered)
+    segmentationGMDilated = scipy.ndimage.binary_dilation(segmentationGM)
+
+    LOverlap = L[segmentationGMDilated]
+    LOverlap = numpy.unique(LOverlap[LOverlap > 0])
+
+    segmentationGM = numpy.logical_or(segmentationGM, Utils.ismember(L, LOverlap))
+
+    NewNII = nibabel.Nifti1Image(numpy.uint8(segmentationGM), T2NII.affine)
+    nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm1.nii.gz"))
+
+    # add cerebellum segmented voxels that have higher GM prob
+    segmentationGM[numpy.logical_and(DrawEMIMG == 6, numpy.logical_and(GMProbIMG > CerebstemProbIMG, GMProbIMG > WMProbIMG))] = True
+    
+    T2KMeans5NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_kmeans5.nii.gz"))
+    T2KMeans5IMG = numpy.uint8(T2KMeans5NII.dataobj)
+        
+    segmentationGM[T2KMeans5IMG == 3] = False
 
     NewNII = nibabel.Nifti1Image(numpy.uint8(segmentationGM), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm.nii.gz"))
+
+    G = scipy.ndimage.gaussian_laplace(T2IMG, 2) 
+    BrainMaskIMGDT = scipy.ndimage.distance_transform_edt(BrainMaskIMG, sampling=BrainMaskNII.header.get_zooms())
+
+    outIMG = numpy.logical_and(segmentationGM, numpy.logical_or(G > 0, BrainMaskIMGDT < 4))
+
+    # NewNII = nibabel.Nifti1Image(numpy.single(BrainMaskIMGDT), T2NII.affine)
+    # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gmdt.nii.gz"))
     #NewNII = nibabel.Nifti1Image(MHighLabels, T2NII.affine)
     #nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_MHighLabels.nii.gz"))
     NewNII = nibabel.Nifti1Image(outProps, T2NII.affine)

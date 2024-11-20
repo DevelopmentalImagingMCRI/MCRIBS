@@ -404,6 +404,9 @@ def main():
     RibbonNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_majority_dkt_ribbon_skullstrip_reg.nii.gz"))
     RibbonIMG = numpy.uint8(RibbonNII.dataobj)
 
+    ChoroidsDilatedNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_ChoroidsReconDilated.nii.gz"))
+    ChoroidsDilatedIMG = numpy.array(ChoroidsDilatedNII.dataobj) > 0
+
     #GMSEGLHNII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_segmentation_gm_sep_lh.nii.gz"))
     #GMSEGLHIMG = (GMSEGLHNII.get_fdata() > 0)
     GMSEGLHIMG = numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1036)
@@ -919,7 +922,7 @@ def main():
 
     # restore the lateral ventricles
     NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [4, 31])] = 4
-    NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [43, 63])] = 31
+    NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [43, 63])] = 43
 
     NewLabelFusionIMG[LabelFusionIMG == 93] = 93
 
@@ -947,10 +950,30 @@ def main():
     NewLabelFusionIMG[numpy.logical_and(R, CloserToWMLHDT)] = 2
     NewLabelFusionIMG[numpy.logical_and(R, numpy.logical_not(CloserToWMLHDT))] = 41
     
-
-    NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [4, 9, 28, 11, 12, 13, 17, 31, 18, 26, 900])] = 2
-    NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [51, 52, 43, 50, 60, 48, 54, 63, 53, 58, 901])] = 41
+    # this is a blind replace of the lateral ventricles and choroids back into the WM
+    NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [9, 28, 11, 12, 13, 17, 31, 18, 26, 900])] = 2
+    NewLabelFusionIMG[Utils.ismember(LabelFusionIMG, [51, 52, 50, 60, 48, 54, 63, 53, 58, 901])] = 41
     
+    # replace the ventricle components that overlap with the dilated choroids
+    ChoroidsDilatedIMGDilated = scipy.ndimage.binary_dilation(ChoroidsDilatedIMG, iterations=2)
+
+    L, numLabels = scipy.ndimage.label(NewLabelFusionIMG == 4)
+    compsOverlap = L[ChoroidsDilatedIMGDilated]
+    compsOverlap = numpy.unique(compsOverlap[compsOverlap > 0])
+    NewLabelFusionIMG[Utils.ismember(L, compsOverlap)] = 2
+    # regions that dont overlap are CSF
+    NewLabelFusionIMG[numpy.logical_and(L > 0, numpy.logical_not(Utils.ismember(L, compsOverlap)))] = 24
+
+    L, numLabels = scipy.ndimage.label(NewLabelFusionIMG == 43)
+    compsOverlap = L[ChoroidsDilatedIMGDilated]
+    compsOverlap = numpy.unique(compsOverlap[compsOverlap > 0])
+    NewLabelFusionIMG[Utils.ismember(L, compsOverlap)] = 41
+    # regions that dont overlap are CSF
+
+
+    NewLabelFusionIMG[numpy.logical_and(L > 0, numpy.logical_not(Utils.ismember(L, compsOverlap)))] = 24
+    
+    # for the lateral ventricle labels, only replace the components that are 
     # fill in the bit between the septums and 3rd ventricle with WM
     T = scipy.ndimage.binary_closing(Utils.ismember(LabelFusionIMG, [900, 901, 14]), iterations=20)
 
@@ -1053,7 +1076,9 @@ def main():
     
     GMIslandLH = findWMIslandInGM(LabelFusionIMG, [1005, 1010, 1025], 2)
     GMIslandRH = findWMIslandInGM(LabelFusionIMG, [2005, 2010, 2025], 41)
-
+    
+    
+    
     #NewLabelFusionIMG[GMIslandLH] = 2
     #NewLabelFusionIMG[GMIslandRH] = 41
     
@@ -1063,6 +1088,10 @@ def main():
     NewNII = nibabel.Nifti1Image(numpy.int16(GMIslandRH), LabelFusionNII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_WMIslandsRH.nii.gz"))
     #G = scipy.ndimage.gaussian_laplace(T2IMG, 5)
+    
+    # cortical labels that arent in the GM segmentation shouldnt be GM in the regions file, I'm going to mark as CSF
+    NewLabelFusionIMGGM = numpy.logical_or(numpy.logical_and(NewLabelFusionIMG >= 1000, NewLabelFusionIMG <= 1035), numpy.logical_and(NewLabelFusionIMG >= 2000, NewLabelFusionIMG <= 2035))
+    NewLabelFusionIMG[numpy.logical_and(numpy.logical_not(SegmentationGMIMG), NewLabelFusionIMGGM)] = 24
     
     #PotentialGMinWM = numpy.logical_and(G > 0, Utils.ismember(NewLabelFusionIMG, [2, 41]))
     

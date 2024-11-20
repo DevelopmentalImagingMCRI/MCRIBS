@@ -389,6 +389,10 @@
 702 GrayMatter-FSL-FAST                     205 62  78  0
 703 WhiteMatter-FSL-FAST                    0   225 0   0
 
+# MCRIBS septum pellicidum
+900  Left-Septum-Pellucidum                  255   0  0  0
+901  Right-Septum-Pellucidum                 255   0  128 0
+
 999 SUSPICIOUS                              255 100 100 0
 
 # Below is the color table for the cortical labels of the seg volume
