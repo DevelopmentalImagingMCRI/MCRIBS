@@ -2,6 +2,9 @@
 
 export SUBJECTS_DIR=freesurfer
 
+rm -fr freesurfer/fsaverage freesurfer/dHCP42
+cp -r `dirname $0`/../lib/dHCP42 `dirname $0`/../lib/fsaverage freesurfer
+
 if [ -z "$2" ]
 then
     echo "Usage: $0 <subject id> <annot>"
