@@ -56,10 +56,10 @@ do
 			mris_inflate_cuda ${CURHEMI}.smoothwm ${CURHEMI}.inflated
 			if [ "$?" != "0" ]
 			then
-				mris_inflate ${CURHEMI}.smoothwm ${CURHEMI}.inflated
+				mris_inflate -n 2 ${CURHEMI}.smoothwm ${CURHEMI}.inflated
 			fi
 		else
-			mris_inflate ${CURHEMI}.smoothwm ${CURHEMI}.inflated
+			mris_inflate -n 4 ${CURHEMI}.smoothwm ${CURHEMI}.inflated
 		fi
 		
 		if [ "$USEGPU" == "YES" ]
@@ -74,8 +74,8 @@ do
 		fi
 	fi
 
-#mris_write_curvature ${CURHEMI}.smoothwm ${CURHEMI}.curv ${CURHEMI}.area
-# computes the smoothwm curvature, here
+    #mris_write_curvature ${CURHEMI}.smoothwm ${CURHEMI}.curv ${CURHEMI}.area
+ #computes the smoothwm curvature, here
 	mris_curvature -w -a 10 ${CURHEMI}.smoothwm
 	cp ${CURHEMI}.smoothwm.H ${CURHEMI}.curv
 
@@ -86,7 +86,7 @@ do
 # writes out the vertex "area" file
 	FreesurferVertexArea $CURHEMI.white $CURHEMI.area
 	FreesurferVertexArea $CURHEMI.pial $CURHEMI.area.pial
-#echo "Thickness"
+echo "Thickness"
 
 #mris_register -curv $CURHEMI.sphere /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/$CURHEMI.template2.tif $CURHEMI.sphere.reg
 #mrisp_paint -a 2 /home/addo/neonatal/bonnie_mirtk/freesurfer_bonnie_seg/sphere_template/lh.template2.tif $CURHEMI.sphere.reg $CURHEMI.avg_curv
