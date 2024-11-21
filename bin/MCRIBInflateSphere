@@ -59,7 +59,7 @@ do
 				mris_inflate -n 2 ${CURHEMI}.smoothwm ${CURHEMI}.inflated
 			fi
 		else
-			mris_inflate -n 4 ${CURHEMI}.smoothwm ${CURHEMI}.inflated
+			mris_inflate -n 2 ${CURHEMI}.smoothwm ${CURHEMI}.inflated
 		fi
 		
 		if [ "$USEGPU" == "YES" ]

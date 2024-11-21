@@ -27,7 +27,7 @@ P=`pwd`
 
 if [ ! -f "$FSDIR/.isFromDHCP" ]
 then
-	`dirname $0`/ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
+	`dirname $0`/../VTK/VTK-install/bin/vtkpython `dirname $0`/ASEGInternalSurfFix SurfReconDeformable/$SUBJID/meshes/internal.vtp $FSDIR/mri/aseg.presurf.mgz $FSDIR/mri/aseg.internal.mgz
 fi
 
 for CURHEMI in $HEMIS

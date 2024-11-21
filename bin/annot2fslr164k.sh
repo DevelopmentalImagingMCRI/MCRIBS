@@ -19,8 +19,8 @@ ATLAS=$2
 
 for HEMI in lh rh
 do
-    mri_surf2surf --cortex --srcsubject $SUBJ --trgsubject fsaverage --hemi $HEMI --sval-annot $ANNOT.annot --o $SUBJECTS_DIR/fsaverage/label/$HEMI.${SUBJ}.tmp.annot --srcsurfreg sphere.reg2 --trgsurfreg sphere.reg2
-    mri_surf2surf --srcsubject fsaverage --trgsubject fs_LR_164k --hemi $HEMI --sval-annot ${SUBJ}.tmp.annot --o $SUBJECTS_DIR/$1/label/$HEMI.$ATLAS.fslr164k.annot --srcsurfreg sphere.reg.fslr164k --trgsurfreg sphere.reg 
-    rm -f fsaverage/label/$HEMI.${SUBJ}.tmp.annot
+    mri_surf2surf --srcsubject $SUBJ --trgsubject fsaverage --hemi $HEMI --sval-annot $ATLAS.annot --o $SUBJECTS_DIR/fsaverage/label/$HEMI.${SUBJ}.$ATLAS.tmp.annot --srcsurfreg sphere.reg2 --trgsurfreg sphere.reg2
+    mri_surf2surf --cortex --srcsubject fsaverage --trgsubject fs_LR_164k --hemi $HEMI --sval-annot ${SUBJ}.$ATLAS.tmp.annot --o $SUBJECTS_DIR/$1/label/$HEMI.$ATLAS.fslr164k.annot --srcsurfreg sphere.reg.fslr164k --trgsurfreg sphere
+    #rm -f fsaverage/label/$HEMI.${SUBJ}.$ATLAS.tmp.annot
 done
 
