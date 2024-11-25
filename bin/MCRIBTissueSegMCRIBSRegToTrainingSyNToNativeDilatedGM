@@ -149,7 +149,6 @@ then
 		--interpolation Linear \
 		--output-data-type short \
 		--output $TISSUESEGDIR/$SUBJID/P${i}_t2_to_$SUBJID.nii.gz
-		--output $TISSUESEGDIR/$SUBJID/P${i}_t2_to_$SUBJID.nii.gz
 
 	# antsApplyTransforms -v -d 3 --reference-image ${OUTPUTPREFIX}_t2w_restore.nii.gz --input $TEMPLATEDIR/P${i}_t2.nii.gz \
 	# 	--transform ${OUTPUTPREFIX}_to_P${i}_reg0GenericAffine.mat \
