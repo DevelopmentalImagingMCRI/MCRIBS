@@ -555,6 +555,7 @@ if [ ! -f "${OUTPUTPREFIX}_drawem_alberts_tissueseg.nii.gz" ]
 then
 	emsstructures=
 	structures="csf gm wm outlier ventricles cerebstem dgm hwm lwm"
+	strnum=0
 	for str in ${structures}
 	do
 		strnum=$(($strnum+1))
@@ -607,6 +608,7 @@ MakeKMeans34Class $SUBJID
 
 emsstructures=
 structures="csf gm wm outlier ventricles cerebstem dgm hwm lwm"
+strnum=0
 for str in ${structures}
 do
 	strnum=$(($strnum+1))
