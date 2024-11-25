@@ -361,7 +361,7 @@ then
 		--transform $TEMPLATEDIR/ALBERTsTemplate40ToTemplate1InverseWarp.nii.gz \
 		--output-data-type short \
 		--interpolation GenericLabel \
-		--output ${OUTPUTPREFIX}_majority_dkt_affine_reg.nii.gz
+		--output ${OUTPUTPREFIX}_dkt_majority_affine_reg.nii.gz
 	antsApplyTransforms -v -d 3 --input $TEMPLATEDIR/template-40_brain_mask_hull_added.nii.gz --reference-image ${OUTPUTPREFIX}_t2w_restore_brain.nii.gz \
 		--transform [${OUTPUTPREFIX}_alberts_to_native_affine_reg0GenericAffine.mat,0] \
 		--output-data-type short \
