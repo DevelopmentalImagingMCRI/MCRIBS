@@ -18,7 +18,8 @@ else
 	mkdir -p $T2NECKCROPPEDISO
 	
 	MCRIBNeckCropInitialCrop $SUBJID -no-initial-crop
-	W=`fslstats $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz -w`
+	
+    W=`fslstats $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz -w`
 	fslroi $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz $W
 
 	export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$OMP_NUM_THREADS
@@ -45,9 +46,11 @@ else
 		--transform [$T2NECKCROPPEDISO/${1}_to_std_affine0GenericAffine.mat,1] \
 		--reference-image $T2NECKCROPPEDISO/${SUBJID}_maxlabel_cropped.nii.gz \
 		--input $TEMPLATEDIR/FinaltemplateBrainMask.nii.gz \
-		--output $T2NECKCROPPEDISO/${1}_brainmask.nii.gz
+		--output $T2NECKCROPPEDISO/${1}_brainmask.nii.gz \
+        --output-data-type uchar
 	
-
+    
+    mri_binarize --i $T2NECKCROPPEDISO/${1}_brainmask.nii.gz --o $T2NECKCROPPEDISO/${1}_brainmask.nii.gz --match 1 --dilate 4 --noverbose
 	ZBRAIN=`fslstats $T2NECKCROPPEDISO/${1}_brainmask -w`
 	fslroi $T2NECKCROPPEDISO/${1}_maxlabel_cropped $T2NECKCROPPEDISO/${1}_crop $ZBRAIN
 	imrm $T2NECKCROPPEDISO/${1}_brainmask
