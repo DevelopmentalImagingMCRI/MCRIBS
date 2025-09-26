@@ -41,13 +41,12 @@ ASEGIMG[RibbonIMG == 42] = 42
 ASEGIMG[numpy.logical_and(Utils.ismember(ASEGIMG, [3, 42, 2, 41]), RibbonIMG == 0)] = 0
 
 # CSF and zero values closer to the cortex in the ribbon WM should be reset to WM
-
 DFromCortex = scipy.ndimage.distance_transform_edt(numpy.logical_not(Utils.ismember(ASEGIMG, [3, 42])))
 DFromSubcort = scipy.ndimage.distance_transform_edt(numpy.logical_not(Utils.ismember(ASEGIMG, [9, 48, 192, 17, 53])))
 
 RibbonWM = numpy.logical_or(RibbonIMG == 2, RibbonIMG == 41)
 
-WMToSet = numpy.logical_and(RibbonWM, DFromCortex < DFromSubcort)
+WMToSet = numpy.logical_and(numpy.logical_and(RibbonWM, DFromCortex < DFromSubcort), numpy.logical_not(Utils.ismember(ASEGIMG, [9, 48, 192, 17, 53, 11, 12, 13, 18, 50, 51, 52, 54)))
 
 if numpy.any(WMToSet):
     ASEGIMG[WMToSet] = RibbonIMG[WMToSet]
