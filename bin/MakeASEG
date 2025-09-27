@@ -50,6 +50,8 @@ WMToSet = numpy.logical_and(numpy.logical_and(RibbonWM, DFromCortex < DFromSubco
 
 if numpy.any(WMToSet):
     ASEGIMG[WMToSet] = RibbonIMG[WMToSet]
+OrigMask = Utils.ismember(ASEGPresurfIMG, [4, 5, 10, 11, 12, 13, 14, 17, 18, 26, 28, 30, 31, 43, 44, 49, 50, 51, 52, 53, 54, 58, 60, 62, 63, 251, 252, 253, 254, 77, 192])
+ASEGIMG[OrigMask] = ASEGPresurfIMG[OrigMask]
 
 ASEGMGZ = nibabel.MGHImage(ASEGIMG, ASEGPresurfMGZ.affine, ASEGPresurfMGZ.header)
 nibabel.save(ASEGMGZ, os.path.join('freesurfer', SubjId, 'mri', 'aseg.mgz'))
