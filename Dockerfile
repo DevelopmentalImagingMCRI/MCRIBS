@@ -71,13 +71,18 @@ RUN cp -r /opt/ANTs/ANTs-build/ANTS-build/Examples/* /opt/ANTs/bin
 RUN cp /opt/ANTs/ANTs/Scripts/* /opt/ANTs/bin
 RUN rm -fr /opt/ANTs/bin/*.cxx /opt/ANTs/bin/*.cmake /opt/ANTs/bin/*.a /opt/ANTs/bin/CMakeFiles
 
-WORKDIR /opt
+WORKDIR /tmp
 
 # copy in FSL
 ENV FSLDIR="/opt/fsl"
-RUN curl -s https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py -o fslinstaller.py
+RUN git clone https://git.fmrib.ox.ac.uk/fsl/conda/installer.git
+WORKDIR /tmp/installer/fsl/installer
+
+#RUN curl -s https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py -o fslinstaller.py
 RUN python3 fslinstaller.py -d /opt/fsl -V 6.0.6.5
 RUN rm fslinstaller.py
+
+WORKDIR /opt
 
 # copy in Freesurfer
 COPY freesurfer-7.4.1.tar.xz /opt
