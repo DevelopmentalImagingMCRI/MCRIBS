@@ -19,18 +19,18 @@ then
 	exit
 fi
 
-if [ -f "$FREESURFER_HOME/bin/mri_surf2volseg" ]
-then
-	MakeASEG $SUBJID
-	cd $SUBJECTS_DIR/$SUBJID/mri
+#if [ -f "$FREESURFER_HOME/bin/mri_surf2volseg" ]
+#then
+MakeASEG $SUBJID
+#	cd $SUBJECTS_DIR/$SUBJID/mri
 	#mri_surf2volseg --i aseg.presurf.mgz --fix-presurf-with-ribbon ribbon.mgz --o aseg.mgz --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
 	
 	# restore the CSF outside the cortex
-	mri_binarize --i aseg.mgz --o aseg_zero.nii.gz --match 0 --binval 24 --noverbose
-	mri_mask -T 5 aseg_zero.nii.gz brainmask.mgz aseg_zero.nii.gz
-	mri_mask -transfer 24 aseg.mgz aseg_zero.nii.gz aseg.mgz
-	rm -f aseg_zero.nii.gz
-	cd $P
+#	mri_binarize --i aseg.mgz --o aseg_zero.nii.gz --match 0 --binval 24 --noverbose
+#	mri_mask -T 5 aseg_zero.nii.gz brainmask.mgz aseg_zero.nii.gz
+#	mri_mask -transfer 24 aseg.mgz aseg_zero.nii.gz aseg.mgz
+#	rm -f aseg_zero.nii.gz
+#	cd $P
 	
 	
 	# cd $SUBJECTS_DIR/$SUBJID/mri
@@ -52,25 +52,25 @@ then
 	# mri_mask -transfer 41 aseg.mgz aseg_ribbon_wm_rh.mgz aseg.mgz
 	# rm -f aseg_ribbon_wm_rh.mgz aseg_ribbon_wm_rh.mgz aseg_wm_rh.mgz aseg_ribbon_wm_lh.mgz aseg_ribbon_wm_lh.mgz aseg_wm_lh.mgz ribbon_wm_lh.mgz ribbon_wm_rh.mgz
 	#`dirname $0`/APARC2ASEGCSFRestoreDrawEM aseg.mgz $SUBJECTS_DIR/../TissueSeg/${SUBJID}_all_labels_manedit_bonnie.nii.gz aseg.mgz
-fi
+#fi
 
 for ANNOT in $ANNOTS
 do
-	if [ ! -f "$FREESURFER_HOME/bin/mri_surf2volseg" ]
-	then
+	#if [ ! -f "$FREESURFER_HOME/bin/mri_surf2volseg" ]
+	#then
 		# FREESURFER 6, aparc2aseg
-		cd $SUBJECTS_DIR/$SUBJID
+	#	cd $SUBJECTS_DIR/$SUBJID
 		#mri_aparc2aseg --no-hash --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
-		mri_aparc2aseg --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
-		`dirname $0`/ASEGRibbonFix mri/${ANNOT}+aseg.mgz mri/ribbon.mgz ../../TissueSeg/${SUBJID}_all_labels.nii.gz mri/${ANNOT}+aseg.mgz
-		`dirname $0`/APARC2ASEGZeroToCSFFix mri/${ANNOT}+aseg.mgz mri/aseg.presurf.mgz mri/${ANNOT}+aseg.mgz
-		cd mri
-		apas2aseg --i ${ANNOT}+aseg.mgz --o aseg.mgz 2>&1 > /dev/null
-	else
-		cd $P
+	#	mri_aparc2aseg --s $SUBJID --volmask --aseg aseg.presurf --annot $ANNOT --o mri/${ANNOT}+aseg.mgz
+#		`dirname $0`/ASEGRibbonFix mri/${ANNOT}+aseg.mgz mri/ribbon.mgz ../../TissueSeg/${SUBJID}_all_labels.nii.gz mri/${ANNOT}+aseg.mgz
+#		`dirname $0`/APARC2ASEGZeroToCSFFix mri/${ANNOT}+aseg.mgz mri/aseg.presurf.mgz mri/${ANNOT}+aseg.mgz
+#		cd mri
+#		apas2aseg --i ${ANNOT}+aseg.mgz --o aseg.mgz 2>&1 > /dev/null
+#	else
+		#cd $P
 		MakeAPARCASEG $SUBJID $ANNOT
 		
-		cd $SUBJECTS_DIR/$SUBJID/mri
+		#cd $SUBJECTS_DIR/$SUBJID/mri
 		#mri_surf2volseg --i aseg.mgz --label-cortex --o ${ANNOT}+aseg.mgz --lh-annot ../label/lh.${ANNOT}.annot 1000 --rh-annot ../label/rh.${ANNOT}.annot 2000 --lh-cortex-mask ../label/lh.cortex.label --rh-cortex-mask ../label/rh.cortex.label --lh-white ../surf/lh.white --lh-pial ../surf/lh.pial --rh-white ../surf/rh.white --rh-pial ../surf/rh.pial
 
 		# change the labels to correspond to aparc ones
@@ -86,10 +86,10 @@ do
 		#mv ${ANNOT}+aseg_tmp.mgz ${ANNOT}+aseg.mgz
 		# restore the CSF
 		#`dirname $0`/APARC2ASEGCSFRestoreDrawEM ${ANNOT}+aseg.mgz $SUBJECTS_DIR/../TissueSeg/${SUBJID}_all_labels_manedit_bonnie.nii.gz ${ANNOT}+aseg.mgz
-	fi
+#	fi
 done
 
-cd $SUBJECTS_DIR/$SUBJID/mri
+#cd $SUBJECTS_DIR/$SUBJID/mri
 #mri_binarize --i aseg.mgz --o aseg_tmp.mgz --replace 2 159 --replace 41 160
 #mri_binarize --i aseg.mgz --o aseg_tmp.mgz --replace 159 2 --replace 160 41
 #mv aseg_tmp.mgz aseg.mgz
