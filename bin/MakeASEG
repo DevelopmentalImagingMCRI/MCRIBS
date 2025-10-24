@@ -46,7 +46,7 @@ DFromSubcort = scipy.ndimage.distance_transform_edt(numpy.logical_not(Utils.isme
 
 RibbonWM = numpy.logical_or(RibbonIMG == 2, RibbonIMG == 41)
 
-WMToSet = numpy.logical_and(numpy.logical_and(RibbonWM, DFromCortex < DFromSubcort), numpy.logical_not(Utils.ismember(ASEGIMG, [3, 42, 9, 48, 192, 17, 53, 11, 12, 13, 18, 50, 51, 52, 54)))
+WMToSet = numpy.logical_and(numpy.logical_and(RibbonWM, DFromCortex < DFromSubcort), numpy.logical_not(Utils.ismember(ASEGIMG, [3, 42, 9, 48, 192, 17, 53, 11, 12, 13, 18, 50, 51, 52, 54])))
 
 if numpy.any(WMToSet):
     ASEGIMG[WMToSet] = RibbonIMG[WMToSet]
