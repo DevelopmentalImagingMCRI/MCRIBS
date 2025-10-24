@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
-RUN sed --in-place --regexp-extended "s/(\/\/)(archive\.ubuntu)/\1au.\2/" /etc/apt/sources.list && \
-	apt-get update && apt-get upgrade --yes
+#RUN sed --in-place --regexp-extended "s/(\/\/)(archive\.ubuntu)/\1au.\2/" /etc/apt/sources.list && \
+RUN apt-get update && apt-get upgrade --yes
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -104,6 +104,7 @@ echo "export QT_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt5/plugins" >> /opt/entry
 echo "export FS_LICENSE=/opt/freesurfer-license.txt" >> /opt/entrypoint.sh &&\
 echo "CMD=\$1" >> /opt/entrypoint.sh &&\
 echo "shift;" >> /opt/entrypoint.sh &&\
+echo "git config --global --add safe.directory '*'" &&\
 echo "/opt/MCRIBS/bin/\$CMD \$@" >> /opt/entrypoint.sh &&\
 chmod 777 /opt/entrypoint.sh
 
