@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage
+import numpy.linalg
+import skimage.segmentation
+import subprocess
+
+def largestComponent(BW):
+    if not numpy.any(BW):
+        return BW
+    else:
+        L, numLabels = scipy.ndimage.label(BW)
+        H = numpy.bincount(L[L > 0])
+        return (L == numpy.argmax(H))
+
+import Utils
+
+
+if len(sys.argv) < 2:
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+# refine the pial force images based on the regions file
+
+#@profile
+def main():
+    subjID = sys.argv[1]
+    
+    SurfReconDeformable = 'SurfReconDeformable'
+
+    subprocess.call(['mri_convert', '-rt', 'nearest', '-ns', '1', '-odt', 'float',
+                 '-rl', os.path.join(SurfReconDeformable, subjID, 'recon', 'regions.nii.gz'),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 'pial_force.nii.gz'),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 'pial_force_resampled.nii.gz')
+                 ])
+
+    RegionsNII = nibabel.load(os.path.join(SurfReconDeformable, subjID, 'recon', 'regions.nii.gz'))
+    RegionsIMG = numpy.uint8(RegionsNII.dataobj)
+    
+    PialForceNII = nibabel.load(os.path.join(SurfReconDeformable, subjID, 'temp', 'pial_force_resampled.nii.gz'))
+    PialForceIMG = PialForceNII.get_fdata()
+
+    NotWM = numpy.logical_not(Utils.ismember(RegionsIMG, [2, 3]))
+    NotWMDT = scipy.ndimage.distance_transform_edt(NotWM, sampling=PialForceNII.header.get_zooms())
+
+    PialForceIMG[numpy.logical_and(NotWMDT < 2, PialForceIMG > 0)] = 0
+    PialForceIMG[numpy.logical_not(NotWM)] = -1
+
+    NewNII = nibabel.Nifti1Image(numpy.single(NotWMDT), RegionsNII.affine)
+    nibabel.save(NewNII, os.path.join(SurfReconDeformable, subjID, 'temp', 'pial_force_dt.nii.gz'))
+
+    NewNII = nibabel.Nifti1Image(numpy.single(PialForceIMG), RegionsNII.affine)
+    nibabel.save(NewNII, os.path.join(SurfReconDeformable, subjID, 'temp', 'pial_force.nii.gz'))
+
+if __name__ == "__main__":
+    main()
