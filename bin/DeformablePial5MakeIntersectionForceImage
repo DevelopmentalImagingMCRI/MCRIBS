@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage
+#import matplotlib.pyplot as plt
+#import pylab
+import Otsu
+import shutil
+
+import VTPUtils
+import scipy.linalg
+#import vtk
+#import vtk.util.numpy_support
+#import skimage.morphology
+import subprocess
+
+import Utils
+
+
+if len(sys.argv) < 2:
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+def makeMaskOfCoordsFromIMG(collisionWorld, IMGNII):
+    invAffine = scipy.linalg.inv(IMGNII.affine)
+
+    collisionVOX = numpy.matrix(invAffine[0:3, 0:3]) * numpy.matrix(collisionWorld) \
+        + numpy.atleast_2d(numpy.matrix(invAffine[0:3, 3])).T
+    
+    collisionVOX = numpy.int16(numpy.floor(collisionVOX))
+    collisionVOX[0] = numpy.minimum(collisionVOX[0], T2IMG.shape[0] - 2)
+    collisionVOX[1] = numpy.minimum(collisionVOX[1], T2IMG.shape[1] - 2)
+    collisionVOX[2] = numpy.minimum(collisionVOX[2], T2IMG.shape[2] - 2)
+
+    collisionIMG = numpy.zeros(IMGNII.shape, dtype=numpy.bool_)
+    collisionIMG[(    collisionVOX[0],     collisionVOX[1],     collisionVOX[2])] = True
+    collisionIMG[(collisionVOX[0] + 1,     collisionVOX[1],     collisionVOX[2])] = True
+    collisionIMG[(    collisionVOX[0], collisionVOX[1] + 1,     collisionVOX[2])] = True
+    collisionIMG[(collisionVOX[0] + 1, collisionVOX[1] + 1,     collisionVOX[2])] = True
+    collisionIMG[(    collisionVOX[0],     collisionVOX[1], collisionVOX[2] + 1)] = True
+    collisionIMG[(collisionVOX[0] + 1,     collisionVOX[1], collisionVOX[2] + 1)] = True
+    collisionIMG[(    collisionVOX[0], collisionVOX[1] + 1, collisionVOX[2] + 1)] = True
+    collisionIMG[(collisionVOX[0] + 1, collisionVOX[1] + 1, collisionVOX[2] + 1)] = True
+    return collisionIMG
+
+
+# fills midline WM labels for regions filling
+# replaces small WM components with GM
+
+subjectID = sys.argv[1]
+
+try:
+    TissueSegDir = os.environ['TISSUESEGDIR']
+except:
+    TissueSegDir = 'TissueSegMCRIBS'
+
+T2NII = nibabel.load(os.path.join('SurfReconDeformable', subjectID, 'temp', 't2w-image.nii.gz'))
+T2IMG = T2NII.get_fdata()
+
+regionsNII = nibabel.load(os.path.join('SurfReconDeformable', subjectID, 'recon', 'regions.nii.gz'))
+regionsIMG = numpy.uint8(regionsNII.dataobj)
+
+FirstWhiteForceNII = nibabel.load(os.path.join('SurfReconDeformable', subjectID, 'temp', 'wm_force.nii.gz'))
+FirstWhiteForceIMG = FirstWhiteForceNII.get_fdata()
+
+SecondWhiteForceNII = nibabel.load(os.path.join('SurfReconDeformable', subjectID, 'temp', 'wm_force_second.nii.gz'))
+SecondWhiteForceIMG = SecondWhiteForceNII.get_fdata()
+
+#DrawEMNII = nibabel.load(os.path.join(TissueSegDir, subjectID, subjectID + "_drawem_alberts_tissueseg.nii.gz"))
+#DrawEMIMG = numpy.squeeze(numpy.uint8(DrawEMNII.dataobj))
+
+# resample the labelfusion image
+subprocess.call(['mri_convert', 
+                 '-rl', os.path.join('SurfReconDeformable', subjectID, 'temp', 't2w-image.nii.gz'),
+                 '-rt', 'nearest',
+                 '-ns', '1',
+                 '-odt', 'short',
+                 os.path.join(TissueSegDir, subjectID, subjectID + "_labelfusion_dkt_edited.nii.gz"),
+                 os.path.join('SurfReconDeformable', subjectID, 'temp', 'labelfusion_dkt_edited.nii.gz')
+                 ])
+
+LabelFusionNII = nibabel.load(os.path.join('SurfReconDeformable', subjectID, 'temp', 'labelfusion_dkt_edited.nii.gz'))
+LabelFusionIMG = numpy.int16(LabelFusionNII.dataobj)
+
+subprocess.call(['mri_convert', 
+                 '-rl', os.path.join('SurfReconDeformable', subjectID, 'temp', 't2w-image.nii.gz'),
+                 '-rt', 'nearest',
+                 '-ns', '1',
+                 '-odt', 'short',
+                 os.path.join(TissueSegDir, subjectID, subjectID + "_segmentation_gm.nii.gz"),
+                 os.path.join('SurfReconDeformable', subjectID, 'temp', 'segmentation_gm.nii.gz')
+                 ])
+SegmentationGMNII = nibabel.load(os.path.join('SurfReconDeformable', subjectID, 'temp', 'labelfusion_dkt_edited.nii.gz'))
+SegmentationGMIMG = numpy.int8(SegmentationGMNII.dataobj) > 0
+
+subprocess.call(['mri_convert', 
+                 '-rl', os.path.join('SurfReconDeformable', subjectID, 'temp', 't2w-image.nii.gz'),
+                 '-rt', 'nearest',
+                 '-ns', '1',
+                 '-odt', 'short',
+                 os.path.join(TissueSegDir, subjectID, subjectID + "_drawem_alberts_tissueseg.nii.gz"),
+                 os.path.join('SurfReconDeformable', subjectID, 'temp', 'drawem_alberts_tissueseg.nii.gz')
+                 ])
+
+DrawEMNII = nibabel.load(os.path.join('SurfReconDeformable', subjectID, 'temp', 'drawem_alberts_tissueseg.nii.gz'))
+DrawEMIMG = numpy.int8(DrawEMNII.dataobj)
+
+VTPFileName = os.path.join('SurfReconDeformable', subjectID, 'temp', 'pial-5.vtp')
+
+VTPSurf = VTPUtils.readVTPSurf(VTPFileName)
+VTPSurf['CollisionMask'] = VTPUtils.readVTPPointDataArray(VTPFileName, 'CollisionMask')
+
+# print(VTPSurf)
+# print(VTPSurf['vertices'].shape)
+# print(VTPSurf['faces'].shape)
+# print(VTPSurf['CollisionMask'].shape)
+
+collisionMask = VTPSurf['CollisionMask'] > 0
+
+if numpy.all(collisionMask == 0):
+    # this shouldnt happen because we are only here because we had collisions, but check anyway
+    quit()
+
+collisionIMG = makeMaskOfCoordsFromIMG(VTPSurf['vertices'][:, collisionMask], regionsNII)
+
+collisionIMGDilated = scipy.ndimage.binary_dilation(collisionIMG)
+collisionNII = nibabel.Nifti1Image(numpy.uint8(collisionIMGDilated), affine=regionsNII.affine)
+nibabel.save(collisionNII, os.path.join('SurfReconDeformable', subjectID, 'temp', 'pial-5-collision.nii.gz'))
+
+# dilate the collision voxels a bit
+#collisionIMGDilated = scipy.ndimage.binary_dilation(collisionIMG)
+#collisionIMGDilated = numpy.array(collisionIMG)
+#newForceIMG = -numpy.array(SecondWhiteForceIMG)
+#newForceIMG = -numpy.array(SecondWhiteForceIMG)
+newRegionsIMG = numpy.array(regionsIMG)
+newFirstForceIMG = numpy.array(FirstWhiteForceIMG)
+newSecondForceIMG = numpy.array(SecondWhiteForceIMG)
+pushForceIMG = numpy.zeros_like(SecondWhiteForceIMG, dtype=numpy.uint8)
+
+addedRegionsIMG = numpy.zeros_like(regionsIMG, dtype=numpy.int16)
+# set the force of collisions not changed in the second force image to -1, inwards
+#newForceIMG[numpy.logical_and(collisionIMGDilated, SecondWhiteForceIMG == FirstWhiteForceIMG)] = -1
+
+# set the force of collisions changed in the second force image to 1, outwards
+#newForceIMG[numpy.logical_and(collisionIMGDilated, SecondWhiteForceIMG != FirstWhiteForceIMG)] = -1
+
+GMMean = numpy.mean(T2IMG[LabelFusionIMG >= 1000])
+WMMean = numpy.mean(T2IMG[LabelFusionIMG == 2])
+
+LHWMDT = scipy.ndimage.distance_transform_edt(LabelFusionIMG != 2)
+RHWMDT = scipy.ndimage.distance_transform_edt(LabelFusionIMG != 41)
+
+mergeRequired = False
+
+T = numpy.logical_and(Utils.ismember(LabelFusionIMG, [2, 41]), Utils.ismember(DrawEMIMG, [3, 8]))
+zeroL, numLabels = scipy.ndimage.label(T)
+
+L, numLabels = scipy.ndimage.label(collisionIMG)
+I = 1
+for z in range(numLabels):
+    regionMask = L == z + 1
+    regionMean = numpy.mean(T2IMG[regionMask])
+    if abs(regionMean - GMMean) < abs(regionMean - WMMean):
+        print("region " + str(z + 1) + " closer to GM, push away")
+        newSecondForceIMG[regionMask] = 10
+        newFirstForceIMG[regionMask] = 10
+        pushForceIMG[regionMask] = 10
+        # put this region as a positive inward force in wm_force_third
+    else:
+        print("region " + str(z + 1) + " closer to WM, merge")
+        # put this region in the regions file as WM, trigger a restart
+        
+        T = scipy.ndimage.binary_dilation(regionMask)
+        zeroLRegions = numpy.unique(zeroL[T])
+        zeroLRegions = zeroLRegions[zeroLRegions > 0]
+        if zeroLRegions.size > 0:
+            mergeRequired = True
+            zeroLMask = Utils.ismember(zeroL, zeroLRegions)
+
+            for k in range(10):
+                T = numpy.logical_and(scipy.ndimage.binary_dilation(T), zeroLMask)
+
+            newRegionsIMG[numpy.logical_and(LHWMDT < RHWMDT, T)] = 3
+            newRegionsIMG[numpy.logical_and(LHWMDT > RHWMDT, T)] = 2
+        addedRegionsIMG[T] = I
+        I = I + 1
+
+newForceNII = nibabel.Nifti1Image(numpy.int16(L), affine=regionsNII.affine)
+nibabel.save(newForceNII, os.path.join('SurfReconDeformable', subjectID, 'temp', 'collisionL.nii.gz'))
+
+shutil.copyfile(os.path.join('SurfReconDeformable', subjectID, 'recon', 'regions.nii.gz'),
+                os.path.join('SurfReconDeformable', subjectID, 'recon', 'regions_orig.nii.gz'))
+
+newFirstForceNII = nibabel.Nifti1Image(numpy.single(newFirstForceIMG), affine=regionsNII.affine)
+nibabel.save(newFirstForceNII, os.path.join('SurfReconDeformable', subjectID, 'temp', 'wm_force_third.nii.gz'))
+nibabel.save(newFirstForceNII, os.path.join('SurfReconDeformable', subjectID, 'temp', 'wm_force.nii.gz'))
+newSecondForceNII = nibabel.Nifti1Image(numpy.single(newSecondForceIMG), affine=regionsNII.affine)
+nibabel.save(newSecondForceNII, os.path.join('SurfReconDeformable', subjectID, 'temp', 'wm_force_second.nii.gz'))
+
+pushForceNII = nibabel.Nifti1Image(pushForceIMG, affine=regionsNII.affine)
+nibabel.save(pushForceNII, os.path.join('SurfReconDeformable', subjectID, 'temp', 'pushforce.nii.gz'))
+
+addedRegionsNII = nibabel.Nifti1Image(addedRegionsIMG, affine=regionsNII.affine)
+nibabel.save(addedRegionsNII, os.path.join('SurfReconDeformable', subjectID, 'recon', 'addedregions.nii.gz'))
+
+zeroLNII = nibabel.Nifti1Image(zeroL, affine=regionsNII.affine)
+nibabel.save(zeroLNII, os.path.join('SurfReconDeformable', subjectID, 'recon', 'zeroL.nii.gz'))
+
+newRegionsNII = nibabel.Nifti1Image(numpy.uint8(newRegionsIMG), affine=regionsNII.affine)
+nibabel.save(newRegionsNII, os.path.join('SurfReconDeformable', subjectID, 'recon', 'regions.nii.gz'))
+
+#print(mergeRequired)
+if mergeRequired:
+    print("merge required, writing file")
+    print(os.path.join('SurfReconDeformable', subjectID, 'temp', 'merge_required'))
+    FID = open(os.path.join('SurfReconDeformable', subjectID, 'temp', 'merge_required'), 'w')
+    FID.write('merge required')
+    FID.close()
