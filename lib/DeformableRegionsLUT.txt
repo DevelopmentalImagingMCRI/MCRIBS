@@ -1,0 +1,8 @@
+#No. Label Name:                            R   G   B   A
+
+0   Unknown                                 0   0   0   0
+1   GM                                      70  130 180 0
+2   RH-WM                                   55  245 55  0
+3   LH-WM                                   205 62  78  0
+4   Brainstem+Cerebellum                    120 18  134 0
+
