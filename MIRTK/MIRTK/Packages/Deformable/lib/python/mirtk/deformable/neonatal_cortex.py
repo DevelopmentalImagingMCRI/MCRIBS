@@ -71,6 +71,14 @@ _region_id_array      = 'RegionId'
 _collision_mask_array = 'CollisionMask'
 _collision_type_array = 'CollisionType'
 
+
+# MCRIBS helpers
+def runMCRIBS(MCRIBScommand, params):
+    vtkpython = os.path.join(os.environ['MCRIBS_HOME'],"VTK", "VTK-install", "bin", "vtkpython")
+    mcribscom = os.path.join(os.environ['MCRIBS_HOME'], 'bin', MCRIBScommand)
+    subprocess.call([vtkpython, mcribscom] + params)
+
+
 # ==============================================================================
 # enumerations
 # ==============================================================================
@@ -803,7 +811,9 @@ def binarize_cortex(regions, name=None, temp=None):
     tempSplit = temp.split(os.sep);
     subjectID = tempSplit[-2]
     # make better cortex mask
-    subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'MakeCortexMaskDilatedDKT'), subjectID])
+    runMCRIBS('MakeCortexMaskDilatedDKT', [subjectID])
+    #subprocess.call([os.path.join(os.environ['MCRIBS_HOME'],"VTK", "VTK-install", "bin", "vtkpython"), 
+    #                 os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'MakeCortexMaskDilatedDKT'), subjectID])
     #return binarize(name=name, segmentation=regions, labels=1)
     return name
 
@@ -1386,6 +1396,7 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
         # optionally, add cortex mask highlighting cells which are nearby cGM
         # this mask contains exactly two components, a right and a left cortex
         if cortex_mask_array:
+            print("binarize_cortex")
             with output(binarize_cortex(regions, temp=temp), delete=True) as mask:
                 joined = push_output(stack, add_cortex_mask(joined, mask, name=cortex_mask_array, region_id_array=region_id_array_name))
             #quit()
@@ -1714,7 +1725,8 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
         # get the subject id from the temp directory
         
         # print("subjectID: " + subjectID)
-        subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformableSelectBrightPericalcarineFromWhite'), subjectID])
+        runMCRIBS('DeformableSelectBrightPericalcarineFromWhite', [subjectID])
+        #subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformableSelectBrightPericalcarineFromWhite'), subjectID])
 
         model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force_second.nii.gz'))
         mesh = push_output(stack, deform_mesh(first_white_mesh, opts=model_opts, super_debug=debug_white))
@@ -2224,7 +2236,8 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 except Exception:
 
                     # THIS will run if an exception is raised
-                    subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformablePial5MakeIntersectionForceImage'), subjectID])
+                    runMCRIBS('DeformablePial5MakeIntersectionForceImage', [subjectID])
+                    #subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformablePial5MakeIntersectionForceImage'), subjectID])
                     if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'merge_required')):
                         # delete all output in meshes
                         try:

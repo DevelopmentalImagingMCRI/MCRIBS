@@ -5,24 +5,16 @@ RUN sed --in-place --regexp-extended "s/(\/\/)(archive\.ubuntu)/\1au.\2/" /etc/a
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get install -y bash \
+RUN apt-get update && apt-get install -y bash \
 	zlib1g-dev \
 	libboost-dev \
 	libglu1-mesa-dev \
 	libxt-dev \
 	python3-dev \
+	python3-pip \
 	libtbb2-dev \
 	libflann-dev \
 	libeigen3-dev \
-	python3-contextlib2 \
-	python3-imageio \
-	python3-numpy \
-	python3-scipy \
-	python3-pandas \
-	python3-numexpr \
-	python3-skimage \
-	python3-vtk7 \
-	python3-h5py \
 	cmake \
 	libglvnd-dev \
 	build-essential \
@@ -38,6 +30,8 @@ RUN apt-get install -y bash \
 	dc \
 	bc \
 	tcsh
+
+RUN pip install nibabel vtk==9.2.6 h5py scikit-image numexpr pandas imageio contextlib2
 
 RUN mkdir -p /opt/MCRIBS
 RUN mkdir -p /opt/MCRIBS/MIRTK
@@ -104,6 +98,7 @@ echo "export QT_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt5/plugins" >> /opt/entry
 echo "export FS_LICENSE=/opt/freesurfer-license.txt" >> /opt/entrypoint.sh &&\
 echo "CMD=\$1" >> /opt/entrypoint.sh &&\
 echo "shift;" >> /opt/entrypoint.sh &&\
+echo "git config --global --add safe.directory '*'" &&\
 echo "/opt/MCRIBS/bin/\$CMD \$@" >> /opt/entrypoint.sh &&\
 chmod 777 /opt/entrypoint.sh
 

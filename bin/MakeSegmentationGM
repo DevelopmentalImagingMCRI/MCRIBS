@@ -427,7 +427,7 @@ def main():
     # DrawEMIMG == 5 is the DrawEM ventricle label
     
     ReconMask = numpy.logical_or(ReconMarker, numpy.logical_and(numpy.logical_not(LPos), DrawEMIMG == 5))
-    ChoroidsRecon = skimage.morphology.reconstruction(numpy.uint8(ReconMarker), numpy.uint8(ReconMask), selem=ChoroidSE)
+    ChoroidsRecon = skimage.morphology.reconstruction(numpy.uint8(ReconMarker), numpy.uint8(ReconMask), footprint=ChoroidSE)
     
     NewNII = nibabel.Nifti1Image(numpy.uint8(ChoroidsRecon), T2NII.affine)
     nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_ChoroidsRecon.nii.gz"))

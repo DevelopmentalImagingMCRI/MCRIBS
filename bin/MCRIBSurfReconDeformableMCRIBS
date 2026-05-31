@@ -378,6 +378,7 @@ rm -f ${OUTPUTPREFIX}_labelfusion_dkt_edited_wm.nii.gz
 if [ ! -f "SurfReconDeformable/${SUBJID}/temp/first_run_done" ]
 then
 	recon-neonatal-cortex -r `pwd` -c $CONFIGFILE -s $SUBJID -t $OMP_NUM_THREADS -v -v -v -v -d -d -f $ENSUREPIAL -j $JOINTHRESHOLD $USEFASTCOLLISION $DEBUGCEREBRUM $DEBUGWHITE $DEBUGPIAL 2>&1 | tee -a logs/$SUBJID.log
+	touch "SurfReconDeformable/${SUBJID}/temp/first_run_done"
 # else
 # 	# temporary 
 # 	mri_convert -rl SurfReconDeformable/${SUBJID}/recon/regions.nii.gz -rt nearest -ns 1 -odt int ${OUTPUTPREFIX}_labelfusion_dkt_edited.nii.gz SurfReconDeformable/${SUBJID}/recon/labelfusion_dkt_edited.nii.gz
