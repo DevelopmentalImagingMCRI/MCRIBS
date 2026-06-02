@@ -1,0 +1,11 @@
+0	Unknown	0	0	0	0
+1	CSF	40	40	40	0
+2	CorticalGM	120	18	134	0
+3	WM	0	118	14	0
+4	Background	122	186	220	0
+5	Ventricles	236	13	176	0
+6	Cerebellum	12	48	255	0
+7	DGM	204	182	142	0
+8	BWM	42	204	164	0
+9	HippAmyg	220	216	20	0
+
