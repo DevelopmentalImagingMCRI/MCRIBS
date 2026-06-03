@@ -1997,11 +1997,17 @@ def recon_white_surface_inwards_push(name, t2w_image, wm_mask, gm_mask, cortex_m
             #     model_opts['edge-distance'] = 1
             #     second_mesh = push_output(stack, deform_mesh(first_mesh, opts=model_opts, super_debug=debug_white))
 
+        init_mesh = push_output(stack, nextname(name, temp=temp))
 
         if bs_cb_mesh:
+            mesh = bs_cb_mesh
             run('extract-pointset-cells', args=[mesh, mesh], opts=[('where', region_id_array), ('ne', 7)])
 
+        mesh = cortex_mesh
         # smooth white surface mesh
+        status_array = 'InitialStatus'
+        run('copy-pointset-attributes', args=[mesh, mesh, init_mesh],
+            opts={'celldata-as-pointdata': [cortex_mask_array, status_array, 'other', 'binary'], 'unanimous': None})
         smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask=status_array))
 
         # remove intersections if any
@@ -2205,10 +2211,10 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
 
             # merge white surface mesh with initial pial surface mesh
             cortex_mesh = push_output(stack, nextname(blended_mesh))
-            append_surfaces(cortex_mesh, surfaces=[white_mesh, blended_mesh], merge=True, tol=0)
+            #append_surfaces(cortex_mesh, surfaces=[white_mesh, blended_mesh], merge=True, tol=0)
 
             # this in an attempt to fix the pial dfferent vertices problem
-            #append_surfaces(cortex_mesh, surfaces=[white_mesh, blended_mesh], merge=False)
+            append_surfaces(cortex_mesh, surfaces=[white_mesh, blended_mesh], merge=False)
             info = evaluate_surface(cortex_mesh, cortex_mesh, mesh=True, opts=[('where', cortex_mask_array), ('gt', 0)])
             run('calculate-element-wise', args=[cortex_mesh], opts=[('cell-data', cortex_mask_array), ('mask', 'BoundaryMask'), ('set', 0), ('out', cortex_mesh)])
             run('calculate-element-wise', args=[cortex_mesh], opts=[('cell-data', region_id_array),   ('mask', 'BoundaryMask'), ('add', 4), ('out', cortex_mesh)])
@@ -2419,6 +2425,6 @@ def split_cortical_surfaces(joined_mesh, right_name=None, left_name=None, intern
     with ExitStack() as stack:
         if internal_mesh:
             name = os.path.join(temp, os.path.splitext(joined_mesh)[0] + '+internal.vtp')
-            joined_mesh = push_output(stack, append_surfaces(name, surfaces=[joined_mesh, internal_mesh], merge=True, tol=0))
+            joined_mesh = push_output(stack, append_surfaces(name, surfaces=[joined_mesh, internal_mesh], merge=False, tol=0))
         if right_name: extract_surface(joined_mesh, right_name, labels=[-1, -3, 1, 3, 5])
         if left_name:  extract_surface(joined_mesh, left_name,  labels=[-1, -2, 2, 4, 6])
