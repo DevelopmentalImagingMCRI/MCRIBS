@@ -138,11 +138,13 @@ def main():
     
     # NewLabelFusionIMG[InterhemisphereMask] = 24
     
-    # restrict external DrawEM
+    # restrict external DrawEM - 4 is blood? 1 is csf
     PialForceIMG[DrawEMIMG == 4] = 1
     PialForceIMG[DrawEMIMG == 1] = 1
     
-    
+    NewNII = nibabel.Nifti1Image(numpy.single(PialForceIMG), T2NII.affine)
+    nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'pial_force_1.nii.gz'))
+
     # NewNII = nibabel.Nifti1Image(numpy.uint8(InterhemisphereMask), LabelFusionNII.affine)
     # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_interhemispheric.nii.gz"))
     
@@ -153,6 +155,11 @@ def main():
     BrainMaskCerebellumDTMask = numpy.logical_and(BrainMaskIMG, numpy.logical_not(Utils.ismember(LabelFusionEditedIMG, [91, 93, 70, 71, 72, 73, 74, 75, 76])))
     BrainMaskCerebellumDT = scipy.ndimage.distance_transform_edt(BrainMaskCerebellumDTMask, sampling=T2NII.header.get_zooms())
     
+    NewNII = nibabel.Nifti1Image(numpy.single(numpy.logical_and(BrainMaskCerebellumDT < 4, LabelFusionEditedIMGGM)), T2NII.affine)
+    nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'bmdt.nii.gz'))
+    NewNII = nibabel.Nifti1Image(numpy.single(BrainMaskCerebellumDTMask), T2NII.affine)
+    nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'bm.nii.gz'))
+
     #LabelFusionEditedIMGGM = numpy.logical_or(numpy.logical_and(LabelFusionEditedIMG >= 1000, LabelFusionEditedIMG <= 1035), numpy.logical_and(LabelFusionEditedIMG >= 2000, LabelFusionEditedIMG <= 2035))
 
     # WM FORCE: add voxels that are near the edge of the BrainMaskCerebellumDT to restrict at 0.5
@@ -168,6 +175,10 @@ def main():
     # PIAL FORCE: add voxels that are near the edge of the brain in the GM mask to expand 
     PialForceIMG[numpy.logical_and(BrainMaskCerebellumDT < 4, LabelFusionEditedIMGGM)] = -1
     PialForceIMG[numpy.logical_not(BrainMaskCerebellumDTMask)] = 1
+
+    NewNII = nibabel.Nifti1Image(numpy.single(PialForceIMG), T2NII.affine)
+    nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'pial_force_2.nii.gz'))
+
 
     del LabelFusionEditedIMGGM
     del BrainMaskCerebellumDTMask
@@ -220,13 +231,18 @@ def main():
 
     WMForceIMG[Utils.ismember(LabelFusionIMG, [18, 54])] = -1
     PialForceIMG[numpy.logical_not(BrainMaskIMG)] = 2
+    NewNII = nibabel.Nifti1Image(numpy.single(PialForceIMG), T2NII.affine)
+    nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'pial_force_3.nii.gz'))
 
     latVentDT = scipy.ndimage.distance_transform_edt(numpy.logical_not(Utils.ismember(LabelFusionEditedIMG, [4, 43, 31, 63])), sampling=T2NII.header.get_zooms())
     periMask = numpy.logical_and(latVentDT < 4, Utils.ismember(LabelFusionEditedIMG, [1010, 1013, 1021, 2010, 2013, 2021]))
     #periMask = scipy.ndimage.binary_closing(periMask, iterations=4)
     WMForceIMG[periMask] = 1
     
-    DrawEMExclusionPial = scipy.ndimage.binary_closing(DrawEMIMG == 4, iterations=5)
+    # this seems potentially problematic - trying to connect lines together?
+    # be more conservative - small opening.
+    #DrawEMExclusionPial = scipy.ndimage.binary_closing(DrawEMIMG == 4, iterations=5)
+    DrawEMExclusionPial = scipy.ndimage.binary_opening(DrawEMIMG == 4, iterations=2)
     PialForceIMG[DrawEMExclusionPial] = 3
 
     #NewNII = nibabel.Nifti1Image(numpy.uint8(periMask), T2NII.affine)
