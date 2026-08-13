@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+
+import numpy
+import sys
+import os
+import nibabel
+import scipy.ndimage
+#import matplotlib.pyplot as plt
+#import pylab
+#import Otsu
+
+import vtk
+import vtk.util.numpy_support
+#import skimage.morphology
+#import subprocess
+import GraphUtils
+import Utils
+import scipy.linalg
+import subprocess
+
+import shutil
+
+if len(sys.argv) < 2:
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+# fills midline WM labels for regions filling
+# replaces small WM components with GM
+
+subjID = sys.argv[1]
+
+try:
+    TissueSegDir = os.environ['TISSUESEGDIR']
+except:
+    TissueSegDir = 'TissueSegMCRIBS'
+
+
+# subprocess.call(['mri_convert',
+#                  '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
+#                  '-ns', '1',
+#                  os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"),
+#                  os.path.join('SurfReconDeformable', subjID, 'temp', 't2w_restore_brain_dn.nii.gz')
+#                  ])
+
+# subprocess.call(['mri_convert',
+#                  '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
+#                  '-ns', '1',
+#                  '-rt', 'nearest',
+#                  os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"),
+#                  os.path.join('SurfReconDeformable', subjID, 'temp', 'labelfusion_regions.nii.gz')
+#                  ])
+
+# subprocess.call(['mri_convert',
+#                  '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
+#                  '-ns', '1',
+#                  '-rt', 'nearest',
+#                  os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz"),
+#                  os.path.join('SurfReconDeformable', subjID, 'temp', 't2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz')
+#                  ])
+
+
+
+#T2NII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', "t2w_restore_brain_dn.nii.gz"))
+T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz")
+T2IMG = T2NII.get_fdata()
+
+WMForceNII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', "wm_force.nii.gz"))
+WMForceIMG = numpy.single(WMForceNII.dataobj)
+
+#LabelFusionEditedNII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', "labelfusion_dkt_edited.nii.gz"))
+#LabelFusionEditedIMG = numpy.uint16(LabelFusionEditedNII.dataobj)
+
+LabelFusionRegionsNII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', "labelfusion_regions.nii.gz"))
+LabelFusionRegionsIMG = numpy.uint16(LabelFusionRegionsNII.dataobj)
+
+LabelFusionRegionsWorldToVox = scipy.linalg.inv(LabelFusionRegionsNII.affine)
+
+VTPFileName = os.path.join('SurfReconDeformable', subjID, 'temp', 'white-4_eval.vtp')
+
+subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'MIRTK', 'MIRTK-install', 'lib', 'tools', 'evaluate-surface-mesh'),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 'white-4.vtp'),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 'white-4_eval.vtp'),
+                 '-collisions', '0'
+                ])
+
+path, ext = os.path.splitext(VTPFileName)
+
+if ext == ".vtp":
+    Reader = vtk.vtkXMLPolyDataReader()
+elif ext == ".vtk":
+    Reader = vtk.vtkPolyDataReader()
+
+Reader.SetFileName(VTPFileName)
+Reader.Update()
+
+Data = Reader.GetOutput()
+
+White4Surface = dict()
+White4Surface['vertices'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPoints().GetData())).T
+
+if Data.GetNumberOfPolys() > 0:
+    White4Surface['faces'] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(Data.GetPolys().GetData()))
+    White4Surface['faces'] = numpy.reshape(White4Surface['faces'], (int(White4Surface['faces'].size / 4), 4)).T
+    White4Surface['faces'] = White4Surface['faces'][1:]
+
+# get the pointdata and celldata arrays
+
+pointDataArrayNames = ['CollisionMask']
+cellDataArrayNames = ['RegionId']
+
+pointDataArrays = dict()
+cellDataArrays = dict()
+
+pointData = Data.GetPointData()
+for arrayIDX in range(pointData.GetNumberOfArrays()):
+    curArrayName = pointData.GetArrayName(arrayIDX)
+    if curArrayName in pointDataArrayNames:
+        pointDataArrays[curArrayName] = numpy.array(vtk.util.numpy_support.vtk_to_numpy(pointData.GetArray(arrayIDX)))
+        #pericalcarineIDX = numpy.where(pericalcarineMask > 0)[0]
+
+cellData = Data.GetCellData()
+for arrayIDX in range(cellData.GetNumberOfArrays()):
+    curArrayName = cellData.GetArrayName(arrayIDX)
+    if curArrayName in cellDataArrayNames:
+        cellDataArrays[curArrayName] = cellData.GetArray(arrayIDX)
+        cellDataArrays[curArrayName] = numpy.array([cellDataArrays[curArrayName].GetTuple(arrayIDX) for arrayIDX in range(cellDataArrays[curArrayName].GetNumberOfTuples())])
+
+# convert to required data types        
+pointDataArrays['CollisionMask'] = pointDataArrays['CollisionMask'] > 0
+cellDataArrays['RegionId'] = numpy.int16(cellDataArrays['RegionId'])
+
+vertexFaceIDX = GraphUtils.vertexFaceIDX(White4Surface['faces'])
+
+pointDataArrays['RegionId'] = numpy.zeros((White4Surface['vertices'].shape[1]), dtype=numpy.int16)
+
+# make the pointData version of RegionId, use majority vote
+for z in range(len(vertexFaceIDX)):
+    U, counts = numpy.unique(cellDataArrays['RegionId'][vertexFaceIDX[z]], return_counts=True)
+    pointDataArrays['RegionId'][z] = U[numpy.argmax(counts)]
+    del U
+    del counts
+
+
+def dilateSurfaceBinaryMask(S: dict, mask: numpy.ndarray, iterations=1):
+    """_summary_
+
+    Parameters
+    ----------
+    S : dict
+        _description_
+    mask : numpy.ndarray
+        _description_
+    iterations : int, optional
+        _description_, by default 1
+    """    
+    vertexNeighbours = GraphUtils.getVertexNeighbours(S)
+
+    newMask = numpy.array(mask)
+    for z in range(iterations):
+        I = numpy.where(newMask)[0]
+        for k in range(I.size):
+            newMask[vertexNeighbours[I[k]]] = True
+
+    return newMask
+
+pointDataArrays['dilatedCollisionMask'] = dilateSurfaceBinaryMask(White4Surface, pointDataArrays['CollisionMask'])
+
+outMask = numpy.zeros(LabelFusionRegionsNII.shape[0:3], dtype=numpy.bool_)
+
+
+def processOneHemisphere(regionIdLabel: int) -> numpy.ndarray:
+    """_summary_
+
+    Parameters
+    ----------
+    regionIdLabel : int or list
+        The label for RegionId to extract. Right hemi = 1, Left hemi = 2.
+
+    Returns
+    -------
+    numpy.ndarray
+        _description_
+    """
+    global White4Surface
+    global pointDataArrays
+    global cellDataArrays
+    global LabelFusionRegionsWorldToVox
+    global outMask
+
+    if isinstance(regionIdLabel, int):
+        regionMask = pointDataArrays["RegionId"] == regionIdLabel
+    elif isinstance(regionIdLabel, list) or isinstance(regionIdLabel, numpy.array):
+        regionMask = Utils.ismember(pointDataArrays["RegionId"], regionIdLabel)
+
+    CC = GraphUtils.connectedComponents(White4Surface, numpy.logical_and(regionMask, numpy.logical_not(pointDataArrays['dilatedCollisionMask'])))
+    numLabels = numpy.max(CC)
+
+    # dilate and close non-max labels
+    if numLabels > 1:
+        H = numpy.bincount(CC[CC > 0])
+        largestLabel = numpy.argmax(H)
+        for badLabel in range(1, numLabels + 1):
+            if badLabel != largestLabel:
+                curMask = numpy.zeros_like(outMask)
+                curLabelWorld = White4Surface['vertices'][:, CC == badLabel]
+                curLabelVOX = numpy.matrix(LabelFusionRegionsWorldToVox[0:3, 0:3]) * numpy.matrix(curLabelWorld) + numpy.matrix(LabelFusionRegionsWorldToVox[0:3, 3]).T
+                curLabelVOX = numpy.int64(numpy.round(curLabelVOX))
+                curMask[curLabelVOX[0], curLabelVOX[1], curLabelVOX[2]] = True
+                # dilate and close
+                curMask = scipy.ndimage.binary_dilation(curMask)
+                curMask = scipy.ndimage.binary_closing(curMask, iterations=3)
+                outMask = numpy.logical_or(outMask, curMask)
+        
+    return (CC, numLabels)
+
+CCLH, CCLHNumLabels = processOneHemisphere(2)
+CCRH, CCRHNumLabels = processOneHemisphere(1)
+
+WMForceIMG[outMask] = -1
+
+NewNII = nibabel.Nifti1Image(numpy.uint8(outMask), LabelFusionRegionsNII.affine)
+nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'white4islandfixmask.nii.gz'))
+
+try:
+    os.makedirs(os.path.join('SurfReconDeformable', subjID, 'temp_firstwhite'), exist_ok=True)
+except OSError:
+    pass
+
+shutil.copyfile(os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
+                os.path.join('SurfReconDeformable', subjID, 'temp_firstwhite', 'wm_force.nii.gz'))
+
+shutil.copyfile(os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force_second.nii.gz'),
+                os.path.join('SurfReconDeformable', subjID, 'temp_firstwhite', 'wm_force_second.nii.gz'))
+
+NewNII = nibabel.Nifti1Image(numpy.single(WMForceIMG), LabelFusionRegionsNII.affine)
+nibabel.save(NewNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'))
