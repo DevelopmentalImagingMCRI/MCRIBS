@@ -435,7 +435,8 @@ def recon_neonatal_cortex(config, section, config_vars,
                           join_tol=1,
                           threads=0,
                           debug_white=False,
-                          debug_pial=False):
+                          debug_pial=False,
+                          debug_cerebrum=False):
     """Reconstruct surfaces of neonatal cortex."""
     print("threads = " + str(threads))
     # working directory
@@ -590,13 +591,13 @@ def recon_neonatal_cortex(config, section, config_vars,
                 if verbose > 0:
                     print("Reconstructing boundary of right cerebral hemisphere segmentation")
                 neoctx.recon_cortical_surface(name=right_cerebrum_mesh, regions=regions_mask, hemisphere=neoctx.Hemisphere.Right,
-                                              corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir, opts=hemis_opts, threads = threads)
+                                              corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir, opts=hemis_opts, threads=threads, debug_cerebrum=debug_cerebrum)
             if force or not os.path.isfile(left_cerebrum_mesh):
                 corpus_callosum_mask = optional_corpus_callosum_mask(config, section, config_vars, stack, verbose)
                 if verbose > 0:
                     print("Reconstructing boundary of left cerebral hemisphere segmentation")
                 neoctx.recon_cortical_surface(name=left_cerebrum_mesh, regions=regions_mask, hemisphere=neoctx.Hemisphere.Left,
-                                              corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir, opts=hemis_opts, threads = threads)
+                                              corpus_callosum_mask=corpus_callosum_mask, temp=temp_dir, opts=hemis_opts, threads=threads, debug_cerebrum=debug_cerebrum)
 
             # join cortical surfaces of right and left hemispheres
             if verbose > 0:
@@ -684,7 +685,7 @@ def recon_neonatal_cortex(config, section, config_vars,
 
             except Exception as e:
                 # rerun white generation with inward push forces, then rerun pial
-
+                print("Reconstructing outer-cortical surface - exception branch")
                 neoctx.recon_white_surface_inwards_push(name=os.path.join(temp_dir, 'white-3.vtp'),
                                        t1w_image=t1w_image, t2w_image=t2w_image,
                                        wm_mask=wm_mask, gm_mask=gm_mask,
@@ -901,6 +902,8 @@ parser.add_argument('-debugwhite', '--debugwhite', action='store_true',
                     help='Debug white surface')
 parser.add_argument('-debugpial', '--debugpial', action='store_true',
                     help='Debug pial surface')
+parser.add_argument('-debugcerebrum', '--debugcerebrum', action='store_true',
+                    help='Debug cereburm surfaces')
 parser.add_argument('-t', '-threads', '--threads', default=0,
                     help='No. of cores to use for multi-threading')
 parser.add_argument('-q', '-queue', '--queue', default='',
@@ -946,7 +949,7 @@ neoctx.verbose = max(0, args.verbose - 1)
 neoctx.showcmd = max(0, args.verbose - 1)
 neoctx.debug = max(0, args.debug)
 neoctx.force = args.force
-
+print("Debug = " + str(neoctx.debug))
 # read subject and session IDs from CSV file
 if len(args.sessions) == 1 and os.path.isfile(args.sessions[0]):
     csv_name = args.sessions[0]
@@ -1022,7 +1025,8 @@ for session in sessions:
                                   use_fast_collision = args.fastcollision,
                                   threads=int(args.threads),
                                   debug_white=args.debugwhite,
-                                  debug_pial=args.debugpial)
+                                  debug_pial=args.debugpial,
+                                  debug_cerebrum=args.debugcerebrum)
     except Exception as e:
         failed += 1
         if args.queue:
