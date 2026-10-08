@@ -1,7 +1,6 @@
 FROM ubuntu:22.04
 
-RUN sed --in-place --regexp-extended "s/(\/\/)(archive\.ubuntu)/\1au.\2/" /etc/apt/sources.list && \
-	apt-get update && apt-get upgrade --yes
+RUN apt-get update && apt-get upgrade --yes
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -36,15 +35,6 @@ RUN pip install nibabel vtk==9.2.6 h5py scikit-image numexpr pandas imageio cont
 RUN mkdir -p /opt/MCRIBS
 RUN mkdir -p /opt/MCRIBS/MIRTK
 
-COPY MIRTK/MIRTK /opt/MCRIBS/MIRTK/MIRTK
-COPY build.sh /opt/MCRIBS
-
-COPY .git /opt/MCRIBS/.git
-
-RUN ls -la /opt/MCRIBS
-WORKDIR /opt/MCRIBS
-
-RUN /opt/MCRIBS/build.sh
 
 RUN mkdir -p /opt/ANTs
 
@@ -102,12 +92,25 @@ echo "git config --global --add safe.directory '*'" &&\
 echo "/opt/MCRIBS/bin/\$CMD \$@" >> /opt/entrypoint.sh &&\
 chmod 777 /opt/entrypoint.sh
 
-RUN rm -fr /opt/MCRIBS/ITK/ITK-build /opt/MCRIBS/VTK/VTK-build /opt/MCRIBS/MIRTK/MIRTK-build
-RUN rm -f freesurfer-7.4.1.tar.xz
-RUN rm -fr /opt/ANTs/ANTs /opt/ANTs/ANTs-build
+
+
+COPY MIRTK/MIRTK /opt/MCRIBS/MIRTK/MIRTK
+COPY build.sh /opt/MCRIBS
+
+COPY .git /opt/MCRIBS/.git
+
+RUN ls -la /opt/MCRIBS
+WORKDIR /opt/MCRIBS
+
+COPY lib /opt/MCRIBS/lib
+
+RUN /opt/MCRIBS/build.sh && \
+    rm -fr /opt/MCRIBS/ITK/ITK-build /opt/MCRIBS/VTK/VTK-build /opt/MCRIBS/MIRTK/MIRTK-build && \
+    rm -f freesurfer-7.4.1.tar.xz && \
+    rm -fr /opt/ANTs/ANTs /opt/ANTs/ANTs-build
 
 COPY bin /opt/MCRIBS/bin
-COPY lib /opt/MCRIBS/lib
+
 
 COPY SetUpMCRIBS.sh /opt/MCRIBS
 RUN mkdir -p /work
