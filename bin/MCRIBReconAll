@@ -83,7 +83,7 @@ def main():
     surfReconArgGroup.add_argument('--cleanpial', help = "Clean only pial from SurfReconDeformable before running", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugwhite', help = "Debug white surface", required = False, action = 'store_true')
     surfReconArgGroup.add_argument('--debugpial', help = "Debug pial surface", required = False, action = 'store_true')
-    surfReconArgGroup.add_argument('--debugnnc', help = "Debug neonatal cortex surfaces", required = False, action = 'store_true')
+    surfReconArgGroup.add_argument('--debugcerebrum', help = "Debug cerebrum surfaces", required = False, action = 'store_true')
 
     inflateSphereArgGroup = argParser.add_argument_group('inflatesphere', 'Perform inflation, spherical mapping, curv, area, depends --surfrecon')
     inflateSphereArgGroup.add_argument('--inflatesphere', help = "PROCESSING DIRECTIVE", required = False, action = 'store_true')
@@ -149,10 +149,10 @@ def main():
 
     options = argParser.parse_args()
 
-    if options.steplist == True:
+    if options.steplist:
         T = ['--' + x for x in doProcessingSteps]
         print(" ".join(T))
-        exit
+        exit()
 
     #argParser.print_help()
     #print(vars(options))
@@ -174,7 +174,6 @@ def main():
         # export OMP_NUM_THREADS=options.openmp
     os.environ['OMP_NUM_THREADS'] = str(options.openmp)
     os.environ['SUBJECTS_DIR'] = os.path.join(os.getcwd(), 'freesurfer')
-    os.environ['ANTS_RANDOM_SEED'] = str(31)
 
     # set up for vtk and vtkpython 3
     scriptPath = getScriptPath()
@@ -398,8 +397,8 @@ def main():
             cmd.append('--debugwhite')
         if options.debugpial:
             cmd.append('--debugpial')
-        if options.debugnnc:
-            cmd.append('--debugnnc')
+        if options.debugcerebrum:
+            cmd.append('--debugcerebrum')
         if options.cleansr:
             cmd.append('--cleansr')
         if options.cleanpial:
