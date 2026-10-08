@@ -35,33 +35,33 @@ except:
     TissueSegDir = 'TissueSegMCRIBS'
 
 
-# subprocess.call(['mri_convert',
-#                  '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
-#                  '-ns', '1',
-#                  os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"),
-#                  os.path.join('SurfReconDeformable', subjID, 'temp', 't2w_restore_brain_dn.nii.gz')
-#                  ])
+subprocess.call(['mri_convert',
+                 '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
+                 '-ns', '1',
+                 os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 't2w_restore_brain_dn.nii.gz')
+                 ])
 
-# subprocess.call(['mri_convert',
-#                  '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
-#                  '-ns', '1',
-#                  '-rt', 'nearest',
-#                  os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"),
-#                  os.path.join('SurfReconDeformable', subjID, 'temp', 'labelfusion_regions.nii.gz')
-#                  ])
+subprocess.call(['mri_convert',
+                 '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
+                 '-ns', '1',
+                 '-rt', 'nearest',
+                 os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_regions.nii.gz"),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 'labelfusion_regions.nii.gz')
+                 ])
 
-# subprocess.call(['mri_convert',
-#                  '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
-#                  '-ns', '1',
-#                  '-rt', 'nearest',
-#                  os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz"),
-#                  os.path.join('SurfReconDeformable', subjID, 'temp', 't2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz')
-#                  ])
+subprocess.call(['mri_convert',
+                 '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force.nii.gz'),
+                 '-ns', '1',
+                 '-rt', 'nearest',
+                 os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz"),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 't2w_restore_brain_dn_atropos3_priors_segmentation.nii.gz')
+                 ])
 
 
 
 #T2NII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', "t2w_restore_brain_dn.nii.gz"))
-T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz")
+T2NII = nibabel.load(os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn.nii.gz"))
 T2IMG = T2NII.get_fdata()
 
 WMForceNII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', "wm_force.nii.gz"))
@@ -75,11 +75,11 @@ LabelFusionRegionsIMG = numpy.uint16(LabelFusionRegionsNII.dataobj)
 
 LabelFusionRegionsWorldToVox = scipy.linalg.inv(LabelFusionRegionsNII.affine)
 
-VTPFileName = os.path.join('SurfReconDeformable', subjID, 'temp', 'white-4_eval.vtp')
-
+VTPFileName = os.path.join('SurfReconDeformable', subjID, 'temp', 'white-3_eval.vtp')
+# white-4 doesn't seem to exist - switch to white-3
 subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'MIRTK', 'MIRTK-install', 'lib', 'tools', 'evaluate-surface-mesh'),
-                 os.path.join('SurfReconDeformable', subjID, 'temp', 'white-4.vtp'),
-                 os.path.join('SurfReconDeformable', subjID, 'temp', 'white-4_eval.vtp'),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 'white-3.vtp'),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', 'white-3_eval.vtp'),
                  '-collisions', '0'
                 ])
 
