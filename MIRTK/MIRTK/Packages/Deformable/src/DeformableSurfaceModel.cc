@@ -781,8 +781,9 @@ void DeformableSurfaceModel::Initialize()
   }
   _LowPassCounter = 0;
 
-  // Local adaptive remeshing settings
-  if (_IsSurfaceMesh && IsTriangularMesh(_Input) && _RemeshInterval > 0) {
+  // Local adaptive remeshing settings - remove  && _RemeshInterval > 0 on advice
+  // of Claude because it can lead to MaxEdgeLength being negative in 
+  if (_IsSurfaceMesh && IsTriangularMesh(_Input)) {
     if (_MinEdgeLength < .0 || _MaxEdgeLength <= .0) {
       double mean = AverageEdgeLength(_Input);
       if (_MinEdgeLength <  .0) _MinEdgeLength =  .5 * mean;
@@ -1675,7 +1676,12 @@ void DeformableSurfaceModel
   check.MinFrontfaceDistance(mind);
   check.MinBackfaceDistance(minw);
   check.MaxAngle(_MaxCollisionAngle);
-  check.MaxSearchRadius(2. * _MaxEdgeLength);
+  // Guard against strange values
+  double max_edge_length = _MaxEdgeLength;
+  if (max_edge_length < 0.0 || IsInf(max_edge_length)) {
+    max_edge_length = max(mind, minw);
+  }
+  check.MaxSearchRadius(2. * max_edge_length);
   check.StoreIntersectionDetailsOff();
   check.StoreCollisionDetailsOff();
   check.ResetCollisionTypeOn();
