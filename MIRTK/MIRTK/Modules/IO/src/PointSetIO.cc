@@ -112,13 +112,21 @@ vtkSmartPointer<vtkPointSet> ReadPointSet(const char *fname, FileOption &fopt, b
     reader = vtkSmartPointer<vtkXMLGenericDataObjectReader>::New();
     reader->SetFileName(fname);
     reader->Update();
-    pointset = vtkPointSet::SafeDownCast(reader->GetOutput());
+    vtkPointSet *output = vtkPointSet::SafeDownCast(reader->GetOutput());
+    if (output) {
+      pointset.TakeReference(output->NewInstance());  
+      pointset->ShallowCopy(output);
+    }
   } else {
     vtkSmartPointer<vtkGenericDataObjectReader> reader;
     reader = vtkSmartPointer<vtkGenericDataObjectReader>::New();
     reader->SetFileName(fname);
     reader->Update();
-    pointset = vtkPointSet::SafeDownCast(reader->GetOutput());
+    vtkPointSet *output = vtkPointSet::SafeDownCast(reader->GetOutput());
+    if (output) {
+      pointset.TakeReference(output->NewInstance());  
+      pointset->ShallowCopy(output);
+    }
     fopt = (reader->GetFileType() == VTK_ASCII ? FO_ASCII : FO_Binary);
   }
   if (exit_on_failure && (!pointset || pointset->GetNumberOfPoints() == 0)) {
@@ -182,25 +190,29 @@ vtkSmartPointer<vtkPolyData> ReadPolyData(const char *fname, FileOption &fopt, b
     reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
     reader->SetFileName(fname);
     reader->Update();
-    polydata = reader->GetOutput();
+    polydata = vtkSmartPointer<vtkPolyData>::New();
+    polydata->ShallowCopy(reader->GetOutput());
   } else if (ext == ".stl") {
     vtkSmartPointer<vtkSTLReader> reader;
     reader = vtkSmartPointer<vtkSTLReader>::New();
     reader->SetFileName(fname);
     reader->Update();
-    polydata = reader->GetOutput();
+    polydata = vtkSmartPointer<vtkPolyData>::New();
+    polydata->ShallowCopy(reader->GetOutput());
   } else if (ext == ".ply") {
     vtkSmartPointer<vtkPLYReader> reader;
     reader = vtkSmartPointer<vtkPLYReader>::New();
     reader->SetFileName(fname);
     reader->Update();
-    polydata = reader->GetOutput();
+    polydata = vtkSmartPointer<vtkPolyData>::New();
+    polydata->ShallowCopy(reader->GetOutput());
   } else if (ext == ".obj") {
     vtkSmartPointer<vtkOBJReader> reader;
     reader = vtkSmartPointer<vtkOBJReader>::New();
     reader->SetFileName(fname);
     reader->Update();
-    polydata = reader->GetOutput();
+    polydata = vtkSmartPointer<vtkPolyData>::New();
+    polydata->ShallowCopy(reader->GetOutput());
   } else if (ext == ".dfs") {
     polydata = ReadDFS(fname);
   } else if (ext == ".off") {
@@ -219,7 +231,8 @@ vtkSmartPointer<vtkPolyData> ReadPolyData(const char *fname, FileOption &fopt, b
     reader = vtkSmartPointer<vtkPolyDataReader>::New();
     reader->SetFileName(fname);
     reader->Update();
-    polydata = reader->GetOutput();
+    polydata = vtkSmartPointer<vtkPolyData>::New();
+    polydata->ShallowCopy(reader->GetOutput());
     fopt = (reader->GetFileType() == VTK_ASCII ? FO_ASCII : FO_Binary);
   }
   if (exit_on_failure && polydata->GetNumberOfPoints() == 0) {

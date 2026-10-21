@@ -21,7 +21,8 @@ def surfFillMGH(MGHImage, inSurf):
     points = vtk.vtkPoints()
     points.SetNumberOfPoints(inSurf['vertices'].shape[1])
     for z in range(inSurf['vertices'].shape[1]):
-        points.InsertPoint(z, voxverts[:, z])
+        pp = voxverts[:, z].ravel()
+        points.InsertPoint(z, pp[0,0], pp[0,1], pp[0,2])
 
     tris = vtk.vtkCellArray()
     for z in range(inSurf['faces'].shape[1]):

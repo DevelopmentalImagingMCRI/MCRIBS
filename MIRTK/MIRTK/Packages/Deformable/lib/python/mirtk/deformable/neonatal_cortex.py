@@ -71,6 +71,12 @@ _region_id_array      = 'RegionId'
 _collision_mask_array = 'CollisionMask'
 _collision_type_array = 'CollisionType'
 
+# MCRIBS helpers
+def runMCRIBS(MCRIBScommand, params):
+    vtkpython = os.path.join(os.environ['MCRIBS_HOME'],"VTK", "VTK-install", "bin", "vtkpython")
+    mcribscom = os.path.join(os.environ['MCRIBS_HOME'], 'bin', MCRIBScommand)
+    subprocess.call([vtkpython, mcribscom] + params)
+
 # ==============================================================================
 # enumerations
 # ==============================================================================
@@ -147,6 +153,7 @@ def try_remove(name):
     """Try to remove file, do not throw exception if it fails."""
     if name:
         try:
+            print("Would remove " + name)
             os.remove(name)
         except:
             return False
@@ -183,7 +190,7 @@ def iterable_or_int_to_list(arg):
 # ------------------------------------------------------------------------------
 def run(tool, args=[], opts={}):
     """Run MIRTK command with global `showcmd` flag and maximum allowed number of `threads`."""
-    _run(tool, args=args, opts=opts, showcmd=showcmd, threads=threads)
+    _run(tool, args=args, opts=opts, showcmd=showcmd, threads=threads, onerror='exit')
 
 # ------------------------------------------------------------------------------
 @contextmanager
@@ -392,6 +399,7 @@ def remove_intersections(iname, oname=None, mask=None, max_attempt=10, smooth_it
         itr = nbr = 1
         cur = check_intersections(iname, oname)
         while cur > 0:
+            print("Removing intersections - currently " + str(cur))
             itr += 1
             if itr == 1 and verbose > 0:
                 print(("Trying to resolve {} remaining self-intersections of {}".format(cur, iname)))
@@ -416,51 +424,54 @@ def remove_white_pial_intersections(iname, oname=None, mask=None, max_attempt=10
         oname = os.path.abspath(oname)
     else:
         oname = nextname(iname)
-    with output(oname):
-        # constants
-        weighting         = 'combinatorial'
-        smooth_mask_array = 'SmoothMask'
-        curvature_array   = 'Curvature'
-        # check if triangles intersect
-        cur = check_intersections(iname, oname)
-        if cur > 0:
-            # compute surface curvature
-            run('calculate-surface-attributes', args=[oname, oname], opts={'H': curvature_array, 'vtk-curvatures': None})
-            run('copy-pointset-attributes', args=[oname, oname], opts={'celldata-as-pointdata': region_id_array, 'unanimous': None})
-        itr = nbr = 1
-        while cur > 0:
-            itr += 1
-            if itr == 1 and verbose > 0:
-                print(("Trying to resolve {} remaining self-intersections of {}".format(cur, iname)))
-            if itr > max_attempt:
-                raise Exception("Failed to resolve self-intersections of {}".format(iname))
-            # smooth intersected convex regions (sulci) of pial surface
-            run('calculate-element-wise', args=[oname], opts=[('point-data', region_id_array), ('label', 3, 4),
-                                                              ('mask', _collision_mask_array), ('set', 1), ('pad', 0),
-                                                              ('mul', curvature_array), ('threshold-ge', 0), ('pad', 0),
-                                                              ('out', oname, 'binary', smooth_mask_array)])
+    # this shouldn't be in a context manager? We're returning
+    # the value and using it later scripts.
+    # 
+    #with output(oname):
+    # constants
+    weighting         = 'combinatorial'
+    smooth_mask_array = 'SmoothMask'
+    curvature_array   = 'Curvature'
+    # check if triangles intersect
+    cur = check_intersections(iname, oname)
+    if cur > 0:
+        # compute surface curvature
+        run('calculate-surface-attributes', args=[oname, oname], opts={'H': curvature_array, 'vtk-curvatures': None})
+        run('copy-pointset-attributes', args=[oname, oname], opts={'celldata-as-pointdata': region_id_array, 'unanimous': None})
+    itr = nbr = 1
+    while cur > 0:
+        itr += 1
+        if itr == 1 and verbose > 0:
+            print(("Trying to resolve {} remaining self-intersections of {}".format(cur, iname)))
+        if itr > max_attempt:
+            raise Exception("Failed to resolve self-intersections of {}".format(iname))
+        # smooth intersected convex regions (sulci) of pial surface
+        run('calculate-element-wise', args=[oname], opts=[('point-data', region_id_array), ('label', 3, 4),
+                                                            ('mask', _collision_mask_array), ('set', 1), ('pad', 0),
+                                                            ('mul', curvature_array), ('threshold-ge', 0), ('pad', 0),
+                                                            ('out', oname, 'binary', smooth_mask_array)])
+        run('dilate-scalars', args=[oname, oname], opts={'array': smooth_mask_array, 'iterations': nbr})
+        if mask:
+            run('calculate-element-wise', args=[oname], opts=[('scalars', smooth_mask_array), ('mul', mask), ('out', oname)])
+        smooth_surface(oname, oname, iterations=smooth_iter, lambda_value=smooth_lambda,
+                        weighting=weighting, mask=smooth_mask_array, excl_node=False)
+        if check_intersections(oname, oname) > 0:
+            # smooth intersected concave regions (gyri) of white surface
+            run('calculate-element-wise', args=[oname], opts=[('point-data', region_id_array), ('label', 1, 2),
+                                                                ('mask', _collision_mask_array), ('set', 1), ('pad', 0),
+                                                                ('mul', curvature_array), ('threshold-le', 0), ('pad', 0),
+                                                                ('out', oname, 'binary', smooth_mask_array)])
             run('dilate-scalars', args=[oname, oname], opts={'array': smooth_mask_array, 'iterations': nbr})
             if mask:
                 run('calculate-element-wise', args=[oname], opts=[('scalars', smooth_mask_array), ('mul', mask), ('out', oname)])
             smooth_surface(oname, oname, iterations=smooth_iter, lambda_value=smooth_lambda,
-                           weighting=weighting, mask=smooth_mask_array, excl_node=False)
-            if check_intersections(oname, oname) > 0:
-                # smooth intersected concave regions (gyri) of white surface
-                run('calculate-element-wise', args=[oname], opts=[('point-data', region_id_array), ('label', 1, 2),
-                                                                  ('mask', _collision_mask_array), ('set', 1), ('pad', 0),
-                                                                  ('mul', curvature_array), ('threshold-le', 0), ('pad', 0),
-                                                                  ('out', oname, 'binary', smooth_mask_array)])
-                run('dilate-scalars', args=[oname, oname], opts={'array': smooth_mask_array, 'iterations': nbr})
-                if mask:
-                    run('calculate-element-wise', args=[oname], opts=[('scalars', smooth_mask_array), ('mul', mask), ('out', oname)])
-                smooth_surface(oname, oname, iterations=smooth_iter, lambda_value=smooth_lambda,
-                               weighting=weighting, mask=smooth_mask_array, excl_node=False)
-            # re-evaluate intersections
-            pre = cur
-            cur = check_intersections(oname, oname)
-            if cur >= pre: nbr += 1
-        # remove auxiliary attributes
-        del_mesh_attr(oname, pointdata=[region_id_array, curvature_array, smooth_mask_array, _collision_mask_array], celldata=_collision_type_array)
+                            weighting=weighting, mask=smooth_mask_array, excl_node=False)
+        # re-evaluate intersections
+        pre = cur
+        cur = check_intersections(oname, oname)
+        if cur >= pre: nbr += 1
+    # remove auxiliary attributes
+    del_mesh_attr(oname, pointdata=[region_id_array, curvature_array, smooth_mask_array, _collision_mask_array], celldata=_collision_type_array)
     return oname
 
 # ------------------------------------------------------------------------------
@@ -705,7 +716,7 @@ def deform_mesh(iname, oname=None, temp=None, opts={}, super_debug = True):
             opts['debug'] = (debug-2 if debug > 3 else 1)
             opts['debug-interval'] = (1 if debug > 2 else 10)
             opts['debug-prefix'] = debug_prefix
-            opts['level-prefix'] = False
+            opts['level-prefix'] = None
         fname_prefix = debug_prefix + 'output_'
         for fname in os.listdir(temp):
             if fname.startswith(fname_prefix):
@@ -803,11 +814,12 @@ def binarize_cortex(regions, name=None, temp=None):
     tempSplit = temp.split(os.sep);
     subjectID = tempSplit[-2]
     # make better cortex mask
+    runMCRIBS('MakeCortexMaskDilatedDKT', [subjectID]) 
     #print([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'MakeCortexMaskDilatedDKT'), subjectID])
-    subprocess.call([
-        os.path.join(os.environ['MCRIBS_HOME'], 'VTK', 'VTK-install', 'bin', 'vtkpython'),
-        os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'MakeCortexMaskDilatedDKT'),
-        subjectID])
+    # subprocess.call([
+    #     os.path.join(os.environ['MCRIBS_HOME'], 'VTK', 'VTK-install', 'bin', 'vtkpython'),
+    #     os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'MakeCortexMaskDilatedDKT'),
+    #     subjectID])
     #return binarize(name=name, segmentation=regions, labels=1)
     return name
 
@@ -1167,6 +1179,7 @@ def recon_cortical_surface(name, mask=None, regions=None,
                 'adjacent-collision-test': False,
                 'fast-collision-test': True,
                 'non-self-intersection': True,
+            #'match-sampling' : None,
             'remesh': 1,
                 'min-edge-length': .5,
                 'max-edge-length': 1,
@@ -1321,6 +1334,7 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
                 try:
                     run('merge-surfaces', opts={'input': surfaces, 'output': joined, 'labels': regions, 'source-array': region_id_array_name, 'dividers': True, 'largest': True, 'verbose': 2, 'debug': 0, **merge_opts})
                 except Exception:
+                    print("Exception in merge-surfaces")
                     if cur_join_tol_idx < len(join_tols) - 1:
                         continue
                     else:
@@ -1339,6 +1353,8 @@ def join_cortical_surfaces(name, regions, right_mesh, left_mesh, bs_cb_mesh=None
                     info = evaluate_surface(joined, mesh=True, topology=True)
                     num_boundaries = get_num_boundaries(info)
                     if num_boundaries != 0:
+                        if verbose:
+                            print("Cleaning cortical surface because num_boundaries != 0")
                         cleaned = push_output(stack, clean_cortical_surface(joined, **clean_kwargs))
                         info = evaluate_surface(cleaned, mesh=True, topology=True, intersections = True)
                         num_boundaries = get_num_boundaries(info)
@@ -1618,11 +1634,12 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                 'min-width': .1,
             'lowpass': 2,
             'lowpass-iterations': 2,
+            #'match-sampling' : None,
             'remesh': 1,
                 'min-edge-length': .5,
                 'max-edge-length': 2.,
-                'triangle-inversion': True,
-                'remesh-adaptively': False
+                'triangle-inversion': True
+            #    'remesh-adaptively': None
         }
         model_opts.update(opts)
         if use_mask_distance:
@@ -1630,7 +1647,9 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
             if not firstRunDone:
                 model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force.nii.gz'))
             else:
-                model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force_second.nii.gz'))
+                #model_opts['implicit-surface'] = push_output(stack, os.path.join(temp, 'wm_force_second.nii.gz'))
+                # appears to get used in exception handling code - registering for deletion here causes a second round of exceptions
+                model_opts['implicit-surface'] = os.path.join(temp, 'wm_force_second.nii.gz')
         else:
             remove_keys(model_opts, [
                 'distance',
@@ -1753,12 +1772,12 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
                 '5',
                 os.path.join('TissueSegMCRIBS', subjectID, subjectID + '_brain_mask.nii.gz')
             ])
-
-            subprocess.call([
-                os.path.join(os.environ['MCRIBS_HOME'], 'VTK', 'VTK-install', 'bin', 'vtkpython'),
-                os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformableWhite2Binarise'),
-                subjectID
-            ])
+            runMCRIBS('DeformableWhite2Binarise', [subjectID])
+            # subprocess.call([
+            #     os.path.join(os.environ['MCRIBS_HOME'], 'VTK', 'VTK-install', 'bin', 'vtkpython'),
+            #     os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformableWhite2Binarise'),
+            #     subjectID
+            # ])
 
             # move files not needed to other directories
             try:
@@ -1830,21 +1849,37 @@ def recon_white_surface(name, t2w_image, wm_mask, gm_mask, cortex_mesh, bs_cb_me
             # remove_intersections(smooth, oname=name, mask=status_array)
 
             if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'white_second_run')):
-                remove_intersections(smooth, oname=name, mask=status_array)
+                try:
+                    remove_intersections(smooth, oname=name, mask=status_array)
+                except Exception as e:
+                    print(f"Error {repr(e)}")
+                    print("white_second_run failure - ploughing on regardless")
+                    pass
             else:                
                 try:
                     remove_intersections(smooth, oname=name, mask=status_array)
-                except Exception:
-                    # THIS will run if an exception is raised
-                    subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformableWhite4IslandFix'), subjectID])
+                except Exception as e:
+                    print("Exception in remove_intersections")
+                    print(f"Error {repr(e)}")
+                    # Thiw will run if an exception is raised
+                    runMCRIBS('DeformableWhite4IslandFix', [subjectID])
+                    #subprocess.call([os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformableWhite4IslandFix'), subjectID])
                     L = os.listdir(os.path.join('SurfReconDeformable', subjectID, 'temp'))
                     try:
                         os.makedirs(os.path.join('SurfReconDeformable', subjectID, 'temp_firstwhite'), exist_ok=True)
                     except Exception:
+                        print("Exception creating folder temp_firstwhite")
                         pass
                     for curFile in L:
                         if curFile.startswith('white') and (curFile.endswith('.vtp') or curFile.endswith('.surf') or curFile.endswith('.curv')):
                             shutil.move(os.path.join('SurfReconDeformable', subjectID, 'temp', curFile), os.path.join('SurfReconDeformable', subjectID, 'temp_firstwhite', curFile))
+                    # RJB -  I think the white_rerun_required marker file should be created here
+                    # Not sure how the runs differ though
+                    WhiteRerunFile = os.path.join('SurfReconDeformable', subjectID, 'temp', 'white_rerun_required')
+                    FID = open(WhiteRerunFile, 'w')
+                    FID.write("done\n")
+                    FID.close()
+
                     quit()
 
         # write output mesh
@@ -1989,133 +2024,59 @@ def recon_white_surface_inwards_push(name, t2w_image, wm_mask, gm_mask, cortex_m
 
     opts = {k.replace('_', '-'): v for k, v in opts.items()}
     opts = {k[1:] if k.startswith('-') else k: v for k, v in opts.items()}
-
+    init_mesh = cortex_mesh
     with ExitStack() as stack:
+        # RJB - this was incomplete and couldn't run because mesh, status_array
+        # weren't initialised. Based on the name, I'm copying the deform-mesh
+        # code the does a small outward push but reversing the normal force
+        status_array = 'InitialStatus'
+        run('copy-pointset-attributes', args=[cortex_mesh, cortex_mesh, init_mesh],
+            opts={'celldata-as-pointdata': [cortex_mask_array, status_array, 'other', 'binary'], 'unanimous': None})
         
-            # status_array = 'InitialStatus'
-            # # project the mask onto the white surface
-            # project_mask(os.path.join(temp, 'white-3.vtp'),
-            #             os.path.join(temp, 'white-4.vtp'),
-            #             os.path.join(temp, 'pial-5-collision.nii.gz'),
-            #             status_array,
-            #             dilation=2)
-            # #print("default_mask_distance_weight")
-            # #print(default_mask_distance_weight)
-            # model_opts = {
-            #         'threads': threads,
-            #         'distance': 1,
-            #             'distance-measure': 'minimum',
-            #             'distance-threshold': 2.,
-            #             'distance-max-depth': 5.,
-            #             'distance-hole-filling': False,
-            #             'distance-averaging': [4, 2, 1],
-            #         'edge-distance': 0,
-            #             'edge-distance-max-depth': 5.,
-            #             'edge-distance-median': 1,
-            #             'edge-distance-smoothing': 1,
-            #             'edge-distance-averaging': [4, 2, 1],
-            #         # 'curvature': 2,
-            #         # 'gauss-curvature': .5,
-            #         #     'gauss-curvature-inside': 1.,
-            #         #     'gauss-curvature-outside': .5,
-            #         #     'gauss-curvature-minimum': .1,
-            #         #     'gauss-curvature-maximum': .2,
-            #         'optimizer': 'EulerMethod',
-            #             'step': .2,
-            #             'steps': [50, 100],
-            #             'extrinsic-energy': True,
-            #             'epsilon': 1e-6,
-            #             'delta': .01,
-            #             'min-active': '0%',
-            #             'reset-status': True,
-            #             'non-self-intersection': False,
-            #             'adjacent-collision-test': True,
-            #             'fast-collision-test': False,
-            #             'min-width': .1,
-            #         'remesh': 1,
-            #             'min-edge-length': .5,
-            #             'max-edge-length': 1.,
-            #             'triangle-inversion': True
-            #     }
-            # model_opts.update(white_opts)
-
-            # model_opts['edge-distance-type'] = 'Neonatal T2-w WM/cGM'
-            # model_opts['image'] = t2w_image
-            # model_opts['wm-mask'] = wm_mask
-            # model_opts['gm-mask'] = gm_mask
-            # model_opts['implicit-surface'] = os.path.join(temp, 'wm_force_third.nii.gz')
-            # model_opts['edge-distance'] = 0
-            # print(model_opts)
-            # with ExitStack() as stack:
-            #     first_mesh = push_output(stack, deform_mesh(os.path.join(temp, 'white-4.vtp'), opts=model_opts, super_debug=debug_white))
-            #     quit()
-            #     model_opts = {
-            #         'threads': threads,
-            #         'distance': 1,
-            #             'distance-measure': 'normal',
-            #             'distance-threshold': 2.,
-            #             'distance-max-depth': 5.,
-            #             'distance-hole-filling': False,
-            #             'distance-averaging': [4, 2, 1],
-            #         'edge-distance': 0.1,
-            #             'edge-distance-max-depth': 5.,
-            #             'edge-distance-median': 1,
-            #             'edge-distance-smoothing': 1,
-            #             'edge-distance-averaging': [4, 2, 1],
-            #         'curvature': 2.,
-            #         'gauss-curvature': .5,
-            #             'gauss-curvature-inside': 1.,
-            #             'gauss-curvature-outside': .5,
-            #             'gauss-curvature-minimum': .1,
-            #             'gauss-curvature-maximum': .2,
-            #         'optimizer': 'EulerMethod',
-            #             'step': .2,
-            #             'steps': [50, 100],
-            #             'extrinsic-energy': True,
-            #             'epsilon': 1e-6,
-            #             'delta': .01,
-            #             'min-active': '0%',
-            #             'reset-status': True,
-            #             'non-self-intersection': True,
-            #             'adjacent-collision-test': False,
-            #             'fast-collision-test': False,
-            #             'min-width': .1,
-            #         'remesh': 1,
-            #             'min-edge-length': .5,
-            #             'max-edge-length': 1.,
-            #             'triangle-inversion': True
-            #     }
-            #     model_opts.update(white_opts)
-
-            #     remove_keys(model_opts, [
-            #         'distance',
-            #         'distance-measure',
-            #         'distance-threshold',
-            #         'distance-max-depth',
-            #         'distance-hole-filling',
-            #         'implicit-surface'
-            #     ])
-            #     model_opts['edge-distance-type'] = 'Neonatal T2-w WM/cGM'
-            #     model_opts['image'] = t2w_image
-            #     model_opts['wm-mask'] = wm_mask
-            #     model_opts['gm-mask'] = gm_mask
-            #     model_opts['edge-distance'] = 1
-            #     second_mesh = push_output(stack, deform_mesh(first_mesh, opts=model_opts, super_debug=debug_white))
-
-
+        offset_mesh = push_output(stack, deform_mesh(init_mesh, opts={
+            'threads': threads,
+            'neighborhood': 3,
+            'normal-force': -1, # to push inwards
+            'distance': default_mask_distance_weight,
+                'distance-measure': 'minimum',
+                'distance-threshold': 2.,
+                'distance-max-depth': 4.,
+                'distance-hole-filling': False,
+                'distance-averaging': 1,
+            'lowpass': 2,
+            'lowpass-iterations': 5,
+            'implicit-surface': wm_mask,
+            'remesh': 1,
+                'min-edge-length': .5,
+                'max-edge-length': 2.,
+                'triangle-inversion': True,
+            #'remesh-adaptively': None,
+            #'match-sampling' : None,
+            'optimizer': 'EulerMethod',
+                'step': .1,
+                'steps': 100,
+                'max-displacement': max(get_voxel_size(gm_mask)),
+                'non-self-intersection': True,
+                'fast-collision-test': use_fast_collision,
+                'min-distance': .1,
+                'min-width' : 0.03,
+                'min-active': '10%',
+                'delta': .0001
+        }, super_debug=debug_white))
+        print("Done deform-mesh inwards push")
+        # RJB no idea if this part will work
         if bs_cb_mesh:
-            run('extract-pointset-cells', args=[mesh, mesh], opts=[('where', region_id_array), ('ne', 7)])
+            run('extract-pointset-cells', args=[offset_mesh, offset_mesh], opts=[('where', region_id_array), ('ne', 7)])
 
         # smooth white surface mesh
-        smooth = push_output(stack, smooth_surface(mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask=status_array))
+        smooth = push_output(stack, smooth_surface(offset_mesh, iterations=100, lambda_value=.33, mu=-.34, weighting='combinatorial', excl_node=True, mask=status_array))
 
         # remove intersections if any
         if check:
-            remove_intersections(smooth, oname=name, mask=status_array)
+            remove_intersections(smooth, oname=smooth, mask=status_array)
 
         # write output mesh
         #del_mesh_attr(smooth, pointdata='NonInternalMask')
-        del_mesh_attr(smooth, pointdata=status_array)
 
 
         #$remesh_surface(smooth, name)
@@ -2274,6 +2235,8 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                    wm_mask, '-mask', mask, '-pad', 1, '-reset-mask', '-mul', brain_mask,
                    '-add', gm_mask, '-clamp', 0, 1, '-out', pial_mask, 'binary'
                ])
+            print("init_mesh " + init_mesh)
+
             offset_mesh = push_output(stack, deform_mesh(init_mesh, opts={
                 'threads': threads,
                 'neighborhood': 3,
@@ -2287,6 +2250,12 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'lowpass': 2,
                 'lowpass-iterations': 5,
                 'implicit-surface': pial_mask,
+                #'remesh': 1,
+                    #'min-edge-length': .5,
+                    #'max-edge-length': 2.,
+                #    'triangle-inversion': True,
+                #'remesh-adaptively': None,
+                #'match-sampling' : None,
                 'optimizer': 'EulerMethod',
                     'step': .1,
                     'steps': 100,
@@ -2294,23 +2263,32 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                     'non-self-intersection': True,
                     'fast-collision-test': use_fast_collision,
                     'min-distance': .1,
+                    'min-width' : 0.03,
                     'min-active': '10%',
                     'delta': .0001
             }, super_debug=debug_pial))
-            if debug == 0:
-                try_remove(init_mesh)
+            print("Done deform-mesh")
+            print(os.listdir(os.path.join('SurfReconDeformable', subjectID, 'temp')))
+            # This is the problem - init_mesh is used by DeformablePial1EqualsPial2MergeImage
+            #if debug == 0:
+            #    try_remove(init_mesh)
             
             #'mean-curvature': 1,
             #    'mean-curvature-inside': 0.,
             #    'mean-curvature-outside': 0.5,
-            subprocess.call([
-                os.path.join(os.environ['MCRIBS_HOME'], 'VTK', 'VTK-install', 'bin', 'vtkpython'),
-                os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformablePial1EqualsPial2MergeImage'), subjectID])
-            if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'merge_required')):
+            runMCRIBS('DeformablePial1EqualsPial2MergeImage', [subjectID])
+            # subprocess.call([
+            #     os.path.join(os.environ['MCRIBS_HOME'], 'VTK', 'VTK-install', 'bin', 'vtkpython'),
+            #     os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformablePial1EqualsPial2MergeImage'), subjectID])
+            # RJB added check of second run, otherwise we get stuck in a kind of race condition
+            # because the meshes folder contents are moved away and the rest of the scripts can't run
+            if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'merge_required')) and\
+                not os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'second_run')):
                 # delete all output in meshes
                 try:
                     os.makedirs(os.path.join('SurfReconDeformable', subjectID, 'meshes_orig'), exist_ok=True)
                 except Exception:
+                    print("Exception creating meshes_orig")
                     pass
                 L = os.listdir(os.path.join('SurfReconDeformable', subjectID, 'meshes'))
                 for curFile in L:
@@ -2322,12 +2300,13 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 try:
                     os.makedirs(os.path.join('SurfReconDeformable', subjectID, 'temp_orig'), exist_ok=True)
                 except Exception:
+                    print("Exception creating temp_orig")
                     pass
                 for curFile in L:
                     #print(curFile)
                     if curFile.endswith('.vtp') or curFile.endswith('.surf') or curFile.endswith('.curv'):
                         shutil.move(os.path.join('SurfReconDeformable', subjectID, 'temp', curFile), os.path.join('SurfReconDeformable', subjectID, 'temp_orig', curFile))
-                            
+                print("Quitting following DeformablePial1EqualsPial2MergeImage")
                 quit()
             # blend between original position of non-cortical points and offset surface points
             blended_mesh = push_output(stack, nextname(offset_mesh))
@@ -2362,22 +2341,31 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
             init_mesh = push_output(stack, nextname(cortex_mesh))
             #remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
             if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'second_run')):
-                remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
+                try:
+                    remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
+                except Exception as e:
+                    print("Exception in second_run remove_white_pial_intersection")
+                    print(f"Error {repr(e)}")
+                    print("Ploughing on regardless")
+                    pass
             else:                
                 try:
                     remove_white_pial_intersections(cortex_mesh, init_mesh, region_id_array=region_id_array)
                     #raise ValueError('sidjfoisdfj')
-                except Exception:
-
+                except Exception as e:
+                    print("Exception in remove_white_pial_intersection")
+                    print(f"Error {repr(e)}")
                     # THIS will run if an exception is raised
-                    subprocess.call([
-                        os.path.join(os.environ['MCRIBS_HOME'], 'VTK', 'VTK-install', 'bin', 'vtkpython'),
-                        os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformablePial5MakeIntersectionForceImage'), subjectID])
+                    runMCRIBS('DeformablePial5MakeIntersectionForceImage', [subjectID])
+                    # subprocess.call([
+                    #     os.path.join(os.environ['MCRIBS_HOME'], 'VTK', 'VTK-install', 'bin', 'vtkpython'),
+                    #     os.path.join(os.environ['MCRIBS_HOME'], 'bin', 'DeformablePial5MakeIntersectionForceImage'), subjectID])
                     if os.path.isfile(os.path.join('SurfReconDeformable', subjectID, 'temp', 'merge_required')):
                         # delete all output in meshes
                         try:
                             os.makedirs(os.path.join('SurfReconDeformable', subjectID, 'meshes_orig'), exist_ok=True)
                         except Exception:
+                            print("Exception making directories - meshes_orig")
                             pass
                         L = os.listdir(os.path.join('SurfReconDeformable', subjectID, 'meshes'))
                         for curFile in L:
@@ -2389,13 +2377,14 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                         try:
                             os.makedirs(os.path.join('SurfReconDeformable', subjectID, 'temp_orig'), exist_ok=True)
                         except Exception:
+                            print("Exception making directories - temp_orig")
                             pass
                         for curFile in L:
                             #print(curFile)
                             if curFile.endswith('.vtp') or curFile.endswith('.surf') or curFile.endswith('.curv'):
                                 shutil.move(os.path.join('SurfReconDeformable', subjectID, 'temp', curFile), os.path.join('SurfReconDeformable', subjectID, 'temp_orig', curFile))
                         quit()
-                    quit()
+                    #quit() # don't want to quit if merge isn't required
             # if there are no merge forces then rerun the white matter surface generation
             # if there are 
 
@@ -2452,6 +2441,7 @@ def recon_pial_surface(name, t2w_image, wm_mask, gm_mask, white_mesh,
                 'adjacent-collision-test': False,
                 'fast-collision-test': True,  # trying fast collision
                 'min-distance': .1,
+            #'match-sampling' : None,
             'remesh': 0,
                 'min-edge-length': .3,
                 'max-edge-length': 2.,

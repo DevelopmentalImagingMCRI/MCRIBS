@@ -82,6 +82,7 @@
 #include "vtkFloatArray.h"
 #include "vtkGenericCell.h"
 #include "vtkCellTreeLocator.h"
+#include "vtkCellLocator.h"
 #include "vtkSortDataArray.h"
 #include "vtkPolyDataNormals.h"
 
@@ -549,7 +550,7 @@ ResampleAtInitialPoints(vtkSmartPointer<vtkPointSet> input, vtkSmartPointer<vtkP
   initial->SetPoints(initial_points);
 
   vtkSmartPointer<vtkAbstractCellLocator> locator;
-  locator = vtkSmartPointer<vtkCellTreeLocator>::New();
+  locator = vtkSmartPointer<vtkCellLocator>::New();
   locator->SetDataSet(initial);
   locator->BuildLocator();
 
@@ -563,7 +564,8 @@ ResampleAtInitialPoints(vtkSmartPointer<vtkPointSet> input, vtkSmartPointer<vtkP
     input->GetPoint(ptId, p);
     locator->FindClosestPoint(p, x, cell, cellId, subId, dist2);
     cell->EvaluatePosition(x, NULL, subId, pcoords, dist2, weights);
-    p[0] = p[1] = p[2];
+    // this looks wrong - claude suggests they should be zero
+    p[0] = p[1] = p[2] = 0.0;
     for (vtkIdType i = 0; i < cell->GetNumberOfPoints(); ++i) {
       output->GetPoint(cell->GetPointId(i), x);
       p[0] += weights[i] * x[0];
@@ -1633,7 +1635,7 @@ int main(int argc, char *argv[])
   model.AverageGradientMagnitude(average_magnitude);
   model.Initialize();
 
-  vtkPointSet  *output   = model.Output();
+  vtkSmartPointer<vtkPointSet>  output   = model.Output();
   vtkPointData *outputPD = output->GetPointData();
   vtkCellData  *outputCD = output->GetCellData();
 
@@ -1788,8 +1790,10 @@ int main(int argc, char *argv[])
     model.MinFrontfaceDistance(ParameterValue(level, nlevels, min_distance, 0.));
 
     // Set parameters of iterative remeshing step
-    model.MinEdgeLength  (ParameterValue(level, nlevels, min_edge_length, 0.));
-    model.MaxEdgeLength  (ParameterValue(level, nlevels, max_edge_length, inf));
+    // Changes from Claude to avoid Inf values working through when params aren't provided
+    double mean_edge_length = AverageEdgeLength(input);
+    model.MinEdgeLength  (ParameterValue(level, nlevels, min_edge_length, 0.5*mean_edge_length));
+    model.MaxEdgeLength  (ParameterValue(level, nlevels, max_edge_length, 2.0*mean_edge_length));
     model.MinFeatureAngle(ParameterValue(level, nlevels, min_edge_angle,  180.));
     model.MaxFeatureAngle(ParameterValue(level, nlevels, max_edge_angle,  180.));
 
@@ -1815,10 +1819,10 @@ int main(int argc, char *argv[])
 
     // Stopping criteria
     if (level > 0 && reset_status) {
-      vtkPointSet  * const output = model.Output();
-      vtkDataArray * const status = output->GetPointData()->GetArray("Status");
+      vtkPointSet  * const level_output = model.Output();
+      vtkDataArray * const status = level_output->GetPointData()->GetArray("Status");
       if (status) {
-        vtkDataArray * const initial = output->GetPointData()->GetArray("InitialStatus");
+        vtkDataArray * const initial = level_output->GetPointData()->GetArray("InitialStatus");
         if (initial) {
           status->CopyComponent(0, initial, 0);
         } else {
@@ -1879,6 +1883,23 @@ int main(int argc, char *argv[])
   outputPD = output->GetPointData();
   outputCD = output->GetCellData();
 
+  // RB move these two steps to before removal of the data arrays because
+  // ResampleAtInitialPoints needs the InitialPoints array
+  // Normalize sulcal depth measure tracked during inflation process
+  if (track_name) {
+    vtkDataArray *values = outputPD->GetArray(track_name);
+    if (track_zero_mean && track_unit_var) NormalizeValues  (values, track_use_median);
+    else if (track_zero_mean)              DemeanValues     (values, track_use_median);
+    else if (track_unit_var)               NormalizeVariance(values);
+  }
+
+  // Resample remeshed output mesh at corresponding initial points
+  if (match_sampling && model.RemeshInterval() > 0) {
+    output = ResampleAtInitialPoints(input, output);
+    outputPD = output->GetPointData();
+    outputCD = output->GetCellData();
+  }
+  
   // Remove data arrays used by optimizer
   if (!save_status) inputPD->RemoveArray("Status");
   for (int i = 0; i < outputPD->GetNumberOfArrays(); ++i) {
@@ -1901,18 +1922,6 @@ int main(int argc, char *argv[])
     }
   }
 
-  // Normalize sulcal depth measure tracked during inflation process
-  if (track_name) {
-    vtkDataArray *values = outputPD->GetArray(track_name);
-    if (track_zero_mean && track_unit_var) NormalizeValues  (values, track_use_median);
-    else if (track_zero_mean)              DemeanValues     (values, track_use_median);
-    else if (track_unit_var)               NormalizeVariance(values);
-  }
-
-  // Resample remeshed output mesh at corresponding initial points
-  if (match_sampling && model.RemeshInterval() > 0) {
-    output = ResampleAtInitialPoints(input, output);
-  }
 
   // Center output point set
   if (center_output) Center(output);

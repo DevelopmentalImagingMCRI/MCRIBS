@@ -9,6 +9,8 @@ import getopt
 
 import Utils
 
+unitSE = scipy.ndimage.generate_binary_structure(3,3)
+
 def CSFReplaceNearMainWM(LabelFusionIMG, NewLabelFusionIMG, labelToReplace):
     CSFLToReplace = numpy.zeros_like(LabelFusionIMG, dtype=numpy.bool_)
 
@@ -713,7 +715,9 @@ def main():
     L, numLabels = scipy.ndimage.label(T)
     NewLabelFusionIMG[numpy.logical_and(numpy.logical_and(L != numpy.argmax(numpy.bincount(L[L > 0])), NewLabelFusionIMG == 41), T)] = 24
 
-    NewLabelFusionIMG[numpy.logical_and(L != numpy.argmax(numpy.bincount(L[L > 0])), NewLabelFusionIMG == 41)] = 24
+    # This isn't done for the other hemisphere
+    #NewLabelFusionIMG[numpy.logical_and(L != numpy.argmax(numpy.bincount(L[L > 0])), NewLabelFusionIMG == 41)] = 24
+    
     #NewLabelFusionIMG[numpy.logical_and(L != numpy.argmax(numpy.bincount(L[L > 0])), numpy.logical_and(NewLabelFusionIMG == 41, Atropos3IMG == 3))] = 24
     # NewNII = nibabel.Nifti1Image(numpy.int16(L), LabelFusionNII.affine)
     # nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_labelsright.nii.gz"))
@@ -724,6 +728,8 @@ def main():
     if writeAllIntermediate:
         NewNII = nibabel.Nifti1Image(numpy.int16(NewLabelFusionIMG), LabelFusionNII.affine)
         nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_intermediate_drawemcsfdilate.nii.gz"))
+        NewNII = nibabel.Nifti1Image(numpy.int16(numpy.logical_and(numpy.logical_and(L != numpy.argmax(numpy.bincount(L[L > 0])), NewLabelFusionIMG == 2), T)), LabelFusionNII.affine)
+        nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_intermediate_T_drawemcsfdilate.nii.gz"))
 
     # replace really internal WM regions with DrawEM CSF
     BrainMaskIMGDT = scipy.ndimage.distance_transform_edt(BrainMaskIMG, sampling=BrainMaskNII.header.get_zooms())
@@ -964,6 +970,10 @@ def main():
     # regions that dont overlap are CSF
     NewLabelFusionIMG[numpy.logical_and(L > 0, numpy.logical_not(Utils.ismember(L, compsOverlap)))] = 24
 
+    if writeAllIntermediate:
+        NewNII = nibabel.Nifti1Image(numpy.int16(NewLabelFusionIMG), LabelFusionNII.affine)
+        nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_intermediate_afterreplacenonoverlapA.nii.gz"))
+
     L, numLabels = scipy.ndimage.label(NewLabelFusionIMG == 43)
     compsOverlap = L[ChoroidsDilatedIMGDilated]
     compsOverlap = numpy.unique(compsOverlap[compsOverlap > 0])
@@ -972,7 +982,10 @@ def main():
 
 
     NewLabelFusionIMG[numpy.logical_and(L > 0, numpy.logical_not(Utils.ismember(L, compsOverlap)))] = 24
-    
+    if writeAllIntermediate:
+        NewNII = nibabel.Nifti1Image(numpy.int16(NewLabelFusionIMG), LabelFusionNII.affine)
+        nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_intermediate_afterreplacenonoverlapB.nii.gz"))
+
     # for the lateral ventricle labels, only replace the components that are 
     # fill in the bit between the septums and 3rd ventricle with WM
     T = scipy.ndimage.binary_closing(Utils.ismember(LabelFusionIMG, [900, 901, 14]), iterations=20)
@@ -1090,9 +1103,27 @@ def main():
     #G = scipy.ndimage.gaussian_laplace(T2IMG, 5)
     
     # cortical labels that arent in the GM segmentation shouldnt be GM in the regions file, I'm going to mark as CSF
+    # extend the GM segmentation inside, otherwise we introduce annoying holes
+    # ignore this rule at the WM/GM boundary
     NewLabelFusionIMGGM = numpy.logical_or(numpy.logical_and(NewLabelFusionIMG >= 1000, NewLabelFusionIMG <= 1035), numpy.logical_and(NewLabelFusionIMG >= 2000, NewLabelFusionIMG <= 2035))
-    NewLabelFusionIMG[numpy.logical_and(numpy.logical_not(SegmentationGMIMG), NewLabelFusionIMGGM)] = 24
-    
+
+    WMD = scipy.ndimage.binary_dilation(numpy.logical_or(NewLabelFusionIMG == 2, NewLabelFusionIMG==41), structure = unitSE)
+    GMDI = scipy.ndimage.binary_dilation(SegmentationGMIMG, structure = unitSE)
+    GMDIA = numpy.logical_and(GMDI, WMD)
+    GMDI = numpy.logical_or(GMDIA, SegmentationGMIMG)
+                                         
+    NewLabelFusionIMG[numpy.logical_and(numpy.logical_not( GMDI), NewLabelFusionIMGGM)] = 24
+    if writeAllIntermediate:
+        NewNII = nibabel.Nifti1Image(numpy.int16(NewLabelFusionIMG), LabelFusionNII.affine)
+        nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_intermediate_afterreplaceGM.nii.gz"))
+        NewNII = nibabel.Nifti1Image(numpy.int16(GMDIA), LabelFusionNII.affine)
+        nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_intermediate_afterreplaceIMGGM.nii.gz"))
+        NewNII = nibabel.Nifti1Image(numpy.int16(WMD), LabelFusionNII.affine)
+        nibabel.save(NewNII, os.path.join(TissueSegDir, subjID, subjID + "_intermediate_afterreplaceWM.nii.gz"))
+
+    del WMD
+    del GMDI
+    del GMDIA
     #PotentialGMinWM = numpy.logical_and(G > 0, Utils.ismember(NewLabelFusionIMG, [2, 41]))
     
     #NewNII = nibabel.Nifti1Image(numpy.uint8(PotentialGMinWM), LabelFusionNII.affine)

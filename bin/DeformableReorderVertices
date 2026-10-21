@@ -147,11 +147,13 @@ outDir = args[1]
 #print("Loading")
 VTKLoad = True
 if VTKLoad == True:
-    WhiteInternalSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white+internal.vtp'))
+    # RJB doesn't appear to be used and the input file is clean up before reaching this point
+    #WhiteInternalSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white+internal.vtp'))
     WhiteSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white.vtp'))
     WhiteLHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white-lh.vtp'))
     WhiteRHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'white-rh.vtp'))
-    PialInternalSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial+internal.vtp'))
+    # RJB doesn't appear to be used and the input file is clean up before reaching this point
+    #PialInternalSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial+internal.vtp'))
     PialSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial.vtp'))
     PialLHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-lh.vtp'))
     PialRHSurf = VTPUtils.readVTPSurf(os.path.join(inDir, 'meshes', 'pial-rh.vtp'))
@@ -166,11 +168,11 @@ if VTKLoad == True:
         ensureOutside = False
 
 else:
-    WhiteInternalSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white+internal_world.surf'))
+    #WhiteInternalSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white+internal_world.surf'))
     WhiteSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white_world.surf'))
     WhiteLHSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white-lh_world.surf'))
     WhiteRHSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'white-rh_world.surf'))
-    PialInternalSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial+internal_world.surf'))
+    #PialInternalSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial+internal_world.surf'))
     PialSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial_world.surf'))
     PialLHSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial-lh_world.surf'))
     PialRHSurf = freesurfer.readSurf(os.path.join(inDir, 'meshes', 'pial-rh_world.surf'))
@@ -210,9 +212,10 @@ if vertsDiffer:
 #     numpy.savetxt(os.path.join(inDir, 'meshes', 'white-rh-faces.csv'), WhiteRHSurf['faces'].T, fmt='%d', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
 #     numpy.savetxt(os.path.join(inDir, 'meshes', 'pial-rh-faces.csv'), PialRHSurf['faces'].T, fmt='%d', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
 
-if WhiteInternalSurf is None:
-    print("WhiteInternalSurf not found")
-    exit()
+# RJB - not used - causing errors
+# if WhiteInternalSurf is None:
+#     print("WhiteInternalSurf not found")
+#     exit()
 
 if WhiteSurf is None:
     print("WhiteInternalSurf not found")
@@ -224,9 +227,9 @@ if WhiteLHSurf is None:
 if WhiteRHSurf is None:
     print("WhiteRHSurf not found")
     exit()
-if PialInternalSurf is None:
-    print("PialInternalSurf not found")
-    exit()
+#if PialInternalSurf is None:
+#    print("PialInternalSurf not found")
+#    exit()
 if PialSurf is None:
     print("PialSurf not found")
     exit()
@@ -256,11 +259,13 @@ if PialRHSurf is None:
 #Pial6VRegionId = vertexRegionId(Pial6Surf['faces'], Pial6RegionId)
 
 #print("Finding mappings")
-WhiteLHWhiteInternalEqual = findEqualPoints(WhiteLHSurf, WhiteInternalSurf)
-WhiteRHWhiteInternalEqual = findEqualPoints(WhiteRHSurf, WhiteInternalSurf)
+# RJB - This does not appear to be used, and the source vtp file
+# is not retained by recon-neonatal-cortex (perhaps it is in debug mode)
+#WhiteLHWhiteInternalEqual = findEqualPoints(WhiteLHSurf, WhiteInternalSurf)
+#WhiteRHWhiteInternalEqual = findEqualPoints(WhiteRHSurf, WhiteInternalSurf)
 
-WhiteLHWhiteEqual = findEqualPoints(WhiteLHSurf, WhiteSurf)
-WhiteRHWhiteEqual = findEqualPoints(WhiteRHSurf, WhiteSurf)
+#WhiteLHWhiteEqual = findEqualPoints(WhiteLHSurf, WhiteSurf)
+#WhiteRHWhiteEqual = findEqualPoints(WhiteRHSurf, WhiteSurf)
 WhiteWhiteLHEqual = findEqualPoints(WhiteSurf, WhiteLHSurf)
 WhiteWhiteRHEqual = findEqualPoints(WhiteSurf, WhiteRHSurf)
 
@@ -280,11 +285,12 @@ if ensureOutside == True:
     Pial4Pial3Equal = findEqualPoints(Pial4Surf, Pial3Surf)
     PialPial6Equal = findEqualPoints(PialSurf, Pial6Surf)
 
-PialPialInternalEqual = findEqualPoints(PialSurf, PialInternalSurf)
+# RJB - doesn't appear to be used and input file is cleaned up
+#PialPialInternalEqual = findEqualPoints(PialSurf, PialInternalSurf)
 PialLHPialEqual = findEqualPoints(PialLHSurf, PialSurf)
 PialRHPialEqual = findEqualPoints(PialRHSurf, PialSurf)
-PialLHPialInternalEqual = findEqualPoints(PialLHSurf, PialInternalSurf)
-PialRHPialInternalEqual = findEqualPoints(PialRHSurf, PialInternalSurf)
+#PialLHPialInternalEqual = findEqualPoints(PialLHSurf, PialInternalSurf)
+#PialRHPialInternalEqual = findEqualPoints(PialRHSurf, PialInternalSurf)
 
 PialLHPialCortexMask = (PialLHPialEqual > -1)
 PialLHPialCortexIDX = numpy.where(PialLHPialCortexMask)[0]
@@ -378,8 +384,6 @@ else:
 #raise
 # occasionally we get some duplicates in LHIDX and RHIDX
 # this is where
-
-
 #print(numpy.where(LHIDX < 0)[0].size)
 #print(numpy.where(RHIDX < 0)[0].size)
 LHDuplicates = numpy.where(numpy.bincount(LHIDX) > 1)[0]
