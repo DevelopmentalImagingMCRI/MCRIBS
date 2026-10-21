@@ -149,10 +149,10 @@ def main():
 
     options = argParser.parse_args()
 
-    if options.steplist == True:
+    if options.steplist:
         T = ['--' + x for x in doProcessingSteps]
         print(" ".join(T))
-        exit
+        exit()
 
     #argParser.print_help()
     #print(vars(options))

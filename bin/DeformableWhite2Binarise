@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import vtk
+from vtk.util import numpy_support
+import nibabel
+import shutil
+import numpy
+import subprocess
+import VTPUtils
+import Utils
+import scipy.ndimage
+
+def surfFillNII(NII, inSurf):
+    
+    # transform vertices from TKR to VOX
+
+    #voxverts = nb.affines.apply_affine(numpy.linalg.inv(mat), vertices)
+    
+    WorldToVox = numpy.linalg.inv(NII.affine)
+
+    voxverts = (numpy.matrix(WorldToVox[0:3, 0:3]) * numpy.matrix(inSurf['vertices'])) + numpy.atleast_2d(WorldToVox[0:3, 3].ravel()).T
+
+    points = vtk.vtkPoints()
+    points.SetNumberOfPoints(inSurf['vertices'].shape[1])
+    for z in range(inSurf['vertices'].shape[1]):
+        pp=voxverts[:, z].flatten()
+        points.InsertPoint(z, pp[0,0], pp[0,1], pp[0,2])
+
+    tris = vtk.vtkCellArray()
+    for z in range(inSurf['faces'].shape[1]):
+        tris.InsertNextCell(3)
+        for v in range(3):
+            tris.InsertCellPoint(inSurf['faces'][v, z])
+
+    pd = vtk.vtkPolyData()
+    pd.SetPoints(points)
+    pd.SetPolys(tris)
+    del points, tris
+
+    whiteimg = vtk.vtkImageData()
+    whiteimg.SetDimensions(NII.shape[0:3])
+    whiteimg.SetExtent([0, NII.shape[0] - 1, 0, NII.shape[1] - 1, 0, NII.shape[2] - 1])
+
+    if vtk.VTK_MAJOR_VERSION <= 5:
+        whiteimg.SetScalarType(vtk.VTK_UNSIGNED_CHAR)
+    else:
+        info = vtk.vtkInformation()
+        whiteimg.SetPointDataActiveScalarInfo(info, vtk.VTK_UNSIGNED_CHAR, 1)
+
+
+    ones = numpy.ones(numpy.prod(NII.shape[0:3]), dtype=numpy.uint8)
+    whiteimg.GetPointData().SetScalars(numpy_support.numpy_to_vtk(ones))
+
+    pdtis = vtk.vtkPolyDataToImageStencil()
+    if vtk.VTK_MAJOR_VERSION <= 5:
+        pdtis.SetInput(pd)
+    else:
+        pdtis.SetInputData(pd)
+
+    pdtis.SetOutputWholeExtent(whiteimg.GetExtent())
+    pdtis.Update()
+
+    imgstenc = vtk.vtkImageStencil()
+    if vtk.VTK_MAJOR_VERSION <= 5:
+        imgstenc.SetInput(whiteimg)
+        imgstenc.SetStencil(pdtis.GetOutput())
+    else:
+        imgstenc.SetInputData(whiteimg)
+        imgstenc.SetStencilConnection(pdtis.GetOutputPort())
+    imgstenc.SetBackgroundValue(0)
+
+    imgstenc.Update()
+
+    data = (
+        numpy_support.vtk_to_numpy(imgstenc.GetOutput().GetPointData().GetScalars()).reshape([NII.shape[2], NII.shape[1], NII.shape[0]]).transpose(2, 1, 0)
+    )
+    del pd, voxverts, whiteimg, pdtis, imgstenc
+    return (data > 0)
+
+if len(sys.argv) < 2:
+    print("Incorrect number of arguments")
+    print()
+    print("Usage: " + sys.argv[0] + " <subject id>")
+    quit()
+
+
+try:
+    TissueSegDir = os.environ['TISSUESEGDIR']
+except Exception:
+    TissueSegDir = 'TissueSegMCRIBS'
+
+subjID = sys.argv[1]
+
+
+subprocess.call(['mri_convert', '-rt', 'nearest', '-ns', '1', '-odt', 'short',
+                 '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image.nii.gz'),
+                 os.path.join(TissueSegDir, subjID, subjID + "_labelfusion_dkt_edited.nii.gz"),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', subjID + "_labelfusion_dkt_edited.nii.gz")
+                 ])
+
+subprocess.call(['mri_convert', '-rt', 'nearest', '-ns', '1', '-odt', 'short',
+                 '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image.nii.gz'),
+                 os.path.join(TissueSegDir, subjID, subjID + "_t2w_restore_brain_dn_kmeans5.nii.gz"),
+                 os.path.join('SurfReconDeformable', subjID, 'temp', subjID + "_t2w_restore_brain_dn_kmeans5.nii.gz")
+                 ])
+
+# subprocess.call(['mri_convert', '-rt', 'nearest', '-ns', '1', '-odt', 'short',
+#                  '-rl', os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image.nii.gz'),
+#                  os.path.join(TissueSegDir, subjID, subjID + "_drawem_alberts_tissueseg.nii.gz"),
+#                  os.path.join('SurfReconDeformable', subjID, 'temp', subjID + "_drawem_alberts_tissueseg.nii.gz")
+#                  ])
+
+# check to see if existing files are present
+# if they are we are rerunning and we want to use the original files instead
+if os.path.isfile(os.path.join('SurfReconDeformable', subjID, 'recon_firstrun', 'regions.nii.gz')):
+    shutil.copyfile(os.path.join('SurfReconDeformable', subjID, 'recon_firstrun', 'regions.nii.gz'),
+                    os.path.join('SurfReconDeformable', subjID, 'recon', 'regions.nii.gz'))
+
+if os.path.isfile(os.path.join('SurfReconDeformable', subjID, 'temp_firstrun', 't2w-image.nii.gz')):
+    shutil.copyfile(os.path.join('SurfReconDeformable', subjID, 'temp_firstrun', 't2w-image.nii.gz'),
+                    os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image.nii.gz'))
+
+if os.path.isfile(os.path.join('SurfReconDeformable', subjID, 'temp_firstrun', 'white-2.vtp')):
+    shutil.copyfile(os.path.join('SurfReconDeformable', subjID, 'temp_firstrun', 'white-2.vtp'),
+                    os.path.join('SurfReconDeformable', subjID, 'temp', 'white-2.vtp'))
+
+T2NII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image.nii.gz'))
+T2IMG = numpy.squeeze(T2NII.get_fdata())
+
+LabelFusionNII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', subjID + "_labelfusion_dkt_edited.nii.gz"))
+LabelFusionIMG = numpy.int16(LabelFusionNII.dataobj).squeeze()
+
+KMeans5NII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', subjID + "_t2w_restore_brain_dn_kmeans5.nii.gz"))
+KMeans5IMG = numpy.uint8(KMeans5NII.dataobj).squeeze()
+
+# DrawEMNII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'temp', subjID + "_drawem_alberts_tissueseg.nii.gz"))
+# DrawEMIMG = numpy.uint8(DrawEMNII.dataobj).squeeze()
+
+subjID + "_drawem_alberts_tissueseg.nii.gz"
+
+# make a new regions.nii.gz
+RegionsNII = nibabel.load(os.path.join('SurfReconDeformable', subjID, 'recon', 'regions.nii.gz'))
+RegionsIMG = numpy.uint8(RegionsNII.dataobj).squeeze()
+
+White2Surf = VTPUtils.readVTPSurf(os.path.join('SurfReconDeformable', subjID, 'temp', 'white-2.vtp'))
+
+White2Mask = surfFillNII(T2NII, White2Surf)
+
+White2Ribbon = numpy.zeros(T2NII.shape[0:3], dtype=numpy.bool_)
+White2Ribbon[White2Mask] = True
+
+# remove all non-WM structures
+WMMask = numpy.array(White2Ribbon).squeeze()
+
+MaskToRemove = Utils.ismember(LabelFusionIMG, [4, 9, 28, 11, 12, 13, 17, 31, 18, 26, 900, 51, 52, 43, 50, 60, 48, 54, 63, 53, 58, 901, 14, 15, 28, 60])
+WMMask[MaskToRemove] = False
+
+WMMean = numpy.mean(T2IMG[WMMask])
+GMMean = numpy.mean(T2IMG[RegionsIMG == 1])
+#GMStd = numpy.std(T2IMG[RegionsIMG == 1])
+
+BrightT2 = T2IMG > WMMean
+#LabelFusionIMGWMMask = Utils.ismember(LabelFusionIMG, [2, 41])
+
+BarrierMask = numpy.logical_and(Utils.ismember(LabelFusionIMG, [254, 255, 2, 41]), BrightT2)
+DilatedWMMask = numpy.array(WMMask)
+for z in range(5):
+    DilatedWMMask = numpy.logical_and(numpy.logical_or(BarrierMask, DilatedWMMask), scipy.ndimage.binary_dilation(DilatedWMMask))
+    
+outNII = nibabel.Nifti1Image(numpy.uint8(White2Ribbon), T2NII.affine)
+nibabel.save(outNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'white-2_mask.nii.gz'))
+
+outNII = nibabel.Nifti1Image(numpy.uint8(WMMask), T2NII.affine)
+nibabel.save(outNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'white-2_wmmask.nii.gz'))
+
+outNII = nibabel.Nifti1Image(numpy.uint8(DilatedWMMask), T2NII.affine)
+nibabel.save(outNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'white-2_dwmmask.nii.gz'))
+
+outNII = nibabel.Nifti1Image(numpy.uint8(BrightT2), T2NII.affine)
+nibabel.save(outNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'bright_t2.nii.gz'))
+
+# run N4 with heavy corrections
+# subprocess.call(['N4BiasFieldCorrection',
+#                  '-d', '3',
+#                  '-s', '2',
+#                  '-i', os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image.nii.gz'),
+#                  '-o', os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image-wm_restore.nii.gz'),
+#                  '-w', os.path.join('SurfReconDeformable', subjID, 'temp', 'white-2_wmmask.nii.gz'),
+#                  '-x', os.path.join('SurfReconDeformable', subjID, 'temp', 'brain-mask.nii.gz'),
+#                  '-v'])
+
+# subprocess.call(['N4BiasFieldCorrection',
+#                  '-d', '3',
+#                  '-s', '2',
+#                  '-i', os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image.nii.gz'),
+#                  '-o', os.path.join('SurfReconDeformable', subjID, 'temp', 't2w-image_second.nii.gz'),
+#                  '-w', os.path.join('SurfReconDeformable', subjID, 'temp', 'white-2_dwmmask.nii.gz'),
+#                  '-x', os.path.join('SurfReconDeformable', subjID, 'temp', 'brain-mask.nii.gz'),
+#                  '-v'])
+
+os.unlink(os.path.join('SurfReconDeformable', subjID, 'temp', subjID + "_labelfusion_dkt_edited.nii.gz"))
+
+WMForceSecondIMG = numpy.single(Utils.ismember(LabelFusionIMG, [254, 255])) * -1
+WMForceSecondIMG[Utils.ismember(LabelFusionIMG, [998, 999])] = 1
+
+WMForceSecondIMG[DilatedWMMask] = -1
+
+# voxels that are Kmeans = 3, DrawEM = WM, LabelFusion cortex or WM, set to -1
+# LabelFusionWMGM =   numpy.logical_or(Utils.ismember(LabelFusionIMG, [2, 41, 255, 254]),
+#                         numpy.logical_or(numpy.logical_and(LabelFusionIMG >= 1000, LabelFusionIMG <= 1036),
+#                                          numpy.logical_and(LabelFusionIMG >= 2000, LabelFusionIMG <= 2036)
+#                         )
+#                     )
+# M = numpy.logical_and(KMeans5IMG == 3, 
+#                       numpy.logical_and(DrawEMIMG == 3, LabelFusionWMGM)
+# )
+# WMForceSecondIMG[M] = -1
+
+outNII = nibabel.Nifti1Image(WMForceSecondIMG, T2NII.affine)
+nibabel.save(outNII, os.path.join('SurfReconDeformable', subjID, 'temp', 'wm_force_second.nii.gz'))
+
+DLHWM = scipy.ndimage.distance_transform_edt(RegionsIMG != 3)
+DRHWM = scipy.ndimage.distance_transform_edt(RegionsIMG != 2)
+
+NewRegionsIMG = numpy.array(RegionsIMG).squeeze()
+NewRegionsIMG[Utils.ismember(NewRegionsIMG, [2, 3])] = 0
+
+#%DilatedWMMask[MaskToRemove] = True
+
+NewRegionsIMG[numpy.logical_and(DilatedWMMask, DLHWM < DRHWM)] = 3
+NewRegionsIMG[numpy.logical_and(DilatedWMMask, DLHWM >= DRHWM)] = 2
+
+NewRegionsIMG[MaskToRemove] = RegionsIMG[MaskToRemove]
+
+outNII = nibabel.Nifti1Image(numpy.uint8(NewRegionsIMG), T2NII.affine)
+nibabel.save(outNII, os.path.join('SurfReconDeformable', subjID, 'recon', 'regions_second.nii.gz'))
+
+# get the vertices that are over kmeans region 5
+
